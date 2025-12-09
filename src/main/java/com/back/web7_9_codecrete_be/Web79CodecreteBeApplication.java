@@ -9,5 +9,5 @@ public class Web79CodecreteBeApplication {
     public static void main(String[] args) {
         SpringApplication.run(Web79CodecreteBeApplication.class, args);
     }
-
+    // 파이팅
 }
