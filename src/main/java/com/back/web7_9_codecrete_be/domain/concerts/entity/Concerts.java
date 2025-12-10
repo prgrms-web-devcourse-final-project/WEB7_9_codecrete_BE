@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Entity
 @RequiredArgsConstructor
 @Getter
-public class ConcertsEntity {
+public class Concerts {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long concertsId;

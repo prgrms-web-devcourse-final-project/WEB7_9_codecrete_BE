@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 @Entity
 @Getter
 @RequiredArgsConstructor
-public class ConcertsLikeEntity {
+public class ConcertsLike {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -15,5 +15,5 @@ public class ConcertsLikeEntity {
     //TODO : 유저 엔티티 생성시 이어주기
 
     @ManyToOne
-    private ConcertsEntity concertsEntity;
+    private Concerts concerts;
 }
