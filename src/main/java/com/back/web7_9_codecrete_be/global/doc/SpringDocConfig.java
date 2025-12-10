@@ -23,7 +23,6 @@ public class SpringDocConfig {
                         .bearerFormat("JWT")
                 );
         return new OpenAPI()
-                .components(new Components())
                 .info(apiInfo())
                 .addSecurityItem(securityRequirement)
                 .components(components);
