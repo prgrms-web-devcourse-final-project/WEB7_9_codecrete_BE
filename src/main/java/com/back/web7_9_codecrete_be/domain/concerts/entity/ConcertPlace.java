@@ -11,7 +11,8 @@ import lombok.RequiredArgsConstructor;
 public class ConcertPlace {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "concert_place_id")
+    private Long concertPlaceId;
 
     @Column(name = "place_name")
     private String placeName;
