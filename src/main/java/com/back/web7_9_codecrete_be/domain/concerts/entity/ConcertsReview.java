@@ -7,15 +7,21 @@ import java.time.LocalDateTime;
 
 @Entity
 @Getter
-public class ConcertsTimeEntity {
+public class ConcertsReview {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
-    private ConcertsEntity concertsEntity;
+    private Concerts concerts;
 
-    private LocalDateTime startTime;
+    // TODO : 연관 객체 이어주기
 
-    private LocalDateTime endTime;
+    private String title;
+
+    private String content;
+
+    private LocalDateTime createdTime;
+
+    private LocalDateTime modifiedTime;
 }
