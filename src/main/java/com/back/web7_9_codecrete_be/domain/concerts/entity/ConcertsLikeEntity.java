@@ -1,8 +1,12 @@
 package com.back.web7_9_codecrete_be.domain.concerts.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 @Entity
+@Getter
+@RequiredArgsConstructor
 public class ConcertsLikeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

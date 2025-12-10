@@ -1,8 +1,10 @@
 package com.back.web7_9_codecrete_be.domain.concerts.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 
 @Entity
+@Getter
 public class ConcertsSetListEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

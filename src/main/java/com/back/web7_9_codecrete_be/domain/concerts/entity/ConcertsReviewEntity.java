@@ -15,6 +15,8 @@ public class ConcertsReviewEntity {
     @ManyToOne
     private ConcertsEntity concertsEntity;
 
+    // TODO : 연관 객체 이어주기
+
     private String title;
 
     private String content;
