@@ -1,0 +1,22 @@
+package com.back.web7_9_codecrete_be.domain.artists.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+
+@Entity
+@Getter
+@Table(name = "GENRE")
+public class Genre {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long id;
+
+    @Column(name = "genre_name", nullable = false, length = 30)
+    private String genreName;
+
+    @Column(name = "genre_group", length = 30)
+    private String genreGroup;
+
+    @Column(name = "genre_memo")
+    private String genreMemo;
+}
