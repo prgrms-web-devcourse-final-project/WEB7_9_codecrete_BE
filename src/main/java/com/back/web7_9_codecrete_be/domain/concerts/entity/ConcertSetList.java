@@ -5,13 +5,14 @@ import lombok.Getter;
 
 @Entity
 @Getter
-public class ConcertsSetList {
+@Table(name = "concert_set_list")
+public class ConcertSetList {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
-    private Concerts concerts;
+    private Concert concerts;
 
     private String artist;
 
@@ -19,5 +20,6 @@ public class ConcertsSetList {
 
     private int length;
 
+    @Column(name = "spotify_link")
     private String spotifyLink;
 }

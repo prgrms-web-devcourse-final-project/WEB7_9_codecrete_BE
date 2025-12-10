@@ -1,9 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.concerts.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -12,22 +9,35 @@ import java.time.LocalDateTime;
 @Entity
 @RequiredArgsConstructor
 @Getter
-public class Concerts {
+@Table(name = "concert")
+public class Concert {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long concertsId;
+
+    @ManyToOne
+    ConcertPlace concertPlace;
 
     private String name;
 
     private String content;
 
+    @Column(name = "ticket_time")
     private String ticketTime;
 
+    @Column(name = "ticket_link")
     private String ticketLink;
 
+    @Column(name = "created_date")
     private LocalDateTime createdDate;
 
+    @Column(name = "modified_date")
     private LocalDateTime modifiedDate;
 
+    @Column(nullable = false)
     private int price;
+
+    @Column(name = "api_concert_id")
+    private String apiConcertId;
+
 }
