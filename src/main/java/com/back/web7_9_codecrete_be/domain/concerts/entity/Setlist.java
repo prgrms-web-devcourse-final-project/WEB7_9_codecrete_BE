@@ -6,10 +6,11 @@ import lombok.Getter;
 @Entity
 @Getter
 @Table(name = "concert_set_list")
-public class ConcertSetList {
+public class Setlist {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "setlist_id")
+    private Long setlistId;
 
     @ManyToOne
     private Concert concerts;

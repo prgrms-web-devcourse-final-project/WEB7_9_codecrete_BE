@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
 public class Concert {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long concertsId;
+    @Column(name = "concert_id")
+    private Long concertId;
 
     @ManyToOne
     ConcertPlace concertPlace;

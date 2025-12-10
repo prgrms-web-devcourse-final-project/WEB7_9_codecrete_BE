@@ -11,7 +11,8 @@ import java.time.LocalDateTime;
 public class ConcertTime {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "concert_time_id")
+    private Long concertTimeId;
 
     @ManyToOne
     private Concert concerts;
