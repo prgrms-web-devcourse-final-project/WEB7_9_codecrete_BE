@@ -7,13 +7,14 @@ import java.time.LocalDateTime;
 
 @Entity
 @Getter
-public class ConcertsReview {
+@Table(name = "concertReview")
+public class ConcertReview {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
-    private Concerts concerts;
+    private Concert concert;
 
     // TODO : 연관 객체 이어주기
 
@@ -21,7 +22,9 @@ public class ConcertsReview {
 
     private String content;
 
-    private LocalDateTime createdTime;
+    @Column(name = "created_date")
+    private LocalDateTime createdDate;
 
-    private LocalDateTime modifiedTime;
+    @Column(name = "modified_date")
+    private LocalDateTime modifiedDate;
 }

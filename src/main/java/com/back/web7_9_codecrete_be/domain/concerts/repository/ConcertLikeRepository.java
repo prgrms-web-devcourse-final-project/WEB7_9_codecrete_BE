@@ -1,9 +1,10 @@
 package com.back.web7_9_codecrete_be.domain.concerts.repository;
 
-import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertsReview;
+import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertLike;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ConcertsReviewRepository extends JpaRepository<ConcertsReview, Long> {
+public interface ConcertLikeRepository extends JpaRepository<ConcertLike, Long> {
 }
+
