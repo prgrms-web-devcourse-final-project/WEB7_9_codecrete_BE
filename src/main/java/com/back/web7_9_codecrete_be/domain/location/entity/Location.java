@@ -14,14 +14,15 @@ import java.time.LocalDateTime;
 public class Location {
 
     @Id
-    @Column(nullable = false)
+    @Column(name = "location_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    // TODO : 추후 user Entity 보고 확인 예정 우선 주석 처리
+/*
     @ManyToOne
     @JoinColumn(name="user_id", nullable = false)
     private User user;
-
+*/
     @Column(length = 255)
     private String address;
 
