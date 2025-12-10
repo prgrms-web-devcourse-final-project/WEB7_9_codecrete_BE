@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Getter
-@Table(name = "ARTIST_LIKE")
+@Table(name = "artist_like")
 public class ArtistLike {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
