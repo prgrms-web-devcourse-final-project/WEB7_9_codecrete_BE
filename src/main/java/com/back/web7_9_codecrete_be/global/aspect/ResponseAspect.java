@@ -44,7 +44,7 @@ public class ResponseAspect {
 		Object rst = joinPoint.proceed();
 
 		if (rst instanceof RsData rsData) {
-			response.setStatus(rsData.getStatusCode());
+			response.setStatus(rsData.getStatus());
 		}
 
 		return rst;
