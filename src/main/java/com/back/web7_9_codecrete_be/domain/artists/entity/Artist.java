@@ -10,16 +10,16 @@ public class Artist {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "artist_id")
-    public long id;
+    private long id;
 
     @Column(name = "artist_name", nullable = false, length = 30)
-    public String artistName;
+    private String artistName;
 
     @Column(name = "artist_group", length = 30)
-    public String artistGroup;
+    private String artistGroup;
 
     @Column(name = "artist_type", nullable = false, length = 20)
-    public String artistType;
+    private String artistType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     private Genre genre;
