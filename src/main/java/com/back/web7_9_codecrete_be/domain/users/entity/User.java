@@ -5,7 +5,10 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -25,18 +28,20 @@ public class User {
     @Column(nullable = false, length = 20)
     private String nickname;
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 100)
     private String password;
 
     @Column(nullable = false)
-    private LocalDateTime birth;
+    private LocalDate birth;
 
     @Column(name = "profile_image", length = 255)
     private String profileImage;
 
+    @CreatedDate
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
+    @LastModifiedDate
     @Column(name = "modified_date")
     private LocalDateTime modifiedDate;
 
@@ -58,7 +63,7 @@ public class User {
     public User(String email,
                 String nickname,
                 String password,
-                LocalDateTime birth,
+                LocalDate birth,
                 String profileImage) {
 
         this.email = email;
