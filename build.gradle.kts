@@ -33,7 +33,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
     // 시큐리티
-    implementation("org.springframework.boot:spring-boot-starter-security")
+//    implementation("org.springframework.boot:spring-boot-starter-security")
 
     // 유효성 검증
     implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -55,6 +55,9 @@ dependencies {
 
     // 스프링 문서화
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13")
+
+    // XML 파싱
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
 }
 
 tasks.withType<Test> {
