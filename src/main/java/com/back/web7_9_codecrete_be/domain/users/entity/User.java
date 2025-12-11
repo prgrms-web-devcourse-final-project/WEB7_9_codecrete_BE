@@ -25,7 +25,7 @@ public class User {
     @Column(nullable = false, unique = true, length = 254)
     private String email;
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, unique = true, length = 20)
     private String nickname;
 
     @Column(nullable = false, length = 100)
@@ -77,6 +77,10 @@ public class User {
         this.status = UserStatus.ACTIVE;
         this.isDeleted = false;
         this.createdDate = LocalDateTime.now();
+    }
+
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
     }
 }
 
