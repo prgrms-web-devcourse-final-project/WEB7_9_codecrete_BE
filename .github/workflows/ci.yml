@@ -21,7 +21,6 @@ jobs:
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: ""
 
-      # JWT 키 정도는 테스트에서 필요할 수 있음 → secrets 에 없으면 기본값 사용
       JWT_SECRET: ${{ secrets.SECRET_KEY }}
 
     steps:
