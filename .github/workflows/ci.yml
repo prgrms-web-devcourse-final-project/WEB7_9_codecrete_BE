@@ -212,7 +212,7 @@ jobs:
             PCT=$(awk "BEGIN { printf \"%.2f\", ($COVERED/($COVERED+$MISSED))*100 }")
           fi
           echo "pct=$PCT" >> $GITHUB_OUTPUT
-          shell: bash
+        shell: bash
 
       - name: Build detailed coverage markdown (incl. Changed Files)
         if: always() && github.event_name == 'pull_request'
@@ -223,10 +223,10 @@ jobs:
           if [ ! -f "$XML" ]; then
           ALT="build/reports/jacoco/xml/jacocoTestReport.xml"
           if [ -f "$ALT" ]; then
-           XML="$ALT"
+          XML="$ALT"
           else
-           echo "details=No coverage report found." >> $GITHUB_OUTPUT
-           exit 0
+          echo "details=No coverage report found." >> $GITHUB_OUTPUT
+          exit 0
           fi
           fi
           echo "Using coverage XML: $XML"
@@ -242,7 +242,7 @@ jobs:
           
           git diff --name-only "$BASE_SHA" "$HEAD_SHA" \
           | grep -E '^src/main/(java|kotlin)/.*\.(java|kt)$' \
-          | sed /tmp/changed-java.txt || true
+          | /tmp/changed-java.txt || true
           
           echo "Changed files (main src):"
           cat /tmp/changed-java.txt || true
@@ -260,10 +260,10 @@ jobs:
           root = ET.parse(xml_path).getroot()
           
           def sum_counter(node, ctype):
-           for c in node.findall("counter"):
-               if c.get("type") == ctype:
-                   return int(c.get("covered", "0")), int(c.get("missed", "0"))
-           return 0, 0
+          for c in node.findall("counter"):
+          if c.get("type") == ctype:
+             return int(c.get("covered", "0")), int(c.get("missed", "0"))
+          return 0, 0
           
           tot_cov, tot_miss = sum_counter(root, "LINE")
           tot_pct = (tot_cov / (tot_cov + tot_miss) * 100) if (tot_cov + tot_miss) else 0.0
@@ -271,53 +271,53 @@ jobs:
           # 패키지별
           pkg_rows = []
           for p in root.findall("package"):
-           pcov, pmiss = sum_counter(p, "LINE")
-           if pcov + pmiss == 0:
-               for c in p.findall("class"):
-                   cc, cm = sum_counter(c, "LINE")
-                   pcov += cc; pmiss += cm
-           ppct = (pcov / (pcov + pmiss) * 100) if (pcov + pmiss) else 0.0
-           pkg_rows.append((p.get("name","(default)"), pcov, pmiss, ppct))
+          pcov, pmiss = sum_counter(p, "LINE")
+          if pcov + pmiss == 0:
+          for c in p.findall("class"):
+             cc, cm = sum_counter(c, "LINE")
+             pcov += cc; pmiss += cm
+          ppct = (pcov / (pcov + pmiss) * 100) if (pcov + pmiss) else 0.0
+          pkg_rows.append((p.get("name","(default)"), pcov, pmiss, ppct))
           pkg_rows.sort(key=lambda r: r[3])
           
           # 클래스별
           class_rows = []
           for p in root.findall("package"):
-           for c in p.findall("class"):
-               cc, cm = sum_counter(c, "LINE")
-               total = cc + cm
-               pct = (cc/total*100) if total else 0.0
-               cname = c.get("name","(unknown)").replace("/", ".")
-               class_rows.append((cname, cc, cm, pct, total))
+          for c in p.findall("class"):
+          cc, cm = sum_counter(c, "LINE")
+          total = cc + cm
+          pct = (cc/total*100) if total else 0.0
+          cname = c.get("name","(unknown)").replace("/", ".")
+          class_rows.append((cname, cc, cm, pct, total))
           class_rows.sort(key=lambda r: (r[3], -r[4]))
           
           # 변경 파일 매핑
           changed_rows = []
           changed_file_list = Path("/tmp/changed-java.txt")
           if changed_file_list.exists():
-           for line in changed_file_list.read_text().splitlines():
-               line = line.strip()
-               if not line: continue
-               if line.startswith("src/main/java/"):
-                   rel = line[len("src/main/java/"):]
-               elif line.startswith("src/main/kotlin/"):
-                   rel = line[len("src/main/kotlin/"):]
-               else:
-                   continue
-               if rel.endswith(".java"): rel = rel[:-5]
-               elif rel.endswith(".kt"): rel = rel[:-3]
-               fqn = rel.replace("/", ".")
+          for line in changed_file_list.read_text().splitlines():
+          line = line.strip()
+          if not line: continue
+          if line.startswith("src/main/java/"):
+             rel = line[len("src/main/java/"):]
+          elif line.startswith("src/main/kotlin/"):
+             rel = line[len("src/main/kotlin/"):]
+          else:
+             continue
+          if rel.endswith(".java"): rel = rel[:-5]
+          elif rel.endswith(".kt"): rel = rel[:-3]
+          fqn = rel.replace("/", ".")
           
-               matches = [r for r in class_rows if r[0].startswith(fqn)]
-               if matches:
-                   cov = sum(m[1] for m in matches)
-                   miss = sum(m[2] for m in matches)
-                   total = cov + miss
-                   pct = (cov/total*100) if total else 0.0
-                   changed_rows.append((line, fqn, cov, miss, pct, total))
-               else:
-                   changed_rows.append((line, fqn, 0, 0, 0.0, 0))
-           changed_rows.sort(key=lambda r: (r[4], -r[5]))
+          matches = [r for r in class_rows if r[0].startswith(fqn)]
+          if matches:
+             cov = sum(m[1] for m in matches)
+             miss = sum(m[2] for m in matches)
+             total = cov + miss
+             pct = (cov/total*100) if total else 0.0
+             changed_rows.append((line, fqn, cov, miss, pct, total))
+          else:
+             changed_rows.append((line, fqn, 0, 0, 0.0, 0))
+          changed_rows.sort(key=lambda r: (r[4], -r[5]))
           
           def fmt_pct(x): return f"{x:.2f}%"
           
@@ -325,27 +325,27 @@ jobs:
           print(f"**Overall Line Coverage:** {fmt_pct(tot_pct)} ({tot_cov} covered / {tot_cov+tot_miss} lines)\n")
           
           if pkg_rows:
-           print("<details><summary><b>Package Summary (lowest first)</b></summary>\n")
-           print("| Package | Line % | Covered | Missed |")
-           print("|---|---:|---:|---:|")
-           for (name, cov, miss, pct) in pkg_rows:
-               print(f"| `{name}` | {fmt_pct(pct)} | {cov} | {miss} |")
-           print("\n</details>\n")
+          print("<details><summary><b>Package Summary (lowest first)</b></summary>\n")
+          print("| Package | Line % | Covered | Missed |")
+          print("|---|---:|---:|---:|")
+          for (name, cov, miss, pct) in pkg_rows:
+          print(f"| `{name}` | {fmt_pct(pct)} | {cov} | {miss} |")
+          print("\n</details>\n")
           
           print("<details open><summary><b>Lowest Covered Classes (Top 20)</b></summary>\n")
           print("| Class | Line % | Covered | Missed |")
           print("|---|---:|---:|---:|")
           for (cname, cov, miss, pct, total) in class_rows[:20]:
-           print(f"| `{cname}` | {fmt_pct(pct)} | {cov} | {miss} |")
+          print(f"| `{cname}` | {fmt_pct(pct)} | {cov} | {miss} |")
           print("\n</details>\n")
           
           if changed_rows:
-           print("<details open><summary><b>Changed Classes (from this PR)</b></summary>\n")
-           print("| Source (PR) | Class Prefix | Line % | Covered | Missed |")
-           print("|---|---|---:|---:|---:|")
-           for (src, fqn, cov, miss, pct, total) in changed_rows:
-               print(f"| `{src}` | `{fqn}` | {fmt_pct(pct)} | {cov} | {miss} |")
-           print("\n</details>\n")
+          print("<details open><summary><b>Changed Classes (from this PR)</b></summary>\n")
+          print("| Source (PR) | Class Prefix | Line % | Covered | Missed |")
+          print("|---|---|---:|---:|---:|")
+          for (src, fqn, cov, miss, pct, total) in changed_rows:
+          print(f"| `{src}` | `{fqn}` | {fmt_pct(pct)} | {cov} | {miss} |")
+          print("\n</details>\n")
           PY
           
           {
@@ -353,95 +353,95 @@ jobs:
           cat /tmp/coverage_details.md
           echo 'EOF'
           } >> $GITHUB_OUTPUT
+
+      - name: Upsert PR comment (coverage)
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          PCT: ${{ steps.cov.outputs.pct }}
+          DETAILS: ${{ steps.covmd.outputs.details }}
+        with:
+          script: |
+            const MARK = '<!-- JACOCO-COVERAGE-SUMMARY -->';
+            const pct = process.env.PCT || '0';
+            const details = process.env.DETAILS || '';
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `${MARK}
+            ### 🧪 JaCoCo Coverage
+            **Line Coverage:** ${pct}%
+            
+            ${details}
+            
+            🔗 **Full HTML report**: See artifact **jacoco-full-html** on this run → ${runUrl}
+            `;
+            
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100
+            });
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body.includes(MARK));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body
+              });
+            }
+      - name: Extract commit/PR title (first line only)
+        if: always()
+        id: title
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            TITLE="${{ github.event.pull_request.title }}"
+          else
+            TITLE="${{ github.event.head_commit.message }}"
+          fi
+          # 첫 번째 줄만 추출하고 줄바꿈 제거, 특수문자 이스케이프
+          FIRST_LINE=$(echo "$TITLE" | head -n 1 | tr -d '\n\r' | sed 's/\\/\\\\/g; s/"/\\"/g')
+          # 최대 100자로 제한 (너무 긴 경우 대비)
+          FIRST_LINE=$(echo "$FIRST_LINE" | cut -c1-100)
+          echo "first_line=$FIRST_LINE" >> $GITHUB_OUTPUT
+
+      - name: Parse test results
+        if: always()
+        id: test_results
+        run: |
+          # fullTest 결과 파일 찾기
+          TEST_DIR="build/test-results/fullTest"
           
-          - name: Upsert PR comment (coverage)
-            if: always() && github.event_name == 'pull_request'
-            uses: actions/github-script@v7
-            env:
-              PCT: ${{ steps.cov.outputs.pct }}
-              DETAILS: ${{ steps.covmd.outputs.details }}
-            with:
-              script: |
-                const MARK = '<!-- JACOCO-COVERAGE-SUMMARY -->';
-                const pct = process.env.PCT || '0';
-                const details = process.env.DETAILS || '';
-                const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-                const body = `${MARK}
-                ### 🧪 JaCoCo Coverage
-                **Line Coverage:** ${pct}%
+          if [ -d "$TEST_DIR" ] && [ -n "$(find "$TEST_DIR" -name 'TEST-*.xml' 2>/dev/null)" ]; then
+            echo "Found test results in $TEST_DIR"
           
-                ${details}
+            # 테스트 통계 파싱
+            TOTAL=$(find "$TEST_DIR" -name "TEST-*.xml" -exec grep -h 'tests=' {} \; | sed 's/.*tests="\([0-9]*\)".*/\1/' | awk '{s+=$1} END {print s}')
+            FAILURES=$(find "$TEST_DIR" -name "TEST-*.xml" -exec grep -h 'failures=' {} \; | sed 's/.*failures="\([0-9]*\)".*/\1/' | awk '{s+=$1} END {print s}')
+            SKIPPED=$(find "$TEST_DIR" -name "TEST-*.xml" -exec grep -h 'skipped=' {} \; | sed 's/.*skipped="\([0-9]*\)".*/\1/' | awk '{s+=$1} END {print s}')
           
-                🔗 **Full HTML report**: See artifact **jacoco-full-html** on this run → ${runUrl}
-                `;
+            # 빈 값 처리
+            TOTAL=${TOTAL:-0}
+            FAILURES=${FAILURES:-0}
+            SKIPPED=${SKIPPED:-0}
+            PASSED=$((TOTAL - FAILURES - SKIPPED))
           
-                const { data: comments } = await github.rest.issues.listComments({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.payload.pull_request.number,
-                  per_page: 100
-                });
-                const existing = comments.find(c => c.user.type === 'Bot' && c.body.includes(MARK));
-                if (existing) {
-                  await github.rest.issues.updateComment({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    comment_id: existing.id,
-                    body
-                  });
-                } else {
-                  await github.rest.issues.createComment({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: context.payload.pull_request.number,
-                    body
-                  });
-                }
-          - name: Extract commit/PR title (first line only)
-            if: always()
-            id: title
-            run: |
-              if [ "${{ github.event_name }}" == "pull_request" ]; then
-                TITLE="${{ github.event.pull_request.title }}"
-              else
-                TITLE="${{ github.event.head_commit.message }}"
-              fi
-              # 첫 번째 줄만 추출하고 줄바꿈 제거, 특수문자 이스케이프
-              FIRST_LINE=$(echo "$TITLE" | head -n 1 | tr -d '\n\r' | sed 's/\\/\\\\/g; s/"/\\"/g')
-              # 최대 100자로 제한 (너무 긴 경우 대비)
-              FIRST_LINE=$(echo "$FIRST_LINE" | cut -c1-100)
-              echo "first_line=$FIRST_LINE" >> $GITHUB_OUTPUT
-          
-          - name: Parse test results
-            if: always()
-            id: test_results
-            run: |
-              # fullTest 결과 파일 찾기
-              TEST_DIR="build/test-results/fullTest"
-          
-              if [ -d "$TEST_DIR" ] && [ -n "$(find "$TEST_DIR" -name 'TEST-*.xml' 2>/dev/null)" ]; then
-                echo "Found test results in $TEST_DIR"
-          
-                # 테스트 통계 파싱
-                TOTAL=$(find "$TEST_DIR" -name "TEST-*.xml" -exec grep -h 'tests=' {} \; | sed 's/.*tests="\([0-9]*\)".*/\1/' | awk '{s+=$1} END {print s}')
-                FAILURES=$(find "$TEST_DIR" -name "TEST-*.xml" -exec grep -h 'failures=' {} \; | sed 's/.*failures="\([0-9]*\)".*/\1/' | awk '{s+=$1} END {print s}')
-                SKIPPED=$(find "$TEST_DIR" -name "TEST-*.xml" -exec grep -h 'skipped=' {} \; | sed 's/.*skipped="\([0-9]*\)".*/\1/' | awk '{s+=$1} END {print s}')
-          
-                # 빈 값 처리
-                TOTAL=${TOTAL:-0}
-                FAILURES=${FAILURES:-0}
-                SKIPPED=${SKIPPED:-0}
-                PASSED=$((TOTAL - FAILURES - SKIPPED))
-          
-                echo "Test Results: Total=$TOTAL, Passed=$PASSED, Failed=$FAILURES, Skipped=$SKIPPED"
-                echo "total=$TOTAL" >> $GITHUB_OUTPUT
-                echo "passed=$PASSED" >> $GITHUB_OUTPUT
-                echo "failed=$FAILURES" >> $GITHUB_OUTPUT
-                echo "skipped=$SKIPPED" >> $GITHUB_OUTPUT
-              else
-                echo "No test results found in $TEST_DIR"
-                echo "total=0" >> $GITHUB_OUTPUT
-                echo "passed=0" >> $GITHUB_OUTPUT
-                echo "failed=0" >> $GITHUB_OUTPUT
-                echo "skipped=0" >> $GITHUB_OUTPUT
-              fi
+            echo "Test Results: Total=$TOTAL, Passed=$PASSED, Failed=$FAILURES, Skipped=$SKIPPED"
+            echo "total=$TOTAL" >> $GITHUB_OUTPUT
+            echo "passed=$PASSED" >> $GITHUB_OUTPUT
+            echo "failed=$FAILURES" >> $GITHUB_OUTPUT
+            echo "skipped=$SKIPPED" >> $GITHUB_OUTPUT
+          else
+            echo "No test results found in $TEST_DIR"
+            echo "total=0" >> $GITHUB_OUTPUT
+            echo "passed=0" >> $GITHUB_OUTPUT
+            echo "failed=0" >> $GITHUB_OUTPUT
+            echo "skipped=0" >> $GITHUB_OUTPUT
+          fi
