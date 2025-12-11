@@ -6,6 +6,10 @@ import com.back.web7_9_codecrete_be.domain.auth.dto.request.LoginRequest;
 import com.back.web7_9_codecrete_be.domain.auth.dto.request.SignupRequest;
 import com.back.web7_9_codecrete_be.domain.auth.dto.response.LoginResponse;
 import com.back.web7_9_codecrete_be.domain.auth.service.AuthService;
+import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
+import com.back.web7_9_codecrete_be.domain.users.dto.response.UserResponse;
+import com.back.web7_9_codecrete_be.domain.users.entity.User;
+import com.back.web7_9_codecrete_be.global.rq.Rq;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,6 +22,8 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Auth", description = "인증/인가 API")
 public class AuthController {
     private final AuthService authService;
+    private final Rq rq;
+    private final TokenService tokenService;
 
     @Operation(summary = "회원가입", description = "사용자 이메일, 비밀번호, 닉네임, 생년월일을 이용하여 회원가입을 진행합니다.")
     @PostMapping("/signup")
@@ -36,7 +42,8 @@ public class AuthController {
     @Operation(summary = "로그아웃", description = "현재 로그인된 사용자 정보를 기반으로 로그아웃합니다.")
     @PostMapping("/logout")
     public RsData<?> logout() {
-        authService.logout(); // 지금은 단순 성공 처리
+        User user = rq.getUser();
+        tokenService.removeTokens(user);
         return RsData.success("로그아웃 되었습니다.");
     }
 
@@ -66,5 +73,20 @@ public class AuthController {
     public RsData<?> resetPassword(@RequestBody EmailSendRequest req) {
         authService.resetPassword(req.getEmail());
         return RsData.success("임시 비밀번호가 이메일로 발송되었습니다.");
+    }
+
+    @Operation(summary = "사용자 정보 조회", description = "현재 로그인된 사용자 정보를 반환합니다.")
+    @GetMapping("/me")
+    public RsData<?> getMyInfo() {
+        User user = rq.getUser();
+        UserResponse response = UserResponse.from(user);
+        return RsData.success("현재 로그인된 사용자 정보입니다.", response);
+    }
+
+    @Operation(summary = "액세스 토큰 재발급", description = "리프레시 토큰을 이용하여 새로운 액세스 토큰을 발급합니다.")
+    @PostMapping("/refresh")
+    public RsData<?> refresh() {
+        String newAccessToken = tokenService.reissueAccessToken();
+        return RsData.success("토큰 재발급 완료", newAccessToken);
     }
 }
