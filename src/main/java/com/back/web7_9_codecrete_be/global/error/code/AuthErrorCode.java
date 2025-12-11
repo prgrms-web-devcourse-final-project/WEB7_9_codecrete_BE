@@ -9,8 +9,24 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum AuthErrorCode implements ErrorCode {
 
-	EMAIL_DUPLICATED(HttpStatus.CONFLICT, "U-100", "이미 사용중인 이메일입니다."),
-	NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "U-101", "이미 사용중인 닉네임입니다.");
+    // 회원가입 관련
+    EMAIL_DUPLICATED(HttpStatus.CONFLICT, "A-100", "이미 사용중인 이메일입니다."),
+    NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "A-101", "이미 사용중인 닉네임입니다."),
+
+    // 로그인 관련
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "A-110", "존재하지 않는 이메일입니다."),
+    INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "A-111", "비밀번호가 일치하지 않습니다."),
+    USER_INACTIVE(HttpStatus.FORBIDDEN, "A-112", "현재 비활성화된 계정입니다."),
+    USER_DELETED(HttpStatus.FORBIDDEN, "A-113", "탈퇴한 사용자는 로그인할 수 없습니다."),
+
+    // 권한 관련
+    UNAUTHORIZED_USER(HttpStatus.UNAUTHORIZED, "A-120", "로그인이 필요합니다."),
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "A-121", "해당 리소스에 접근할 권한이 없습니다."),
+
+    // 토큰 관련 (JWT 적용 대비)
+    TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "A-130", "토큰이 만료되었습니다."),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A-131", "유효하지 않은 토큰입니다."),
+    TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "A-132", "토큰이 존재하지 않습니다.");
 
 	private final HttpStatus status;
 	private final String code;
