@@ -21,7 +21,14 @@ jobs:
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: ""
 
-      JWT_SECRET: ${{ secrets.SECRET_KEY }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+
+      MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY }}
+
+      SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+      SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+
+      KOPIST_API_KEY: ${{ secrets.KOPIST_API_KEY }}
 
     steps:
       - name: Checkout
@@ -320,7 +327,7 @@ jobs:
 
           def fmt_pct(x): return f"{x:.2f}%"
 
-          print("### 📊 Coverage Details\n")
+          print("### 📄 Coverage Details\n")
           print(f"**Overall Line Coverage:** {fmt_pct(tot_pct)} ({tot_cov} covered / {tot_cov+tot_miss} lines)\n")
 
           if pkg_rows:
@@ -366,7 +373,7 @@ jobs:
             const details = process.env.DETAILS || '';
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const body = `${MARK}
-            ### 🧪 JaCoCo Coverage
+            ### ⭐ JaCoCo Coverage
             **Line Coverage:** ${pct}%
             
             ${details}
