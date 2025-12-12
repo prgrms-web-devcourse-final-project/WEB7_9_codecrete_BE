@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.plans.entity;
 
+import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+
 @Entity
 @Table(name = "plan")
 @Getter
@@ -22,8 +24,9 @@ public class Plan {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "concert_id", nullable = false)
-    private Long concertId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "concert_id", nullable = false)
+    private Concert concert;
 
     @Column(name = "title", nullable = false, length = 30)
     private String title;
@@ -47,17 +50,14 @@ public class Plan {
     private List<Route> routes = new ArrayList<>();
 
     @Builder
-    public Plan(Long concertId, String title, String date) {
-        this.concertId = concertId;
+    public Plan(Concert concert, String title, String date) {
+        this.concert = concert;
         this.title = title;
         this.date = date;
     }
 
-    public void updateTitle(String title) {
+    public void update(String title, String date) {
         this.title = title;
-    }
-
-    public void updateDate(String date) {
         this.date = date;
     }
 
