@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 @Entity
 @Getter
 @RequiredArgsConstructor
-@Table(name = "concert_place")
+@Table(name = "concert_place", indexes = @Index(name="idx_api_concert_place_id", columnList = "api_concert_place_id"))
 public class ConcertPlace {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,6 +18,9 @@ public class ConcertPlace {
     private String placeName;
 
     @Column(nullable = false)
+    private String address;
+
+    @Column(nullable = false)
     private double lat;
 
     @Column(nullable = false)
@@ -26,4 +29,28 @@ public class ConcertPlace {
     @Column(nullable = false)
     private int seats;
 
+    @Column(name = "api_concert_place_id")
+    private String apiConcertPlaceId;
+
+    public ConcertPlace(String placeName, String address, double lat, double lon, int seats, String apiConcertPlaceId) {
+        this.placeName = placeName;
+        this.address = address;
+        this.lat = lat;
+        this.lon = lon;
+        this.seats = seats;
+        this.apiConcertPlaceId = apiConcertPlaceId;
+    }
+
+    @Override
+    public String toString() {
+        return "ConcertPlace{" +
+                "concertPlaceId=" + concertPlaceId +
+                ", placeName='" + placeName + '\'' +
+                ", address='" + address + '\'' +
+                ", lat=" + lat +
+                ", lon=" + lon +
+                ", seats=" + seats +
+                ", apiConcertPlaceId='" + apiConcertPlaceId + '\'' +
+                '}';
+    }
 }

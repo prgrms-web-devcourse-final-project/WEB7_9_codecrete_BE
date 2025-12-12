@@ -64,6 +64,9 @@ dependencies {
 
     // 스프링 문서화
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13")
+
+    // XML 파싱
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
 }
 
 tasks.withType<Test> {

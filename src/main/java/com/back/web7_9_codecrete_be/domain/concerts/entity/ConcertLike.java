@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.concerts.entity;
 
+import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -14,8 +15,9 @@ public class ConcertLike {
     @Column(name = "concert_like_id")
     private Long concertLikeId;
 
-    //TODO : 유저 엔티티 생성시 이어주기
-
     @ManyToOne
     private Concert concert;
+
+    @ManyToOne
+    private User user;
 }
