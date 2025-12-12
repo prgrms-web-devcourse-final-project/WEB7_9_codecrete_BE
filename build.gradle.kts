@@ -1,3 +1,5 @@
+import org.gradle.kotlin.dsl.implementation
+
 plugins {
     java
     id("org.springframework.boot") version "3.5.8"
@@ -33,7 +35,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
     // 시큐리티
-    implementation("org.springframework.boot:spring-boot-starter-security")
+        //    implementation("org.springframework.boot:spring-boot-starter-security")
 
     // 유효성 검증
     implementation("org.springframework.boot:spring-boot-starter-validation")
