@@ -3,6 +3,7 @@ package com.back.web7_9_codecrete_be.domain.plans.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+
 @Entity
 @Table(name = "route")
 @Getter
