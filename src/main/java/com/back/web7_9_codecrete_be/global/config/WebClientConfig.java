@@ -21,6 +21,12 @@ public class WebClientConfig {
     @Value("${mailgun.domain}")
     private String mailgunDomain;
 
+    @Value("${tmap.api-key}")
+    private String tmapApiKey;
+
+    @Value("${kakao.restapi-key}")
+    private String kakaomapApiKey;
+
     @Bean
     public WebClient mailgunClient() {
         String auth = "api:" + mailgunApiKey;
@@ -38,5 +44,22 @@ public class WebClientConfig {
     @Bean
     public RestTemplate restTemplate() {
         return new RestTemplate();
+    }
+
+    @Bean
+    public WebClient kakaoWebClient() {
+        return WebClient.builder()
+                .baseUrl("https://dapi.kakao.com")
+                .defaultHeader("Authorization", kakaomapApiKey)
+                .build();
+    }
+
+
+    @Bean
+    public WebClient TmapClient(){
+        return WebClient.builder()
+                .baseUrl("https://apis.openapi.sk.com")
+                .defaultHeader("appKey", tmapApiKey)
+                .build();
     }
 }
