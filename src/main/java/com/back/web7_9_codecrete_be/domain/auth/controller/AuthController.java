@@ -13,6 +13,7 @@ import com.back.web7_9_codecrete_be.global.rq.Rq;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,14 +28,14 @@ public class AuthController {
 
     @Operation(summary = "회원가입", description = "사용자 이메일, 비밀번호, 닉네임, 생년월일을 이용하여 회원가입을 진행합니다.")
     @PostMapping("/signup")
-    public RsData<?> signUp(@RequestBody SignupRequest req) {
+    public RsData<?> signUp(@Valid @RequestBody SignupRequest req) {
         authService.signUp(req);
         return RsData.success("회원가입이 완료되었습니다.");
     }
 
     @Operation(summary = "로그인", description = "이메일/비밀번호로 로그인합니다. 성공 시 사용자 닉네임을 반환합니다.")
     @PostMapping("/login")
-    public RsData<?> login(@RequestBody LoginRequest req) {
+    public RsData<?> login(@Valid @RequestBody LoginRequest req) {
         LoginResponse response = authService.login(req);
         return RsData.success("로그인 성공", response);
     }
@@ -49,14 +50,14 @@ public class AuthController {
 
     @Operation(summary = "이메일 인증코드 전송", description = "입력된 이메일로 인증코드를 전송합니다.")
     @PostMapping("/email/send")
-    public RsData<?> sendVerificationCode(@RequestBody EmailSendRequest req) {
+    public RsData<?> sendVerificationCode(@Valid @RequestBody EmailSendRequest req) {
         authService.sendVerificationCode(req.getEmail());
         return RsData.success("인증코드가 발송되었습니다.");
     }
 
     @Operation(summary = "이메일 인증코드 검증", description = "사용자가 입력한 인증코드가 맞는지 확인합니다.")
     @PostMapping("/email/verify")
-    public RsData<?> verifyEmailCode(@RequestBody EmailVerifyRequest req) {
+    public RsData<?> verifyEmailCode(@Valid @RequestBody EmailVerifyRequest req) {
         authService.verifyEmailCode(req.getEmail(), req.getCode());
         return RsData.success("이메일 인증이 완료되었습니다.");
     }
@@ -70,7 +71,7 @@ public class AuthController {
 
     @Operation(summary = "임시 비밀번호 재발급", description = "특정 이메일로 임시 비밀번호를 발송합니다.")
     @PostMapping("/password/reset")
-    public RsData<?> resetPassword(@RequestBody EmailSendRequest req) {
+    public RsData<?> resetPassword(@Valid @RequestBody EmailSendRequest req) {
         authService.resetPassword(req.getEmail());
         return RsData.success("임시 비밀번호가 이메일로 발송되었습니다.");
     }

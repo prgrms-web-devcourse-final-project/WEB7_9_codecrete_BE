@@ -50,6 +50,8 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
+
+        emailService.clearVerifiedEmail(req.getEmail());
     }
 
     // 로그인

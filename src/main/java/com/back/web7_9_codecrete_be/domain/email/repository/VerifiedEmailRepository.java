@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface VerifiedEmailRepository extends JpaRepository<VerifiedEmail, String> {
     boolean existsByEmail(String email);
+    void deleteByEmail(String email);
 }
