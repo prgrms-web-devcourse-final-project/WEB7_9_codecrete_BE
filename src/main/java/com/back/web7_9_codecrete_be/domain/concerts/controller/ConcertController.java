@@ -2,18 +2,35 @@ package com.back.web7_9_codecrete_be.domain.concerts.controller;
 
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concert.ConcertListResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceListResponse;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOfficeElement;
+import com.back.web7_9_codecrete_be.domain.concerts.entity.TicketOffice;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
 import com.back.web7_9_codecrete_be.domain.concerts.service.KopisApiService;
+import com.back.web7_9_codecrete_be.global.rsData.RsData;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.converters.models.PageableAsQueryParam;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("api/v1/concerts/")
 @Controller
 @RequiredArgsConstructor
+@Tag(name = "Concerts", description = "공연에 대한 정보를 제공하는 API 입니다.")
 public class ConcertController {
     private final ConcertService concertService;
     private final KopisApiService kopisApiService;
@@ -31,6 +48,48 @@ public class ConcertController {
     @GetMapping("setConcertPlace")
     public ConcertPlaceListResponse setConcertPlace() throws InterruptedException {
         return kopisApiService.setConcertPlace();
+    }
+
+    @Operation(summary = "공연목록", description = "공연 전체 목록을 조회합니다. 시작일자를 기준으로 오름차순 조회합니다.")
+    @GetMapping("list")
+    public RsData<List<ConcertItem>> getList (
+            @RequestParam
+            @Schema(description = "page입니다. 일단은 ?page={page} 로 넘기시면 됩니다.", example = "1")
+            int page
+    ) {
+        Pageable pageable = PageRequest.of(page, 10, Sort.by("startDate").ascending());
+        return RsData.success(concertService.getConcertsList(pageable));
+    }
+
+    @Operation(summary = "다가오는 공연 목록", description = "오늘을 기준으로 다가오는 공연 목록을 조회합니다.")
+    @GetMapping("upComingList")
+    public RsData<List<ConcertItem>> getUpComingList (
+            @RequestParam
+            @Schema(description = "page입니다. 일단은 ?page={page} 로 넘기시면 됩니다.", example = "1")
+            int page
+    ) {
+      Pageable pageable = PageRequest.of(page, 10);
+      return RsData.success(concertService.getUpcomingConcertsList(pageable));
+    }
+
+    @Operation(summary = "공연 상세 조회", description = "공연에 대한 상세 목록을 조회합니다.")
+    @GetMapping("concertDetail")
+    public ConcertDetailResponse getConcertDetail(
+            @RequestParam
+            @Schema(description = "조회 기준이 되는 concertId입니다. ?concertId={concertId} 로 값을 넘기시면 됩니다.")
+            long concertId
+    ) {
+        return concertService.getConcertDetail(concertId);
+    }
+
+    @Operation(summary = "공연 예매처 조회", description = "공연에 대한 예매처들을 조회합니다.")
+    @GetMapping("ticketOffices")
+    public RsData<List<TicketOfficeElement>> getTicketOffices (
+            @RequestParam
+            @Schema(description = "조회 기준이 되는 concertId입니다. ?concertId={concertId} 로 값을 넘기시면 됩니다.")
+            long concertId
+    ){
+        return RsData.success(concertService.getTicketOfficesList(concertId));
     }
 
 }
