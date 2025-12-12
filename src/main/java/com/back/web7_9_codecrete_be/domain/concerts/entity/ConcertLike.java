@@ -20,4 +20,9 @@ public class ConcertLike {
 
     @ManyToOne
     private User user;
+
+    public ConcertLike(Concert concert, User user) {
+        this.concert = concert;
+        this.user = user;
+    }
 }

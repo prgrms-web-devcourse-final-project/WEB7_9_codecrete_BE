@@ -4,10 +4,17 @@ import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailRes
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOfficeElement;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
+import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertLike;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.TicketOffice;
+import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertLikeRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertPlaceRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.TicketOfficeRepository;
+import com.back.web7_9_codecrete_be.domain.users.entity.User;
+import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
+import com.back.web7_9_codecrete_be.global.error.code.AuthErrorCode;
+import com.back.web7_9_codecrete_be.global.error.code.ErrorCode;
+import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -21,9 +28,13 @@ import java.util.List;
 public class ConcertService {
     private final ConcertRepository concertRepository;
 
+    private final ConcertLikeRepository concertLikeRepository;
+
     private final ConcertPlaceRepository concertPlaceRepository;
 
     private final TicketOfficeRepository ticketOfficeRepository;
+
+    private final UserRepository userRepository;
 
     public List<ConcertItem> getConcertsList(Pageable pageable) {
         return concertRepository.getConcertItems(pageable);
@@ -61,4 +72,17 @@ public class ConcertService {
     }
 
 
+    public void likeConcert(long concertId, long userId) {
+        User user = userRepository.findById(userId).orElseThrow();
+        Concert concert = concertRepository.findById(concertId).orElseThrow();
+        ConcertLike concertLike = new ConcertLike(concert, user);
+        concertLikeRepository.save(concertLike);
+    }
+
+    public void dislikeConcert(long concertId, long userId) {
+        User user = userRepository.findById(userId).orElseThrow();
+        Concert concert = concertRepository.findById(concertId).orElseThrow();
+        ConcertLike concertLike = concertLikeRepository.findConcertLikeByConcertAndUser(concert, user);
+        concertLikeRepository.delete(concertLike);
+    }
 }

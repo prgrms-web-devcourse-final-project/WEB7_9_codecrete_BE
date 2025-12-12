@@ -19,10 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -55,7 +52,7 @@ public class ConcertController {
     public RsData<List<ConcertItem>> getList (
             @RequestParam
             @Schema(description = "page입니다. 일단은 ?page={page} 로 넘기시면 됩니다.", example = "1")
-            int page
+            int page // todo : pageable로 변경하기
     ) {
         Pageable pageable = PageRequest.of(page, 10, Sort.by("startDate").ascending());
         return RsData.success(concertService.getConcertsList(pageable));
@@ -66,7 +63,7 @@ public class ConcertController {
     public RsData<List<ConcertItem>> getUpComingList (
             @RequestParam
             @Schema(description = "page입니다. 일단은 ?page={page} 로 넘기시면 됩니다.", example = "1")
-            int page
+            int page // todo : pageable로 변경하기
     ) {
       Pageable pageable = PageRequest.of(page, 10);
       return RsData.success(concertService.getUpcomingConcertsList(pageable));
@@ -90,6 +87,26 @@ public class ConcertController {
             long concertId
     ){
         return RsData.success(concertService.getTicketOfficesList(concertId));
+    }
+
+    @Operation(summary = "공연 좋아요 기능")
+    @PostMapping("like/{concertId}")
+    public RsData<Void> likeConcert(
+            @PathVariable long concertId,
+            @RequestParam long userId // todo: 사용자 Id 조회법 통일하기
+    ) {
+        concertService.likeConcert(concertId, userId);
+        return RsData.success(null);
+    }
+
+    @Operation(summary = "공연 좋아요 해제 기능")
+    @DeleteMapping("dislike/{concertId}")
+    public RsData<Void> dislikeConcert(
+            @PathVariable long concertId,
+            @RequestParam long userId // todo: 사용자 Id 조회법 통일하기
+    ) {
+        concertService.dislikeConcert(concertId, userId);
+        return RsData.success(null);
     }
 
 }
