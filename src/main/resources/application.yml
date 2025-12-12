@@ -35,3 +35,6 @@ jwt:
   secret: ${SECRET_KEY}
   access-token-expiration: 3600 # 1시간
   refresh-token-expiration: 1209600 # 14일
+
+kopis:
+  api-key: ${KOPIST_API_KEY}
