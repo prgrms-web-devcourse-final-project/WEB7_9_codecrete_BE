@@ -44,7 +44,7 @@ dependencies {
     implementation("io.jsonwebtoken:jjwt-jackson:0.12.5")
 
     // 시큐리티
-        //    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-security")
 
     // 유효성 검증
     implementation("org.springframework.boot:spring-boot-starter-validation")
