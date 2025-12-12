@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.concerts.entity;
 
+import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 
@@ -17,7 +18,8 @@ public class ConcertReview {
     @ManyToOne
     private Concert concert;
 
-    // TODO : 연관 객체 이어주기
+    @ManyToOne
+    private User user;
 
     private String title;
 
