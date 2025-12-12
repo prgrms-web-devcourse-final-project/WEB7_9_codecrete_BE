@@ -1,14 +1,21 @@
 package com.back.web7_9_codecrete_be.domain.concerts.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
 public class TicketOffice {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     Concert concert;
 
     //예매처 명
@@ -23,4 +30,5 @@ public class TicketOffice {
         this.ticketOfficeName = ticketOfficeName;
         this.ticketOfficeUrl = ticketOfficeUrl;
     }
+
 }

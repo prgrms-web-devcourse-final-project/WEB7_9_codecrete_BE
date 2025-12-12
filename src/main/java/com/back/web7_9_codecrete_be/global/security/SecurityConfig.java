@@ -42,7 +42,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/**",      // 로그인/회원가입은 허용
                                 "/v3/api-docs/**",       // Swagger
                                 "/swagger-ui/**",         // Swagger UI
-                                "/h2-console/**"        // H2 Console
+                                "/h2-console/**",       // H2 Console
+                                "/api/v1/concerts/**"     // concert 정보 조회 도메인
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

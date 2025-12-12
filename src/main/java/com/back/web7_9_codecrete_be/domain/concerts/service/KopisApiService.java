@@ -12,6 +12,7 @@ import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertPlaceRepos
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.TicketOfficeRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -37,8 +38,8 @@ public class KopisApiService {
 
     private final TicketOfficeRepository ticketOfficeRepository;
 
-    //TODO : API key 환경변수로 가져오기
-    private String serviceKey = "";
+    @Value("${kopis.api-key}")
+    private String serviceKey;
     private LocalDate sdate = LocalDate.of(2025, 12, 1);
     private LocalDate edate = LocalDate.now().plusMonths(6);
 
@@ -77,6 +78,7 @@ public class KopisApiService {
             for (ConcertListElement p : plr.getConcertList()) {
                 totalConcertsList.add(p);
             }
+            log.info("Total Concert List: {}", totalConcertsList.size() + "개의 데이터 가져오는중...");
             Thread.sleep(200);
         }
 
@@ -119,14 +121,18 @@ public class KopisApiService {
                 }
             }
 
+
             // 콘서트 저장
             Concert concert = new Concert(
                     concertPlace,
                     concertDetail.getConcertName(),
                     concertDetail.getConcertDescription(),
+                    dateStringToDateTime(concertDetail.getStartDate()),
+                    dateStringToDateTime(concertDetail.getEndDate()),
                     "",
                     maxPrice,
                     minPrice,
+                    concertDetail.getPosterUrl(),
                     concertDetail.getApiConcertId()
             );
 
@@ -216,9 +222,12 @@ public class KopisApiService {
                         concertPlace,
                         concertDetail.getConcertName(),
                         concertDetail.getConcertDescription(),
+                        dateStringToDateTime(concertDetail.getStartDate()),
+                        dateStringToDateTime(concertDetail.getEndDate()),
                         "",
                         maxPrice,
                         minPrice,
+                        concertDetail.getPosterUrl(),
                         concertDetail.getApiConcertId()
                 );
             } else {
@@ -354,5 +363,13 @@ public class KopisApiService {
                                 .queryParam("service", serviceKey)
                                 .build()
                 ).retrieve().body(ConcertPlaceDetailResponse.class);
+    }
+
+    private LocalDate dateStringToDateTime(String dateString) {
+        String [] split = dateString.split("\\.");
+        int year = Integer.parseInt(split[0]);
+        int month = Integer.parseInt(split[1]);
+        int day = Integer.parseInt(split[2]);
+        return LocalDate.of(year, month, day);
     }
 }
