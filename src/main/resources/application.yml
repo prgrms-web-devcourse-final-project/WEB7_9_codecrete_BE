@@ -1,6 +1,4 @@
 spring:
-  config:
-    import: optional:file:.env[.properties]
   profiles:
     active: dev
   output:
@@ -37,3 +35,7 @@ jwt:
   secret: ${SECRET_KEY}
   access-token-expiration: 3600 # 1시간
   refresh-token-expiration: 1209600 # 14일
+
+spotify:
+  client-id: ${SPOTIFY_CLIENT_ID}
+  client-secret: ${SPOTIFY_CLIENT_SECRET}

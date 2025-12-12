@@ -67,6 +67,9 @@ dependencies {
 
     // XML 파싱
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
+
+    // Spotify
+    implementation("se.michaelthelin.spotify:spotify-web-api-java:8.4.1")
 }
 
 tasks.withType<Test> {
