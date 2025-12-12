@@ -21,6 +21,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final TokenService tokenService;
 
     // 회원가입
     public void signUp(SignupRequest req) {
@@ -59,13 +60,9 @@ public class AuthService {
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
             throw new BusinessException(AuthErrorCode.INVALID_PASSWORD);
         }
+        tokenService.issueTokens(user);
 
         return new LoginResponse(user.getId(), user.getNickname());
-    }
-
-    // 로그아웃
-    public void logout() {
-        // JWT 적용 후 → 블랙리스트 처리 or 쿠키 삭제 등
     }
 
     // 이메일 인증코드 전송

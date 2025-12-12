@@ -30,3 +30,8 @@ mailgun:
   api-key: ${MAILGUN_API_KEY} #메일건 사이트에서 발급받은 API 키
   domain: ${MAILGUN_DOMAIN} #사용할 도메인 값
   from: ${MAILGUN_FROM} #임의로 입력하고 뒤에 도메인만 붙여주시면 됩니다! no-reply@devstaion.or.kr 이런식으로요!
+
+jwt:
+  secret: ${SECRET_KEY}
+  access-token-expiration: 3600 # 1시간
+  refresh-token-expiration: 1209600 # 14일
