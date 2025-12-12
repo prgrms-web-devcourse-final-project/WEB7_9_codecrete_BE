@@ -30,6 +30,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
 
+    // 웹 클라이언트
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
+
     // 캐싱
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
