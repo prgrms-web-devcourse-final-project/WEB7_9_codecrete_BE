@@ -8,6 +8,8 @@ import com.back.web7_9_codecrete_be.domain.plans.dto.response.PlanListResponse;
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.PlanResponse;
 import com.back.web7_9_codecrete_be.domain.plans.service.PlanService;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/plans")
 @RequiredArgsConstructor
+@Tag(name = "Plans", description = "계획(Plans) 관련 API")
 public class PlanController {
     
     private final PlanService planService;
@@ -29,6 +32,7 @@ public class PlanController {
      * @return 계획 목록 (200 OK)
      */
     @GetMapping("/list")
+    @Operation(summary = "계획 목록 조회", description = "사용자의 계획 목록을 조회합니다.")
     public RsData<List<PlanListResponse>> getPlanList(@RequestParam Long userId) {
         List<PlanListResponse> planList = planService.getPlanList(userId);
         return RsData.success("계획 목록 조회 성공", planList);
@@ -41,6 +45,7 @@ public class PlanController {
      * @return 계획 상세 정보 (200 OK)
      */
     @GetMapping("/{planId}")
+    @Operation(summary = "계획 상세 조회", description = "특정 계획의 상세 정보를 조회합니다.")
     public RsData<PlanDetailResponse> getPlanDetail(@PathVariable Long planId,
                                                     @RequestParam Long userId) {
         PlanDetailResponse planDetail = planService.getPlanDetail(planId, userId);
@@ -55,6 +60,7 @@ public class PlanController {
      * @return 생성된 계획 정보 (201 Created)
      */
     @PostMapping("/{concertId}")
+    @Operation(summary = "계획 생성", description = "새로운 계획을 생성합니다.")
     public RsData<PlanResponse> createPlan(
             @PathVariable Long concertId,
             @Valid @RequestBody PlanAddRequest request) {
@@ -70,6 +76,7 @@ public class PlanController {
      * @return 수정된 계획 정보 (200 OK)
      */
     @PatchMapping("/update/{planId}")
+    @Operation(summary = "계획 수정", description = "기존 계획의 정보를 수정합니다.")
     public RsData<PlanResponse> updatePlan(
             @PathVariable Long planId,
             @Valid @RequestBody PlanUpdateRequest request) {
@@ -84,6 +91,7 @@ public class PlanController {
      * @return 삭제된 계획 ID (200 OK)
      */
     @DeleteMapping("/delete/{planId}")
+    @Operation(summary = "계획 삭제", description = "기존 계획을 삭제합니다.")
     public RsData<PlanDeleteResponse> deletePlan(@PathVariable Long planId) {
         PlanDeleteResponse deleteResponse = planService.deletePlan(planId);
         return RsData.success("계획 삭제 성공", deleteResponse);
