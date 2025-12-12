@@ -15,22 +15,13 @@ jobs:
   backend-test:
     runs-on: ubuntu-latest
 
+    environment: test
+
     env:
       SPRING_PROFILES_ACTIVE: test
       SPRING_DATASOURCE_URL: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: ""
-
-      SECRET_KEY: ${{ secrets.SECRET_KEY }}
-
-      MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY }}
-      MAILGUN_DOMAIN: ${{ secrets.MAILGUN_DOMAIN }}
-      MAILGUN_FROM: ${{ secrets.MAILGUN_FROM }}
-
-      SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
-      SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
-
-      KOPIST_API_KEY: ${{ secrets.KOPIST_API_KEY }}
 
     steps:
       - name: Checkout
