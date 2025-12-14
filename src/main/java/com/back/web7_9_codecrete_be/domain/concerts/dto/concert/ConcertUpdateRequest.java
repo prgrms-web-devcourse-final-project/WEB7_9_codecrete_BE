@@ -15,5 +15,4 @@ public class ConcertUpdateRequest {
     private String posterUrl;
     private int maxPrice;
     private int minPrice;
-
 }
