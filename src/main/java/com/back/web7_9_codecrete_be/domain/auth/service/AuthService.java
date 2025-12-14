@@ -7,16 +7,19 @@ import com.back.web7_9_codecrete_be.domain.email.service.EmailService;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
 import com.back.web7_9_codecrete_be.global.error.code.AuthErrorCode;
+import com.back.web7_9_codecrete_be.global.error.code.UserErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -38,7 +41,7 @@ public class AuthService {
 
         // 닉네임 중복 체크
         if (userRepository.existsByNickname(req.getNickname())) {
-            throw new BusinessException(AuthErrorCode.NICKNAME_DUPLICATED);
+            throw new BusinessException(UserErrorCode.NICKNAME_DUPLICATED);
         }
 
         User user = User.builder()
@@ -58,6 +61,10 @@ public class AuthService {
     public LoginResponse login(LoginRequest req) {
         User user = userRepository.findByEmail(req.getEmail())
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
+
+        if (user.getIsDeleted()) {
+            throw new BusinessException(UserErrorCode.USER_DELETED);
+        }
 
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
             throw new BusinessException(AuthErrorCode.INVALID_PASSWORD);
@@ -86,6 +93,10 @@ public class AuthService {
     public void resetPassword(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
+
+        if (user.getIsDeleted()) {
+            throw new BusinessException(UserErrorCode.USER_DELETED);
+        }
 
         String tempPassword = generateTempPassword();
 
