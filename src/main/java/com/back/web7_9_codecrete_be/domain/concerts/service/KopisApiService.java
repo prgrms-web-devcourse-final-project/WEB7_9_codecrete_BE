@@ -139,6 +139,7 @@ public class KopisApiService {
         return plr;
     }
 
+    // 매주 월요일 새벽 2시 기준으로 데이터 갱신
     @Scheduled(cron = "0 0 2 * * Mon")
     public void updateConcertData() throws InterruptedException {  // 1주일 단위로 추가된 공연을 더하기
         LocalDate weekBefore = LocalDate.now().minusDays(8);
@@ -316,7 +317,7 @@ public class KopisApiService {
     }
 
 
-    // 콘서트 장소를 조회합니다.
+    // 콘서트 장소 목록을 조회합니다.
     private ConcertPlaceListResponse getConcertPlaceListResponse(String serviceKey, int page) {
         return restClient.get()
                 .uri(uriBuilder ->
@@ -324,6 +325,19 @@ public class KopisApiService {
                                 .queryParam("service", serviceKey)
                                 .queryParam("cpage", page)
                                 .queryParam("rows", 100)
+                                .build()
+                ).retrieve().body(ConcertPlaceListResponse.class);
+    }
+
+    // 콘서트 장소 목록을 이름 기준으로 조회합니다.
+    private ConcertPlaceListResponse getConcertPlaceListResponseByName(String serviceKey, String name, int page){
+        return restClient.get()
+                .uri(uriBuilder ->
+                        uriBuilder.path("/prfplc")
+                                .queryParam("service", serviceKey)
+                                .queryParam("cpage", page)
+                                .queryParam("rows", 100)
+                                .queryParam("shprfnmfct", name)
                                 .build()
                 ).retrieve().body(ConcertPlaceListResponse.class);
     }
