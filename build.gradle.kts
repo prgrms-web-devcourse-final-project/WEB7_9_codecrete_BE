@@ -69,6 +69,9 @@ dependencies {
 
     // XML 파싱
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
+
+    // 정적 HTML 문서 기준 크롤링
+    implementation("org.jsoup:jsoup:1.21.2")
 }
 
 tasks.withType<Test> {

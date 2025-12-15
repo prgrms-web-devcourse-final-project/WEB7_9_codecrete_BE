@@ -39,7 +39,7 @@ public class ConcertService {
 
     private final TicketOfficeRepository ticketOfficeRepository;
 
-    private final UserRepository userRepository;
+    private final JsoupApiService jsoupApiService;
 
     public List<ConcertItem> getConcertsList(Pageable pageable) {
         return concertRepository.getConcertItems(pageable);
@@ -68,6 +68,7 @@ public class ConcertService {
         return concertItems;
     }
     */
+
     public List<TicketOfficeElement> getTicketOfficesList(long concertId) {
         Concert concert = new Concert(concertId);
         List<TicketOffice> ticketOffices = ticketOfficeRepository.getTicketOfficesByConcert(concert);
