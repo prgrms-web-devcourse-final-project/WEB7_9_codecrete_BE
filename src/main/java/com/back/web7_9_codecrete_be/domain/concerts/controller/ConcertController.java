@@ -57,6 +57,16 @@ public class ConcertController {
       return RsData.success(concertService.getUpcomingConcertsList(pageable));
     }
 
+    @Operation(summary = "좋아요 한 공연 조회", description = "좋아요를 누른 공연에 대한 목록을 조회합니다. 저장 날짜를 기준으로 내림차순 정렬로 표시합니다.(최신으로 추가된 목록순입니다.)")
+    @GetMapping("likedConcertList")
+    public RsData<List<ConcertItem>> getLikedConcertList (
+            @RequestParam
+            Pageable pageable
+    ){
+        User user = rq.getUser();
+        return RsData.success(concertService.getLikedConcertsList(pageable,user));
+    }
+
     @Operation(summary = "공연 상세 조회", description = "공연에 대한 상세 목록을 조회합니다.")
     @GetMapping("concertDetail")
     public ConcertDetailResponse getConcertDetail(
@@ -66,6 +76,8 @@ public class ConcertController {
     ) {
         return concertService.getConcertDetail(concertId);
     }
+
+
 
     @Operation(summary = "공연 예매처 조회", description = "공연에 대한 예매처들을 조회합니다.")
     @GetMapping("ticketOffices")
@@ -77,7 +89,7 @@ public class ConcertController {
         return RsData.success(concertService.getTicketOfficesList(concertId));
     }
 
-    @Operation(summary = "공연 좋아요 기능")
+    @Operation(summary = "공연 좋아요 기능", description = "사용자가 마음에 드는 공연에 대해 좋아요를 통해 저장할 수 있습니다.")
     @PostMapping("like/{concertId}")
     public RsData<Void> likeConcert(
             @PathVariable long concertId
@@ -87,7 +99,7 @@ public class ConcertController {
         return RsData.success(null);
     }
 
-    @Operation(summary = "공연 좋아요 해제 기능")
+    @Operation(summary = "공연 좋아요 해제 기능", description = "좋아요를 해제할 수 있습니다.")
     @DeleteMapping("dislike/{concertId}")
     public RsData<Void> dislikeConcert(
             @PathVariable long concertId
@@ -97,7 +109,7 @@ public class ConcertController {
         return RsData.success(null);
     }
 
-    @Operation(summary = "공연 좋아요 여부 확인")
+    @Operation(summary = "공연 좋아요 여부 확인", description = "좋아요 여부를 확인합니다.")
     @GetMapping("isLike/{concertId}")
     public RsData<ConcertLikeResponse> isLikeConcert(
             @PathVariable long concertId

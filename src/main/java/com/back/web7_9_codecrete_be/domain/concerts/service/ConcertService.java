@@ -49,6 +49,10 @@ public class ConcertService {
         return concertRepository.getUpComingConcertItems(pageable, LocalDate.now());
     }
 
+    public List<ConcertItem> getLikedConcertsList(Pageable pageable,User user) {
+        return concertRepository.getLikedConcertsList(pageable, user.getId());
+    }
+
     public ConcertDetailResponse getConcertDetail(long concertId) {
         return concertRepository.getConcertDetailById(concertId);
     }
