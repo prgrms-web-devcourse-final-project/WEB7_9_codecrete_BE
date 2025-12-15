@@ -10,11 +10,15 @@ import lombok.RequiredArgsConstructor;
 public enum PlanErrorCode implements ErrorCode {
 
 	PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "P-100", "계획을 찾을 수 없습니다."),
-	PLAN_FORBIDDEN(HttpStatus.FORBIDDEN, "P-101", "해당 계획에 접근할 수 없습니다.");
+	PLAN_FORBIDDEN(HttpStatus.FORBIDDEN, "P-101", "해당 계획에 접근할 수 없습니다."),
+	SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "P-102", "일정을 찾을 수 없습니다."),
+	PLAN_UNAUTHORIZED(HttpStatus.FORBIDDEN, "P-103", "해당 작업을 수행할 권한이 없습니다."),
+	SCHEDULE_INVALID_TRANSPORT_FIELDS(HttpStatus.BAD_REQUEST, "P-104", "교통 수단 타입일 경우 출발지/도착지 좌표, 거리, 교통 수단 종류는 필수입니다."),
+	SCHEDULE_INVALID_LOCATION_FOR_TRANSPORT(HttpStatus.BAD_REQUEST, "P-105", "교통 수단 타입일 경우 locationLat/Lon은 사용할 수 없습니다. endPlaceLat/Lon을 사용해주세요."),
+	SCHEDULE_INVALID_LOCATION_COORDINATES(HttpStatus.BAD_REQUEST, "P-107", "위도와 경도는 함께 제공되어야 합니다."),
+	CONCERT_NOT_FOUND(HttpStatus.NOT_FOUND, "P-106", "공연을 찾을 수 없습니다.");
 
 	private final HttpStatus status;
 	private final String code;
 	private final String message;
-
 }
-
