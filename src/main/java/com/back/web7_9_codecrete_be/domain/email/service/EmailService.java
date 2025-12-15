@@ -1,8 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.email.service;
 
-import com.back.web7_9_codecrete_be.domain.email.entity.VerificationCode;
 import com.back.web7_9_codecrete_be.domain.email.entity.VerifiedEmail;
-import com.back.web7_9_codecrete_be.domain.email.repository.VerificationCodeRepository;
+import com.back.web7_9_codecrete_be.domain.email.repository.VerificationCodeRedisRepository;
 import com.back.web7_9_codecrete_be.domain.email.repository.VerifiedEmailRepository;
 import com.back.web7_9_codecrete_be.global.error.code.MailErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
@@ -17,14 +16,13 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailService {
 
-    private final VerificationCodeRepository verificationCodeRepository;
+    private final VerificationCodeRedisRepository verificationCodeRedisRepository;
     private final VerifiedEmailRepository verifiedEmailRepository;
     private final WebClient mailgunClient;
 
@@ -66,16 +64,10 @@ public class EmailService {
         String code = generateVerificationCode();
 
         // 기존 코드 있으면 삭제
-        verificationCodeRepository.deleteByEmail(email);
+        verificationCodeRedisRepository.deleteByEmail(email);
 
-        // DB 저장
-        VerificationCode entity = VerificationCode.builder()
-                .email(email)
-                .code(code)
-                .expireAt(LocalDateTime.now().plusSeconds(TTL_SECONDS))
-                .build();
-
-        verificationCodeRepository.save(entity);
+        // Redis 저장 (TTL 5분)
+        verificationCodeRedisRepository.save(email, code, TTL_SECONDS);
 
         String content = """
                 안녕하세요. NCB 입니다.
@@ -103,23 +95,20 @@ public class EmailService {
     // 인증코드 검증
     @Transactional
     public void verifyCode(String email, String inputCode) {
-        VerificationCode saved = verificationCodeRepository.findByEmail(email)
-                .orElseThrow(() -> new BusinessException(MailErrorCode.VERIFICATION_CODE_EXPIRED));
+        String savedCode = verificationCodeRedisRepository.findByEmail(email);
 
-        if (saved.isExpired()) {
-            verificationCodeRepository.deleteByEmail(email);
+        if (savedCode == null) {
             throw new BusinessException(MailErrorCode.VERIFICATION_CODE_EXPIRED);
         }
 
-        if (!saved.getCode().equals(inputCode)) {
+        if (!savedCode.equals(inputCode)) {
             throw new BusinessException(MailErrorCode.VERIFICATION_CODE_MISMATCH);
         }
 
-        // 성공 시 삭제
-        verificationCodeRepository.deleteByEmail(email);
+        // 성공 시 Redis에서 삭제
+        verificationCodeRedisRepository.deleteByEmail(email);
 
-
-        // 인증 완료 상태 저장
+        // 인증 완료 상태 저장 (DB)
         verifiedEmailRepository.save(new VerifiedEmail(email));
 
         log.info("[이메일 인증 성공] {}", email);
@@ -141,5 +130,10 @@ public class EmailService {
                 """.formatted(newPassword);
 
         sendEmail(email, "[NCB] 임시 비밀번호 안내", content);
+    }
+
+    @Transactional
+    public void clearVerifiedEmail(String email) {
+        verifiedEmailRepository.deleteByEmail(email);
     }
 }
