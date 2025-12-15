@@ -24,11 +24,17 @@ jobs:
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
 
       MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY }}
+      MAILGUN_DOMAIN: ${{ secrets.MAILGUN_DOMAIN }}
+      MAILGUN_FROM: ${{ secrets.MAILGUN_FROM }}
 
       SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
       SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
 
       KOPIST_API_KEY: ${{ secrets.KOPIST_API_KEY }}
+      TMAP_API_KEY: ${{ secrets.TMAP_API_KEY }}
+      KAKAOMAP_API_KEY: ${{ secrets.KAKAOMAP_API_KEY }}
+
+
 
     steps:
       - name: Checkout
