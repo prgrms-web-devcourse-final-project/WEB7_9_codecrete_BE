@@ -12,6 +12,7 @@ import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertPlaceRepos
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.TicketOfficeRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -38,7 +39,8 @@ public class KopisApiService {
     private final TicketOfficeRepository ticketOfficeRepository;
 
     //TODO : API key 환경변수로 가져오기
-    private String serviceKey = "";
+    @Value("${kopis.api-key}")
+    private String serviceKey;
     private LocalDate sdate = LocalDate.of(2025, 12, 1);
     private LocalDate edate = LocalDate.now().plusMonths(6);
 
