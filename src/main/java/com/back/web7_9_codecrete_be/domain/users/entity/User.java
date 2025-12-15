@@ -96,5 +96,9 @@ public class User {
         this.status = UserStatus.DELETED;
         this.deletedDate = LocalDateTime.now();
     }
+
+    public void promoteToAdmin() {
+        this.role = Role.ADMIN;
+    }
 }
 
