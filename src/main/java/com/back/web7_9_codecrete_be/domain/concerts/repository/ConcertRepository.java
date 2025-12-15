@@ -26,6 +26,7 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     c.concertId as id,
     c.name as name,
     c.concertPlace.placeName as placeName,
+    c.ticketTime as ticketTime,
     c.startDate as startDate,
     c.endDate as endDate,
     c.posterUrl as posterUrl,
@@ -45,6 +46,7 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     c.concertId as id,
     c.name as name,
     c.concertPlace.placeName as placeName,
+    c.ticketTime as ticketTime,
     c.startDate as startDate,
     c.endDate as endDate,
     c.posterUrl as posterUrl,
@@ -67,11 +69,39 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     );
 
     @Query("""
+    SELECT
+    new com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem(
+    c.concertId as id,
+    c.name as name,
+    c.concertPlace.placeName as placeName,
+    c.ticketTime as ticketTime,
+    c.startDate as startDate,
+    c.endDate as endDate,
+    c.posterUrl as posterUrl,
+    c.maxPrice as maxPrice,
+    c.minPrice as minPrice,
+    c.viewCount as viewCount,
+    c.likeCount as likeCount
+    )
+    FROM 
+    Concert c
+    WHERE 
+    c.ticketTime IS NULL
+    ORDER BY 
+    c.startDate
+    DESC
+""")
+    List<ConcertItem> getNoTicketTimeConcertList(
+            Pageable pageable
+    );
+
+    @Query("""
     SELECT 
     new com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem(
     c.concertId as id,
     c.name as name,
     c.concertPlace.placeName as placeName,
+    c.ticketTime as ticketTime,
     c.startDate as startDate,
     c.endDate as endDate,
     c.posterUrl as posterUrl,
@@ -88,7 +118,7 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     AND 
     cl.user.id = :userId
     ORDER BY
-    cl.createdAt
+    cl.createDate
     DESC 
 """
     )
@@ -102,6 +132,7 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     c.name as name,
     c.content as description,
     c.concertPlace.placeName as placeName,
+    c.ticketTime as ticketTime,
     c.startDate as startDate,
     c.endDate as endDate,
     c.posterUrl as posterUrl,

@@ -1,9 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.concerts.service;
 
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertLikeResponse;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertUpdateRequest;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.*;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOfficeElement;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.*;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.*;
@@ -46,6 +43,10 @@ public class ConcertService {
 
     public List<ConcertItem> getLikedConcertsList(Pageable pageable,User user) {
         return concertRepository.getLikedConcertsList(pageable, user.getId());
+    }
+
+    public List<ConcertItem> getNoTicketTimeConcertsList(Pageable pageable) {
+        return concertRepository.getNoTicketTimeConcertList(pageable);
     }
 
     public ConcertDetailResponse getConcertDetail(long concertId) {
@@ -118,6 +119,13 @@ public class ConcertService {
         concert.update(concertUpdateRequest, concertPlace);
         Concert updatedConcert = concertRepository.save(concert);
         return new ConcertItem(updatedConcert);
+    }
+
+    public ConcertDetailResponse setConcertTime(ConcertTicketTimeSetRequest concertTicketTimeSetRequest) {
+        Concert concert = concertRepository.findById(concertTicketTimeSetRequest.getConcertId()).orElseThrow();
+        concert.ticketTimeSet(concertTicketTimeSetRequest.getTicketTime());
+        Concert savedConcert = concertRepository.save(concert);
+        return concertRepository.getConcertDetailById(savedConcert.getConcertId());
     }
 
     public void deleteConcert(long concertId) {

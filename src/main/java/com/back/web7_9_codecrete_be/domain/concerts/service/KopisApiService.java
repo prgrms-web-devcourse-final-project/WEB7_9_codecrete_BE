@@ -118,7 +118,7 @@ public class KopisApiService {
                     concertDetail.getConcertDescription(),
                     dateStringToDateTime(concertDetail.getStartDate()),
                     dateStringToDateTime(concertDetail.getEndDate()),
-                    "",
+                    null,
                     ticketPrice.maxPrice,
                     ticketPrice.minPrice,
                     concertDetail.getPosterUrl(),
@@ -207,7 +207,7 @@ public class KopisApiService {
                         concertDetail.getConcertDescription(),
                         dateStringToDateTime(concertDetail.getStartDate()),
                         dateStringToDateTime(concertDetail.getEndDate()),
-                        "",
+                        null,
                         ticketPrice.maxPrice,
                         ticketPrice.minPrice,
                         concertDetail.getPosterUrl(),
@@ -217,7 +217,7 @@ public class KopisApiService {
                 concert = concert.update(
                         concertPlace,
                         concertDetail.getConcertDescription(),
-                        "",
+                        null,
                         ticketPrice.maxPrice,
                         ticketPrice.minPrice
                 );
