@@ -38,5 +38,10 @@ jwt:
   access-token-expiration: 3600 # 1시간
   refresh-token-expiration: 1209600 # 14일
 
+tmap:     #Tmap 대중교통 추천 api 키
+  api-key: ${TMAP_API_KEY}
+
+kakao:    #Kakao map REST API 키
+  restapi-key: ${KAKAOMAP_API_KEY}
 kopis:
   api-key: ${KOPIST_API_KEY}
