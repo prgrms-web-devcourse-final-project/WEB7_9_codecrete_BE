@@ -72,16 +72,19 @@ public class ConcertService {
         return ticketOfficeList;
     }
 
+    public boolean isLikeConcert(Long concertId,User user) {
+        Concert concert = concertRepository.getConcertByConcertId(concertId);
+        ConcertLike concertLike = concertLikeRepository.existsConcertLikeByConcertAndUser(concert,user);
+        return concertLike != null;
+    }
 
-    public void likeConcert(long concertId, long userId) {
-        User user = userRepository.findById(userId).orElseThrow();
+    public void likeConcert(long concertId, User user) {
         Concert concert = concertRepository.findById(concertId).orElseThrow();
         ConcertLike concertLike = new ConcertLike(concert, user);
         concertLikeRepository.save(concertLike);
     }
 
-    public void dislikeConcert(long concertId, long userId) {
-        User user = userRepository.findById(userId).orElseThrow();
+    public void dislikeConcert(long concertId, User user) {
         Concert concert = concertRepository.findById(concertId).orElseThrow();
         ConcertLike concertLike = concertLikeRepository.findConcertLikeByConcertAndUser(concert, user);
         concertLikeRepository.delete(concertLike);

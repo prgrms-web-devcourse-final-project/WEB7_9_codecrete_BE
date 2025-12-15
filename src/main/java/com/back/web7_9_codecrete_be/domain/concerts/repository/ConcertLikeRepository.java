@@ -9,5 +9,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ConcertLikeRepository extends JpaRepository<ConcertLike, Long> {
     ConcertLike findConcertLikeByConcertAndUser(Concert concert, User user);
+
+    ConcertLike existsConcertLikeByConcertAndUser(Concert concert, User user);
 }
 

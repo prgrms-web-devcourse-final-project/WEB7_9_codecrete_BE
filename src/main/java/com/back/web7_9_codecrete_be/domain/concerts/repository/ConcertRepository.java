@@ -86,4 +86,6 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     c.concertId = :concertId
 """)
     ConcertDetailResponse getConcertDetailById(@Param("concertId")long concertId);
+
+    Concert getConcertByConcertId(Long concertId);
 }
