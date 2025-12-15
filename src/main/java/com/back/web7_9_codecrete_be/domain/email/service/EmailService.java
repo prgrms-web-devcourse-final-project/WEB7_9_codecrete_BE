@@ -1,8 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.email.service;
 
-import com.back.web7_9_codecrete_be.domain.email.entity.VerifiedEmail;
 import com.back.web7_9_codecrete_be.domain.email.repository.VerificationCodeRedisRepository;
-import com.back.web7_9_codecrete_be.domain.email.repository.VerifiedEmailRepository;
+import com.back.web7_9_codecrete_be.domain.email.repository.VerifiedEmailRedisRepository;
 import com.back.web7_9_codecrete_be.global.error.code.MailErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import jakarta.transaction.Transactional;
@@ -23,7 +22,7 @@ import java.security.SecureRandom;
 public class EmailService {
 
     private final VerificationCodeRedisRepository verificationCodeRedisRepository;
-    private final VerifiedEmailRepository verifiedEmailRepository;
+    private final VerifiedEmailRedisRepository verifiedEmailRedisRepository;
     private final WebClient mailgunClient;
 
     @Value("${mailgun.from}")
@@ -108,14 +107,14 @@ public class EmailService {
         // 성공 시 Redis에서 삭제
         verificationCodeRedisRepository.deleteByEmail(email);
 
-        // 인증 완료 상태 저장 (DB)
-        verifiedEmailRepository.save(new VerifiedEmail(email));
+        // 인증 완료 상태 저장 (TTL 30분)
+        verifiedEmailRedisRepository.save(email);
 
         log.info("[이메일 인증 성공] {}", email);
     }
 
     public boolean isVerified(String email) {
-        return verifiedEmailRepository.existsByEmail(email);
+        return verifiedEmailRedisRepository.exists(email);
     }
 
     // 임시 비밀번호 발급 이메일 전송
@@ -134,6 +133,6 @@ public class EmailService {
 
     @Transactional
     public void clearVerifiedEmail(String email) {
-        verifiedEmailRepository.deleteByEmail(email);
+        verifiedEmailRedisRepository.delete(email);
     }
 }
