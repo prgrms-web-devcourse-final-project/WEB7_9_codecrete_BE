@@ -11,14 +11,12 @@ public enum AuthErrorCode implements ErrorCode {
 
     // 회원가입 관련
     EMAIL_DUPLICATED(HttpStatus.CONFLICT, "A-100", "이미 사용중인 이메일입니다."),
-    NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "A-101", "이미 사용중인 닉네임입니다."),
-    EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "A-102","이메일 인증이 완료되지 않았습니다."),
+    EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "A-101","이메일 인증이 완료되지 않았습니다."),
 
     // 로그인 관련
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "A-110", "존재하지 않는 이메일입니다."),
     INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "A-111", "비밀번호가 일치하지 않습니다."),
     USER_INACTIVE(HttpStatus.FORBIDDEN, "A-112", "현재 비활성화된 계정입니다."),
-    USER_DELETED(HttpStatus.FORBIDDEN, "A-113", "탈퇴한 사용자는 로그인할 수 없습니다."),
 
     // 권한 관련
     UNAUTHORIZED_USER(HttpStatus.UNAUTHORIZED, "A-120", "로그인이 필요합니다."),
