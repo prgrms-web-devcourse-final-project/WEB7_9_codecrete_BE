@@ -1,7 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.plans.dto.response;
 
 import com.back.web7_9_codecrete_be.domain.plans.entity.PlanParticipant;
-import com.back.web7_9_codecrete_be.domain.plans.entity.Route;
+import com.back.web7_9_codecrete_be.domain.plans.entity.Schedule;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -14,12 +14,14 @@ import java.util.List;
 public class PlanDetailResponse {
     private Long id;
     private Long concertId;
+    private Long createdBy;
     private String title;
-    private String date;
+    private java.time.LocalDate planDate;
     private LocalDateTime createdDate;
     private LocalDateTime modifiedDate;
     private List<ParticipantInfo> participants;
-    private List<RouteInfo> routes;
+    private List<ScheduleInfo> schedules;
+    private Integer totalDuration;
 
     @Getter
     @Builder
@@ -32,14 +34,25 @@ public class PlanDetailResponse {
 
     @Getter
     @Builder
-    public static class RouteInfo {
-        private Long routeId;
+    public static class ScheduleInfo {
+        private Long id;
+        private Schedule.ScheduleType scheduleType;
+        private String title;
+        private java.time.LocalDateTime startAt;
+        private Integer duration;
+        private String location;
+        private Double locationLat;
+        private Double locationLon;
+        private Integer estimatedCost;
+        private String details;
+        private Integer sequenceOrder;
         private Double startPlaceLat;
         private Double startPlaceLon;
         private Double endPlaceLat;
         private Double endPlaceLon;
         private Integer distance;
-        private Integer duration;
-        private Route.RouteType routeType;
+        private Schedule.TransportType transportType;
+        private LocalDateTime createdDate;
+        private LocalDateTime modifiedDate;
     }
 }
