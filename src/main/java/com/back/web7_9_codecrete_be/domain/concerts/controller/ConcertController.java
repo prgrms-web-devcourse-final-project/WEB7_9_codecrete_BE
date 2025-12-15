@@ -8,6 +8,8 @@ import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOffic
 import com.back.web7_9_codecrete_be.domain.concerts.entity.TicketOffice;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
 import com.back.web7_9_codecrete_be.domain.concerts.service.KopisApiService;
+import com.back.web7_9_codecrete_be.domain.users.entity.User;
+import com.back.web7_9_codecrete_be.global.rq.Rq;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -30,22 +32,7 @@ import java.util.List;
 @Tag(name = "Concerts", description = "공연에 대한 정보를 제공하는 API 입니다.")
 public class ConcertController {
     private final ConcertService concertService;
-    private final KopisApiService kopisApiService;
-
-    @GetMapping("tests")
-    public ConcertListResponse tests() {
-        return kopisApiService.getConcertsList();
-    }
-
-    @GetMapping("totalGetTest")
-    public ConcertListResponse totalGetTest() throws InterruptedException {
-        return kopisApiService.setConcertsList();
-    }
-
-    @GetMapping("setConcertPlace")
-    public ConcertPlaceListResponse setConcertPlace() throws InterruptedException {
-        return kopisApiService.setConcertPlace();
-    }
+    private final Rq rq;
 
     @Operation(summary = "공연목록", description = "공연 전체 목록을 조회합니다. 시작일자를 기준으로 오름차순 조회합니다.")
     @GetMapping("list")
@@ -92,21 +79,31 @@ public class ConcertController {
     @Operation(summary = "공연 좋아요 기능")
     @PostMapping("like/{concertId}")
     public RsData<Void> likeConcert(
-            @PathVariable long concertId,
-            @RequestParam long userId // todo: 사용자 Id 조회법 통일하기
+            @PathVariable long concertId
     ) {
-        concertService.likeConcert(concertId, userId);
+        User user = rq.getUser();
+        concertService.likeConcert(concertId, user);
         return RsData.success(null);
     }
 
     @Operation(summary = "공연 좋아요 해제 기능")
     @DeleteMapping("dislike/{concertId}")
     public RsData<Void> dislikeConcert(
-            @PathVariable long concertId,
-            @RequestParam long userId // todo: 사용자 Id 조회법 통일하기
+            @PathVariable long concertId
     ) {
-        concertService.dislikeConcert(concertId, userId);
+        User user = rq.getUser();
+        concertService.dislikeConcert(concertId, user);
         return RsData.success(null);
     }
+
+    @Operation(summary = "공연 좋아요 여부 확인")
+    @GetMapping("isLike/{concertId}")
+    public RsData<Boolean> isLikeConcert(
+            @PathVariable long concertId
+    ){
+        User user = rq.getUser();
+        return RsData.success(concertService.isLikeConcert(concertId, user));
+    }
+
 
 }

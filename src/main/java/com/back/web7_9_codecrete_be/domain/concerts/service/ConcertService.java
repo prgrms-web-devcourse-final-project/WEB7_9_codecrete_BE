@@ -2,9 +2,11 @@ package com.back.web7_9_codecrete_be.domain.concerts.service;
 
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertUpdateRequest;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOfficeElement;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertLike;
+import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertPlace;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.TicketOffice;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertLikeRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertPlaceRepository;
@@ -41,8 +43,7 @@ public class ConcertService {
     }
 
     public List<ConcertItem> getUpcomingConcertsList(Pageable pageable) {
-        LocalDate today = LocalDate.now();
-        return concertRepository.getUpComingConcertItems(pageable, today);
+        return concertRepository.getUpComingConcertItems(pageable, LocalDate.now());
     }
 
     public ConcertDetailResponse getConcertDetail(long concertId) {
@@ -71,18 +72,36 @@ public class ConcertService {
         return ticketOfficeList;
     }
 
+    public boolean isLikeConcert(Long concertId,User user) {
+        Concert concert = concertRepository.getConcertByConcertId(concertId);
+        ConcertLike concertLike = concertLikeRepository.existsConcertLikeByConcertAndUser(concert,user);
+        return concertLike != null;
+    }
 
-    public void likeConcert(long concertId, long userId) {
-        User user = userRepository.findById(userId).orElseThrow();
+    public void likeConcert(long concertId, User user) {
         Concert concert = concertRepository.findById(concertId).orElseThrow();
         ConcertLike concertLike = new ConcertLike(concert, user);
         concertLikeRepository.save(concertLike);
     }
 
-    public void dislikeConcert(long concertId, long userId) {
-        User user = userRepository.findById(userId).orElseThrow();
+    public void dislikeConcert(long concertId, User user) {
         Concert concert = concertRepository.findById(concertId).orElseThrow();
         ConcertLike concertLike = concertLikeRepository.findConcertLikeByConcertAndUser(concert, user);
         concertLikeRepository.delete(concertLike);
     }
+
+    public ConcertItem updateConcert(long concertId, ConcertUpdateRequest concertUpdateRequest) {
+        Concert concert = concertRepository.findById(concertId).orElseThrow();
+        ConcertPlace concertPlace = concertPlaceRepository.findById(concertUpdateRequest.getPlaceId()).orElseThrow();
+        concert.update(concertUpdateRequest, concertPlace);
+        Concert updatedConcert = concertRepository.save(concert);
+        return new ConcertItem(updatedConcert);
+    }
+
+    public void deleteConcert(long concertId) {
+        Concert concert = concertRepository.findById(concertId).orElseThrow();
+        concertRepository.deleteById(concertId);
+    }
+
+
 }

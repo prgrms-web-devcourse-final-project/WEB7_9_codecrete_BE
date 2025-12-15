@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.concerts.entity;
 
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertUpdateRequest;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -87,6 +88,20 @@ public class Concert {
         this.modifiedDate = LocalDateTime.now();
         this.maxPrice = maxPrice;
         this.minPrice = minPrice;
+        return this;
+    }
+
+
+    public Concert update(ConcertUpdateRequest concertUpdateRequest,ConcertPlace concertPlace) {
+        this.name = concertUpdateRequest.getName();
+        this.concertPlace = concertPlace;
+        this.content = concertUpdateRequest.getDescription();
+        this.maxPrice = concertUpdateRequest.getMaxPrice();
+        this.minPrice = concertUpdateRequest.getMinPrice();
+        this.posterUrl = concertUpdateRequest.getPosterUrl();
+        this.startDate = concertUpdateRequest.getStartDate();
+        this.endDate = concertUpdateRequest.getEndDate();
+        this.modifiedDate = LocalDateTime.now();
         return this;
     }
 
