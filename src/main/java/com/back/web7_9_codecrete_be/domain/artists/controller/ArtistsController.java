@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.artists.controller;
 
+import com.back.web7_9_codecrete_be.domain.artists.dto.request.CreateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistService;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistEnrichService;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
@@ -30,5 +31,14 @@ public class ArtistsController {
     ) {
         int updated = enrichService.enrichArtist(limit);
         return RsData.success("enrich 성공", updated);
+    }
+
+    @Operation(summary = "아티스트 생성", description = "아티스트를 등록합니다.")
+    @PostMapping()
+    public RsData<Void> create(
+            @RequestBody CreateRequest reqBody
+    ) {
+        artistService.createArtist(reqBody.artistName(), reqBody.artistGroup(), reqBody.artistGroup(), reqBody.genreName());
+        return RsData.success("아티스트 생성이 완료되었습니다.", null);
     }
 }

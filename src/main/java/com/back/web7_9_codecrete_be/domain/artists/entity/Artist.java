@@ -44,6 +44,13 @@ public class Artist {
         this.genre = genre;
     }
 
+    public Artist(String artistName, String artistGroup, String artistType, Genre genre) {
+        this.artistName = artistName;
+        this.artistGroup = artistGroup;
+        this.artistType = artistType;
+        this.genre = genre;
+    }
+
     public void updateProfile(String nameKo, String artistGroup, String artistType) {
         this.nameKo = nameKo;
         this.artistGroup = artistGroup;   // nullable

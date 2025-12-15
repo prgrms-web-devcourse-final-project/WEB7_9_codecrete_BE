@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ArtistRepository extends JpaRepository<Artist, Long> {
@@ -14,4 +15,7 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     
     @Query("SELECT a FROM Artist a WHERE a.nameKo IS NULL ORDER BY a.id ASC")
     List<Artist> findByNameKoIsNullOrderByIdAsc(Pageable pageable);
+
+    boolean existsByArtistName(String artistName);
+    boolean existsByNameKo(String nameKo);
 }
