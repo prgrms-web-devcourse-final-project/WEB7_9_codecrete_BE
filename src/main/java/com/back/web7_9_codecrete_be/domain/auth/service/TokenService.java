@@ -5,6 +5,7 @@ import com.back.web7_9_codecrete_be.domain.auth.repository.RefreshTokenRedisRepo
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
 import com.back.web7_9_codecrete_be.global.error.code.AuthErrorCode;
+import com.back.web7_9_codecrete_be.global.error.code.UserErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import com.back.web7_9_codecrete_be.global.rq.Rq;
 import com.back.web7_9_codecrete_be.global.security.JwtProperties;
@@ -63,8 +64,11 @@ public class TokenService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
 
-        String savedRefresh =
-                refreshTokenRedisRepository.findByUserId(user.getId());
+        if (user.getIsDeleted()) {
+            throw new BusinessException(UserErrorCode.USER_DELETED);
+        }
+
+        String savedRefresh = refreshTokenRedisRepository.findByUserId(user.getId());
 
         if (savedRefresh == null || !savedRefresh.equals(refresh)) {
             throw new BusinessException(AuthErrorCode.INVALID_TOKEN);
