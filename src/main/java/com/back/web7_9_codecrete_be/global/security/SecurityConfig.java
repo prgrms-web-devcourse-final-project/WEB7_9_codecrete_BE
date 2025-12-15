@@ -52,7 +52,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",       // Swagger
                                 "/swagger-ui/**",         // Swagger UI
                                 "/h2-console/**",       // H2 Console
-                                "/api/v1/concerts/**"     // concert 정보 조회 도메인
+                                "/api/v1/concerts/**",     // concert 정보 조회 도메인
+                                "/api/v1/artists/**"    // artist 정보 저장 도메인(임시)
                         ).permitAll()
 
                         // ADMIN 전용
