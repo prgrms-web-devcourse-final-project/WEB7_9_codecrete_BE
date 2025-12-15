@@ -28,7 +28,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("api/v1/concerts/")
-@Controller
 @RequiredArgsConstructor
 @Tag(name = "Concerts", description = "공연에 대한 정보를 제공하는 API 입니다.")
 public class ConcertController {
