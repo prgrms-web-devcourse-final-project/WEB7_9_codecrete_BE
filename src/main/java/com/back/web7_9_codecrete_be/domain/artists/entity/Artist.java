@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+
 @Entity
 @Getter
 @Setter
@@ -32,6 +33,9 @@ public class Artist {
     @Column(name = "spotify_artist_id", unique = true)
     private String spotifyArtistId;
 
+    @Column(name = "name_ko", length = 200)
+    private String nameKo;
+
     public Artist(String spotifyArtistId, String artistName, String artistGroup, String artistType, Genre genre) {
         this.spotifyArtistId = spotifyArtistId;
         this.artistName = artistName;
@@ -39,4 +43,12 @@ public class Artist {
         this.artistType = artistType;   // 옵션 B: seed에서는 "SINGER"
         this.genre = genre;
     }
+
+    public void updateProfile(String nameKo, String artistGroup, String artistType) {
+        this.nameKo = nameKo;
+        this.artistGroup = artistGroup;   // nullable
+        this.artistType = artistType;     // "SOLO" / "GROUP"
+    }
+
+
 }

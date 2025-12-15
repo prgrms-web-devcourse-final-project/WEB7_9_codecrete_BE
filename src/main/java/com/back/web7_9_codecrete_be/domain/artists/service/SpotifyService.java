@@ -5,19 +5,15 @@ import com.back.web7_9_codecrete_be.domain.artists.entity.Genre;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.GenreRepository;
 import com.back.web7_9_codecrete_be.global.error.code.ArtistErrorCode;
-import com.back.web7_9_codecrete_be.global.error.code.AuthErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import com.back.web7_9_codecrete_be.global.spotify.SpotifyClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import se.michaelthelin.spotify.SpotifyApi;
-import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
 import se.michaelthelin.spotify.model_objects.specification.Paging;
 
-import java.io.IOException;
 import java.util.List;
 
 @Slf4j
@@ -39,28 +35,11 @@ public class SpotifyService {
             int totalSaved = 0;
 
             List<String> queries = List.of(
-                    // K-POP
-                    "k-pop",
-                    "korean pop",
-                    "BTS",
-                    "BLACKPINK",
-                    "NewJeans",
-                    "LE SSERAFIM",
-                    "aespa",
-                    "IVE",
-                    "NCT",
-                    "Stray Kids",
-                    "TWICE",
-                    "Red Velvet",
-                    "IU",
-                    "태연",
-                    "korean hip hop",
-                    "korean r&b",
-                    "korean ballad",
-                    "korean ost",
-                    "korean indie",
-                    "korean rock",
-                    "trot"
+                    "k-pop", "korean pop",
+                    "BTS", "BLACKPINK", "NewJeans", "LE SSERAFIM", "aespa", "IVE", "NCT",
+                    "Stray Kids", "TWICE", "Red Velvet", "IU", "태연",
+                    "korean hip hop", "korean r&b", "korean ballad", "korean ost",
+                    "korean indie", "korean rock", "trot"
             );
 
             for (String q : queries) {
@@ -69,54 +48,48 @@ public class SpotifyService {
                 int offset = 0;
 
                 while (totalSaved < targetCount) {
-                    try {
-                        Paging<se.michaelthelin.spotify.model_objects.specification.Artist> paging =
-                                api.searchArtists(q)
-                                        .limit(limit)
-                                        .offset(offset)
-                                        .build()
-                                        .execute();
+                    Paging<se.michaelthelin.spotify.model_objects.specification.Artist> paging =
+                            api.searchArtists(q)
+                                    .limit(limit)
+                                    .offset(offset)
+                                    .build()
+                                    .execute();
 
-                        var items = paging.getItems();
-                        if (items == null || items.length == 0) {
-                            break;
-                        }
+                    var items = paging.getItems();
+                    if (items == null || items.length == 0) break;
 
-                        for (var spotifyArtist : items) {
-                            if (totalSaved >= targetCount) break;
+                    for (var spotifyArtist : items) {
+                        if (totalSaved >= targetCount) break;
 
-                            String spotifyId = spotifyArtist.getId();
-                            String name = spotifyArtist.getName();
+                        String spotifyId = spotifyArtist.getId();
+                        String name = spotifyArtist.getName();
 
-                            if (spotifyId == null || name == null || name.isBlank()) continue;
+                        if (spotifyId == null || name == null || name.isBlank()) continue;
+                        if (artistRepository.existsBySpotifyArtistId(spotifyId)) continue;
+                        if (!isLikelyKoreanMusic(spotifyArtist)) continue;
 
-                            if (artistRepository.existsBySpotifyArtistId(spotifyId)) continue;
+                        String mainGenreName = pickMainGenreName(spotifyArtist);
+                        Genre genre = findOrCreateGenreByName(mainGenreName, null);
 
-                            if (!isLikelyKoreanMusic(spotifyArtist)) continue;
+                        String artistType = inferArtistType(spotifyArtist);
 
-                            String mainGenreName = pickMainGenreName(spotifyArtist);
-                            Genre genre = findOrCreateGenreByName(mainGenreName, null);
+                        // ✅ seed 단계에서는 Wikidata 호출 금지 (속도/실패 리스크)
+                        Artist artist = new Artist(
+                                spotifyId,
+                                name.trim(),
+                                null,        // artistGroup
+                                artistType,
+                                genre
+                        );
 
-                            String artistType = inferArtistType(spotifyArtist);
-
-                            Artist artist = new Artist(
-                                    spotifyId,
-                                    name.trim(),
-                                    null,        // artistGroup
-                                    artistType,
-                                    genre
-                            );
-                            artistRepository.save(artist);
-                            totalSaved++;
-                        }
-
-                        offset += limit;
-                        if (offset >= paging.getTotal()) break;
-
-                        Thread.sleep(200);
-                    } catch (Exception e) {
-                        break; // 해당 쿼리 건너뛰고 다음 쿼리로
+                        artistRepository.save(artist);
+                        totalSaved++;
                     }
+
+                    offset += limit;
+                    if (offset >= paging.getTotal()) break;
+
+                    Thread.sleep(200);
                 }
             }
 
@@ -134,21 +107,10 @@ public class SpotifyService {
     }
 
     private static final List<String> KOREAN_GENRE_HINTS = List.of(
-            "k-pop",
-            "korean",
-            "trot",
-            "k-hip hop",
-            "k-rap",
-            "k-ballad",
-            "k-r&b",
-            "k-indie",
-            "k-rock",
-            "korean hip hop",
-            "korean r&b",
-            "korean ballad",
-            "korean ost",
-            "korean indie",
-            "korean rock"
+            "k-pop", "korean", "trot",
+            "k-hip hop", "k-rap", "k-ballad", "k-r&b", "k-indie", "k-rock",
+            "korean hip hop", "korean r&b", "korean ballad", "korean ost",
+            "korean indie", "korean rock"
     );
 
     private boolean isLikelyKoreanMusic(se.michaelthelin.spotify.model_objects.specification.Artist a) {
@@ -162,7 +124,6 @@ public class SpotifyService {
                 }
             }
         }
-
         // 한글 이름 보조 필터
         String name = a.getName();
         return name != null && name.matches(".*[가-힣].*");
@@ -184,7 +145,6 @@ public class SpotifyService {
             if (s.contains("indie")) return "indie";
             if (s.contains("k-pop") || s.contains("korean")) return "k-pop";
         }
-
         return "k-pop";
     }
 

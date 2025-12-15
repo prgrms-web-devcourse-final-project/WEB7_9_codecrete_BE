@@ -5,9 +5,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.Collections;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -20,6 +23,12 @@ public class WebClientConfig {
 
     @Value("${mailgun.domain}")
     private String mailgunDomain;
+
+    @Value("${tmap.api-key}")
+    private String tmapApiKey;
+
+    @Value("${kakao.restapi-key}")
+    private String kakaomapApiKey;
 
     @Bean
     public WebClient mailgunClient() {
@@ -37,6 +46,30 @@ public class WebClientConfig {
 
     @Bean
     public RestTemplate restTemplate() {
-        return new RestTemplate();
+        RestTemplate restTemplate = new RestTemplate();
+        // Wikidata API는 User-Agent 헤더를 필수로 요구
+        ClientHttpRequestInterceptor userAgentInterceptor = (request, body, execution) -> {
+            request.getHeaders().add("User-Agent", "CodecreteBE/1.0 (Educational Project; +https://github.com/your-repo)");
+            return execution.execute(request, body);
+        };
+        restTemplate.setInterceptors(Collections.singletonList(userAgentInterceptor));
+        return restTemplate;
+    }
+
+    @Bean
+    public WebClient kakaoWebClient() {
+        return WebClient.builder()
+                .baseUrl("https://dapi.kakao.com")
+                .defaultHeader("Authorization", kakaomapApiKey)
+                .build();
+    }
+
+
+    @Bean
+    public WebClient TmapClient(){
+        return WebClient.builder()
+                .baseUrl("https://apis.openapi.sk.com")
+                .defaultHeader("appKey", tmapApiKey)
+                .build();
     }
 }

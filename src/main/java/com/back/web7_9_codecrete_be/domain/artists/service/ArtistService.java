@@ -1,6 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.artists.service;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
