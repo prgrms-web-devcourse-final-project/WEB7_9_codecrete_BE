@@ -30,22 +30,6 @@ import java.util.List;
 @Tag(name = "Concerts", description = "공연에 대한 정보를 제공하는 API 입니다.")
 public class ConcertController {
     private final ConcertService concertService;
-    private final KopisApiService kopisApiService;
-
-    @GetMapping("tests")
-    public ConcertListResponse tests() {
-        return kopisApiService.getConcertsList();
-    }
-
-    @GetMapping("totalGetTest")
-    public ConcertListResponse totalGetTest() throws InterruptedException {
-        return kopisApiService.setConcertsList();
-    }
-
-    @GetMapping("setConcertPlace")
-    public ConcertPlaceListResponse setConcertPlace() throws InterruptedException {
-        return kopisApiService.setConcertPlace();
-    }
 
     @Operation(summary = "공연목록", description = "공연 전체 목록을 조회합니다. 시작일자를 기준으로 오름차순 조회합니다.")
     @GetMapping("list")
