@@ -45,3 +45,6 @@ kakao:    #Kakao map REST API 키
   restapi-key: ${KAKAOMAP_API_KEY}
 kopis:
   api-key: ${KOPIST_API_KEY}
+spotify:
+  client-id: ${SPOTIFY_CLIENT_ID}
+  client-secret: ${SPOTIFY_CLIENT_SECRET}
