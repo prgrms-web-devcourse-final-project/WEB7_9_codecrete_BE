@@ -72,6 +72,9 @@ dependencies {
 
     // 정적 HTML 문서 기준 크롤링
     implementation("org.jsoup:jsoup:1.21.2")
+   
+    // Spotify
+    implementation("se.michaelthelin.spotify:spotify-web-api-java:8.4.1")
 }
 
 tasks.withType<Test> {
