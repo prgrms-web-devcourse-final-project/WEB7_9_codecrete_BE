@@ -1,3 +1,5 @@
+import org.gradle.kotlin.dsl.implementation
+
 plugins {
     java
     id("org.springframework.boot") version "3.5.8"
@@ -67,6 +69,12 @@ dependencies {
 
     // XML 파싱
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
+
+    // 정적 HTML 문서 기준 크롤링
+    implementation("org.jsoup:jsoup:1.21.2")
+   
+    // Spotify
+    implementation("se.michaelthelin.spotify:spotify-web-api-java:8.4.1")
 }
 
 tasks.withType<Test> {

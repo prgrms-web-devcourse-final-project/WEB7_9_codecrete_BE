@@ -1,9 +1,11 @@
 package com.back.web7_9_codecrete_be.domain.concerts.entity;
 
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertUpdateRequest;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -25,6 +27,12 @@ public class Concert {
     @Column(nullable = false,columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "start_date",nullable = false)
+    private LocalDate startDate;
+
+    @Column(name = "end_date",nullable = false)
+    private LocalDate endDate;
+
     @Column(name = "ticket_time", nullable = false)
     private String ticketTime;
 
@@ -43,16 +51,34 @@ public class Concert {
     @Column(name = "api_concert_id", nullable = false)
     private String apiConcertId;
 
-    public Concert(ConcertPlace concertPlace, String name, String content, String ticketTime, int maxPrice, int minPrice, String apiConcertId) {
+    @Column(name = "poster_url",nullable = false,columnDefinition = "TEXT")
+    private String posterUrl;
+
+    private int viewCount;
+
+    private int likeCount;
+
+
+
+    public Concert(ConcertPlace concertPlace, String name, String content, LocalDate startDate, LocalDate endDate, String ticketTime, int maxPrice, int minPrice, String posterUrl,String apiConcertId) {
         this.concertPlace = concertPlace;
         this.name = name;
         this.content = content;
         this.ticketTime = ticketTime;
+        this.startDate = startDate;
+        this.endDate = endDate;
         this.createdDate = LocalDateTime.now();
         this.modifiedDate = LocalDateTime.now();
         this.maxPrice = maxPrice;
         this.minPrice = minPrice;
+        this.posterUrl = posterUrl;
+        this.likeCount = 0;
+        this.viewCount = 0;
         this.apiConcertId = apiConcertId;
+    }
+
+    public Concert(Long concertId) {
+        this.concertId = concertId;
     }
 
     public Concert update(ConcertPlace concertPlace, String content, String ticketTime, int maxPrice, int minPrice){
@@ -62,6 +88,20 @@ public class Concert {
         this.modifiedDate = LocalDateTime.now();
         this.maxPrice = maxPrice;
         this.minPrice = minPrice;
+        return this;
+    }
+
+
+    public Concert update(ConcertUpdateRequest concertUpdateRequest,ConcertPlace concertPlace) {
+        this.name = concertUpdateRequest.getName();
+        this.concertPlace = concertPlace;
+        this.content = concertUpdateRequest.getDescription();
+        this.maxPrice = concertUpdateRequest.getMaxPrice();
+        this.minPrice = concertUpdateRequest.getMinPrice();
+        this.posterUrl = concertUpdateRequest.getPosterUrl();
+        this.startDate = concertUpdateRequest.getStartDate();
+        this.endDate = concertUpdateRequest.getEndDate();
+        this.modifiedDate = LocalDateTime.now();
         return this;
     }
 

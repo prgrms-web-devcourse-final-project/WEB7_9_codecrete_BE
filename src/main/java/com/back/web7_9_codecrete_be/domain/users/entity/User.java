@@ -82,5 +82,29 @@ public class User {
     public void changePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void updateProfileImage(String profileImage) {
+        this.profileImage = profileImage;
+    }
+
+    public void softDelete() {
+        this.isDeleted = true;
+        this.status = UserStatus.DELETED;
+        this.deletedDate = LocalDateTime.now();
+    }
+
+    public void promoteToAdmin() {
+        this.role = Role.ADMIN;
+    }
+
+    public void restore() {
+        this.isDeleted = false;
+        this.status = UserStatus.ACTIVE;
+        this.deletedDate = null;
+    }
 }
 
