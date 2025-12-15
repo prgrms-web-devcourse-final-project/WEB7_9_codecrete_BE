@@ -4,6 +4,7 @@ import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concert.Conc
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceListResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertLikeResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOfficeElement;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.TicketOffice;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
@@ -98,7 +99,7 @@ public class ConcertController {
 
     @Operation(summary = "공연 좋아요 여부 확인")
     @GetMapping("isLike/{concertId}")
-    public RsData<Boolean> isLikeConcert(
+    public RsData<ConcertLikeResponse> isLikeConcert(
             @PathVariable long concertId
     ){
         User user = rq.getUser();

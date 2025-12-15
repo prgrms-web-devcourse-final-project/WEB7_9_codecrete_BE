@@ -2,6 +2,7 @@ package com.back.web7_9_codecrete_be.domain.concerts.service;
 
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertLikeResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertUpdateRequest;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOfficeElement;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
@@ -15,10 +16,12 @@ import com.back.web7_9_codecrete_be.domain.concerts.repository.TicketOfficeRepos
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
 import com.back.web7_9_codecrete_be.global.error.code.AuthErrorCode;
+import com.back.web7_9_codecrete_be.global.error.code.ConcertErrorCode;
 import com.back.web7_9_codecrete_be.global.error.code.ErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -72,14 +75,23 @@ public class ConcertService {
         return ticketOfficeList;
     }
 
-    public boolean isLikeConcert(Long concertId,User user) {
+    public ConcertLikeResponse isLikeConcert(Long concertId, User user) {
         Concert concert = concertRepository.getConcertByConcertId(concertId);
-        ConcertLike concertLike = concertLikeRepository.existsConcertLikeByConcertAndUser(concert,user);
-        return concertLike != null;
+        ConcertLikeResponse concertLikeResponse;
+        if(concertLikeRepository.existsConcertLikeByConcertAndUser(concert,user)){
+            concertLikeResponse = new ConcertLikeResponse(concert,true);
+        } else {
+            concertLikeResponse = new ConcertLikeResponse(concert,false);
+        }
+
+        return concertLikeResponse;
     }
 
     public void likeConcert(long concertId, User user) {
         Concert concert = concertRepository.findById(concertId).orElseThrow();
+        if(concertLikeRepository.existsConcertLikeByConcertAndUser(concert,user)){
+            throw new BusinessException(ConcertErrorCode.LIKE_CONFLICT);
+        }
         ConcertLike concertLike = new ConcertLike(concert, user);
         concertLikeRepository.save(concertLike);
     }
@@ -87,6 +99,9 @@ public class ConcertService {
     public void dislikeConcert(long concertId, User user) {
         Concert concert = concertRepository.findById(concertId).orElseThrow();
         ConcertLike concertLike = concertLikeRepository.findConcertLikeByConcertAndUser(concert, user);
+        if(concertLike == null){
+            throw new BusinessException(ConcertErrorCode.NOT_FOUND_CONCERTLIKE);
+        }
         concertLikeRepository.delete(concertLike);
     }
 
