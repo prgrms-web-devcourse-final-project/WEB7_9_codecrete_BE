@@ -28,6 +28,10 @@ public class EmailService {
     @Value("${mailgun.from}")
     private String fromEmail;
 
+    // 임시 복구 링크 기본 URL
+    // TODO: 프론트 도메인 확정 시 application.yml로 분리 예정
+    private String restoreBaseUrl = "https://example.com/users/restore";
+
     private static final String CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int CODE_LENGTH = 6;
     private static final int TTL_SECONDS = 300;
@@ -129,6 +133,21 @@ public class EmailService {
                 """.formatted(newPassword);
 
         sendEmail(email, "[NCB] 임시 비밀번호 안내", content);
+    }
+
+    public void sendRestoreLink(String email, String token) {
+        String link = restoreBaseUrl + "?token=" + token;
+
+        String content = """
+                안녕하세요. NCB입니다.
+
+                아래 링크를 클릭하시면 계정 복구가 완료됩니다.
+                (링크는 15분간 유효합니다.)
+
+                %s
+                """.formatted(link);
+
+        sendEmail(email, "[NCB] 계정 복구 안내", content);
     }
 
     @Transactional
