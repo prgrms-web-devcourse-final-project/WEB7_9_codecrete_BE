@@ -104,23 +104,7 @@ public class KopisApiService {
             }
 
             //콘서트 최고 금액, 최저 금액 처리.
-            String price = concertDetail.getConcertPrice();
-            String[] bits = price.split(" ");
-            int maxPrice = 0;
-            int minPrice = Integer.MAX_VALUE;
-            if (bits.length == 1) {
-                minPrice = 0;
-            } else {
-                for (String bit : bits) {
-                    bit = bit.replaceAll(",", "");
-                    if (bit.endsWith("원")) {
-                        bit = bit.replaceAll("원", "");
-                        maxPrice = Math.max(Integer.parseInt(bit), maxPrice);
-                        minPrice = Math.min(Integer.parseInt(bit), minPrice);
-                    }
-                }
-            }
-
+            TicketPrice ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
 
             // 콘서트 저장
             Concert concert = new Concert(
@@ -130,8 +114,8 @@ public class KopisApiService {
                     dateStringToDateTime(concertDetail.getStartDate()),
                     dateStringToDateTime(concertDetail.getEndDate()),
                     "",
-                    maxPrice,
-                    minPrice,
+                    ticketPrice.maxPrice,
+                    ticketPrice.minPrice,
                     concertDetail.getPosterUrl(),
                     concertDetail.getApiConcertId()
             );
@@ -149,13 +133,13 @@ public class KopisApiService {
                 ticketOfficeRepository.save(to);
             }
             log.info("Concert saved: " + savedConcert);
-
             Thread.sleep(300);
         }
         log.info(totalConcertsList.size() + "개의 공연 데이터 저장 완료!");
         return plr;
     }
 
+    // 매주 월요일 새벽 2시 기준으로 데이터 갱신
     @Scheduled(cron = "0 0 2 * * Mon")
     public void updateConcertData() throws InterruptedException {  // 1주일 단위로 추가된 공연을 더하기
         LocalDate weekBefore = LocalDate.now().minusDays(8);
@@ -198,22 +182,7 @@ public class KopisApiService {
             }
 
             //콘서트 최고 금액, 최저 금액 처리.
-            String price = concertDetail.getConcertPrice();
-            String[] bits = price.split(" ");
-            int maxPrice = 0;
-            int minPrice = Integer.MAX_VALUE;
-            if (bits.length == 1) {
-                minPrice = 0;
-            } else {
-                for (String bit : bits) {
-                    bit = bit.replaceAll(",", "");
-                    if (bit.endsWith("원")) {
-                        bit = bit.replaceAll("원", "");
-                        maxPrice = Math.max(Integer.parseInt(bit), maxPrice);
-                        minPrice = Math.min(Integer.parseInt(bit), minPrice);
-                    }
-                }
-            }
+            TicketPrice  ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
 
             // 콘서트 저장
             Concert concert = concertRepository.getConcertByApiConcertId(concertDetail.getApiConcertId());
@@ -225,8 +194,8 @@ public class KopisApiService {
                         dateStringToDateTime(concertDetail.getStartDate()),
                         dateStringToDateTime(concertDetail.getEndDate()),
                         "",
-                        maxPrice,
-                        minPrice,
+                        ticketPrice.maxPrice,
+                        ticketPrice.minPrice,
                         concertDetail.getPosterUrl(),
                         concertDetail.getApiConcertId()
                 );
@@ -235,8 +204,8 @@ public class KopisApiService {
                         concertPlace,
                         concertDetail.getConcertDescription(),
                         "",
-                        maxPrice,
-                        minPrice
+                        ticketPrice.maxPrice,
+                        ticketPrice.minPrice
                 );
             }
 
@@ -313,6 +282,8 @@ public class KopisApiService {
         return performanceListResponse;
     }
 
+
+    //콘서트 목록을 조회합니다.
     private ConcertListResponse getConcertListResponse(String serviceKey, LocalDate sdate, LocalDate edate, int page, LocalDate afterDate) {
         ConcertListResponse performanceListResponse;
         performanceListResponse = restClient.get()
@@ -332,6 +303,7 @@ public class KopisApiService {
     }
 
 
+    //콘서트 상세를 조회합니다.
     private ConcertDetailResponse getConcertDetailResponse(String serviceKey, String concertApiId) {
         ConcertDetailResponse concertDetailResponse;
         concertDetailResponse = restClient.get()
@@ -345,6 +317,7 @@ public class KopisApiService {
     }
 
 
+    // 콘서트 장소 목록을 조회합니다.
     private ConcertPlaceListResponse getConcertPlaceListResponse(String serviceKey, int page) {
         return restClient.get()
                 .uri(uriBuilder ->
@@ -356,6 +329,20 @@ public class KopisApiService {
                 ).retrieve().body(ConcertPlaceListResponse.class);
     }
 
+    // 콘서트 장소 목록을 이름 기준으로 조회합니다.
+    private ConcertPlaceListResponse getConcertPlaceListResponseByName(String serviceKey, String name, int page){
+        return restClient.get()
+                .uri(uriBuilder ->
+                        uriBuilder.path("/prfplc")
+                                .queryParam("service", serviceKey)
+                                .queryParam("cpage", page)
+                                .queryParam("rows", 100)
+                                .queryParam("shprfnmfct", name)
+                                .build()
+                ).retrieve().body(ConcertPlaceListResponse.class);
+    }
+
+    //콘서트 장소 상세를 조회합니다.
     private ConcertPlaceDetailResponse getConcertPlaceDetailResponse(String serviceKey, String concertPlaceId) {
         return restClient.get()
                 .uri(uriBuilder ->
@@ -365,11 +352,38 @@ public class KopisApiService {
                 ).retrieve().body(ConcertPlaceDetailResponse.class);
     }
 
+    // API에서 출력하는 날짜 문자열을 LocalDate 객체로 변환
     private LocalDate dateStringToDateTime(String dateString) {
+        // "yyyy.MM.dd" 형식으로 들어옴
         String [] split = dateString.split("\\.");
         int year = Integer.parseInt(split[0]);
         int month = Integer.parseInt(split[1]);
         int day = Integer.parseInt(split[2]);
         return LocalDate.of(year, month, day);
+    }
+
+    // 가격을 저장할 내부 객체
+    private class TicketPrice{
+        int maxPrice;
+        int minPrice;
+
+        // 문자열 가격 정보를 받아서 변환 후 저장.
+        public TicketPrice(String price) {
+            String[] bits = price.split(" ");
+            int maxPrice = 0;
+            int minPrice = Integer.MAX_VALUE;
+            if (bits.length == 1) {
+                minPrice = 0;
+            } else {
+                for (String bit : bits) {
+                    bit = bit.replaceAll(",", "");
+                    if (bit.endsWith("원")) {
+                        bit = bit.replaceAll("원", "");
+                        this.maxPrice = Math.max(Integer.parseInt(bit), maxPrice);
+                        this.minPrice = Math.min(Integer.parseInt(bit), minPrice);
+                    }
+                }
+            }
+        }
     }
 }
