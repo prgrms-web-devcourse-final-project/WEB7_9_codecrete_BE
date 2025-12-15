@@ -33,4 +33,14 @@ public class Location {
     private double lat;
 
     private double lon;
+
+    public double setlat(double lat){
+        this.lat = lat;
+        return lat;
+    }
+
+    public double setlon(double lon){
+        this.lon = lon;
+        return lon;
+    }
 }
