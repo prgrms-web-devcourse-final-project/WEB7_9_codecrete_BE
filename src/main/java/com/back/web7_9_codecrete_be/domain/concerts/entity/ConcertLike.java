@@ -4,6 +4,9 @@ import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -15,11 +18,14 @@ public class ConcertLike {
     @Column(name = "concert_like_id")
     private Long concertLikeId;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     private Concert concert;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     private User user;
+
+    @CreationTimestamp
+    private LocalDateTime createdAt;
 
     public ConcertLike(Concert concert, User user) {
         this.concert = concert;
