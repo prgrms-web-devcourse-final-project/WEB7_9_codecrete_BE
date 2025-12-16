@@ -4,6 +4,7 @@ import com.back.web7_9_codecrete_be.domain.artists.dto.request.UpdateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistListResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
+import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Genre;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistLikeRepository;
@@ -30,7 +31,7 @@ public class ArtistService {
     }
 
     @Transactional
-    public Artist createArtist(String artistName, String artistGroup, String artistType, String genreName) {
+    public Artist createArtist(String artistName, String artistGroup, ArtistType artistType, String genreName) {
         Genre genre = genreService.findByGenreName(genreName);
         if(artistRepository.existsByArtistName(artistName) || artistRepository.existsByNameKo(artistName)) {
             throw new BusinessException(ArtistErrorCode.ARTIST_ALREADY_EXISTS);
@@ -85,8 +86,8 @@ public class ArtistService {
             changed = true;
         }
 
-        if (req.artistType() != null && !req.artistType().isBlank()) {
-            artist.changeType(req.artistType().trim());
+        if (req.artistType() != null) {
+            artist.changeType(req.artistType());
             changed = true;
         }
 

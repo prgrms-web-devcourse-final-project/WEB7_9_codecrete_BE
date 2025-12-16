@@ -43,7 +43,7 @@ public class ArtistsController {
     public RsData<Void> create(
             @RequestBody CreateRequest reqBody
     ) {
-        artistService.createArtist(reqBody.artistName(), reqBody.artistGroup(), reqBody.artistGroup(), reqBody.genreName());
+        artistService.createArtist(reqBody.artistName(), reqBody.artistGroup(), reqBody.artistType(), reqBody.genreName());
         return RsData.success("아티스트 생성이 완료되었습니다.", null);
     }
 

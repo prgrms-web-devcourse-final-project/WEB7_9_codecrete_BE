@@ -4,6 +4,8 @@ import com.back.web7_9_codecrete_be.domain.artists.dto.response.AlbumResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.RelatedArtistResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.TopTrackResponse;
+import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
+import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Genre;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.GenreRepository;
@@ -19,7 +21,6 @@ import se.michaelthelin.spotify.SpotifyApi;
 import se.michaelthelin.spotify.enums.AlbumType;
 import se.michaelthelin.spotify.exceptions.detailed.NotFoundException;
 import se.michaelthelin.spotify.model_objects.specification.AlbumSimplified;
-import se.michaelthelin.spotify.model_objects.specification.Artist;
 import se.michaelthelin.spotify.model_objects.specification.Image;
 import se.michaelthelin.spotify.model_objects.specification.Paging;
 import se.michaelthelin.spotify.model_objects.specification.Track;
@@ -63,7 +64,7 @@ public class SpotifyService {
                 int offset = 0;
 
                 while (totalSaved < targetCount) {
-                    Paging<Artist> paging = api.searchArtists(q)
+                    Paging<se.michaelthelin.spotify.model_objects.specification.Artist> paging = api.searchArtists(q)
                                     .limit(limit)
                                     .offset(offset)
                                     .build()
@@ -85,10 +86,10 @@ public class SpotifyService {
                         String mainGenreName = pickMainGenreName(spotifyArtist);
                         Genre genre = findOrCreateGenreByName(mainGenreName, null);
 
-                        String artistType = inferArtistType(spotifyArtist);
+                        String artistTypeStr = inferArtistType(spotifyArtist);
+                        ArtistType artistType = ArtistType.valueOf(artistTypeStr);
 
-                        com.back.web7_9_codecrete_be.domain.artists.entity.Artist artistEntity =
-                                new com.back.web7_9_codecrete_be.domain.artists.entity.Artist(
+                        Artist artistEntity = new Artist(
                                 spotifyId,
                                 name.trim(),
                                 null,        // artistGroup
@@ -127,7 +128,7 @@ public class SpotifyService {
             "korean indie", "korean rock"
     );
 
-    private boolean isLikelyKoreanMusic(Artist a) {
+    private boolean isLikelyKoreanMusic(se.michaelthelin.spotify.model_objects.specification.Artist a) {
         String[] genres = a.getGenres();
         if (genres != null) {
             for (String g : genres) {
@@ -142,7 +143,7 @@ public class SpotifyService {
         return name != null && name.matches(".*[가-힣].*");
     }
 
-    private String pickMainGenreName(Artist a) {
+    private String pickMainGenreName(se.michaelthelin.spotify.model_objects.specification.Artist a) {
         String[] genres = a.getGenres();
         if (genres == null || genres.length == 0) return "k-pop";
 
@@ -161,7 +162,7 @@ public class SpotifyService {
         return "k-pop";
     }
 
-    private String inferArtistType(Artist a) {
+    private String inferArtistType(se.michaelthelin.spotify.model_objects.specification.Artist a) {
         String[] genres = a.getGenres();
         if (genres != null) {
             for (String g : genres) {
@@ -182,7 +183,7 @@ public class SpotifyService {
     public ArtistDetailResponse getArtistDetail(
             String spotifyArtistId,
             String artistGroup,
-            String artistType,
+            ArtistType artistType,
             long likeCount,
             long artistId,
             Long genreId
@@ -190,7 +191,7 @@ public class SpotifyService {
         try {
             SpotifyApi api = spotifyClient.getAuthorizedApi();
 
-            Artist artist = api.getArtist(spotifyArtistId).build().execute(); // 메인 정보는 실패 시 예외 발생
+            se.michaelthelin.spotify.model_objects.specification.Artist artist = api.getArtist(spotifyArtistId).build().execute(); // 메인 정보는 실패 시 예외 발생
 
             Track[] topTracks = safeGetTopTracks(api, spotifyArtistId);
             Paging<AlbumSimplified> albums = safeGetAlbums(api, spotifyArtistId);
@@ -210,8 +211,8 @@ public class SpotifyService {
                     pickImageUrl(artist.getImages()),
                     likeCount,
                     albums != null ? albums.getTotal() : 0,
-                    artist.getPopularity(), // (너가 별점으로 바꾸고 싶으면 여기 가공)
-                    "", // Spotify에서는 설명을 제공하지 않아 공란 처리
+                    artist.getPopularity(), // 별점으로 수정
+                    "", // 설명
                     toAlbumResponses(albums != null ? albums.getItems() : null, spotifyArtistId),
                     toTopTrackResponses(topTracks),
                     relatedResponses
@@ -252,14 +253,9 @@ public class SpotifyService {
         }
     }
 
-    /**
-     * ✅ related artists
-     * - 정상 호출
-     * - related가 비거나 404면 fallback(장르 기반 검색)으로 대체
-     */
     private List<RelatedArtistResponse> safeGetRelated(
             SpotifyApi api,
-            Artist me,
+            se.michaelthelin.spotify.model_objects.specification.Artist me,
             String artistGroup,
             long artistId,
             Long genreId
@@ -271,7 +267,7 @@ public class SpotifyService {
         }
 
         try {
-            Artist[] related = api.getArtistsRelatedArtists(id).build().execute();
+            se.michaelthelin.spotify.model_objects.specification.Artist[] related = api.getArtistsRelatedArtists(id).build().execute();
             if (related != null && related.length > 0) {
                 log.info("Spotify related artists fetched: size={} spotifyArtistId={}", related.length, id);
                 return toRelatedArtistResponses(related);
@@ -365,7 +361,7 @@ public class SpotifyService {
                 .collect(toList());
     }
 
-    private List<RelatedArtistResponse> toRelatedArtistResponses(Artist[] artists) {
+    private List<RelatedArtistResponse> toRelatedArtistResponses(se.michaelthelin.spotify.model_objects.specification.Artist[] artists) {
         if (artists == null) return List.of();
         return Stream.of(artists)
                 .filter(Objects::nonNull)

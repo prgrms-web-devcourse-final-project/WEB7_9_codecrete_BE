@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.artists.dto.request;
 
+import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -12,7 +13,7 @@ public record CreateRequest(
         String artistGroup,
 
         @NotNull(message = "아티스트 타입은 필수로 입력해야합니다(SOLO or GROUP)")
-        String artistType,
+        ArtistType artistType,
 
         @NotNull(message = "장르는 필수로 입력해야합니다.")
         @Size(max = 30, message = "장르는 30자를 넘길 수 없습니다.")
