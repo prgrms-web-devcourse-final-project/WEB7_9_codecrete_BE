@@ -34,7 +34,9 @@ jobs:
       TMAP_API_KEY: ${{ secrets.TMAP_API_KEY }}
       KAKAOMAP_API_KEY: ${{ secrets.KAKAOMAP_API_KEY }}
 
-
+      KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+      KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+      KAKAO_REDIRECT_URI: ${{ secrets.KAKAO_REDIRECT_URI }}
 
     steps:
       - name: Checkout
