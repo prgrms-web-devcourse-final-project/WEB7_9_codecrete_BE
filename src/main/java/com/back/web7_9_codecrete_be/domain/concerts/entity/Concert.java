@@ -4,6 +4,8 @@ import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertUpdateReq
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,8 +35,8 @@ public class Concert {
     @Column(name = "end_date",nullable = false)
     private LocalDate endDate;
 
-    @Column(name = "ticket_time", nullable = false)
-    private String ticketTime;
+    @Column(name = "ticket_time", nullable = true)
+    private LocalDateTime ticketTime;
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
@@ -60,7 +62,7 @@ public class Concert {
 
 
 
-    public Concert(ConcertPlace concertPlace, String name, String content, LocalDate startDate, LocalDate endDate, String ticketTime, int maxPrice, int minPrice, String posterUrl,String apiConcertId) {
+    public Concert(ConcertPlace concertPlace, String name, String content, LocalDate startDate, LocalDate endDate, LocalDateTime ticketTime, int maxPrice, int minPrice, String posterUrl,String apiConcertId) {
         this.concertPlace = concertPlace;
         this.name = name;
         this.content = content;
@@ -81,7 +83,7 @@ public class Concert {
         this.concertId = concertId;
     }
 
-    public Concert update(ConcertPlace concertPlace, String content, String ticketTime, int maxPrice, int minPrice){
+    public Concert update(ConcertPlace concertPlace, String content, LocalDateTime ticketTime, int maxPrice, int minPrice){
         this.concertPlace = concertPlace;
         this.content = content;
         this.ticketTime = ticketTime;
@@ -102,6 +104,11 @@ public class Concert {
         this.startDate = concertUpdateRequest.getStartDate();
         this.endDate = concertUpdateRequest.getEndDate();
         this.modifiedDate = LocalDateTime.now();
+        return this;
+    }
+
+    public Concert ticketTimeSet(LocalDateTime ticketTime){
+        this.ticketTime = ticketTime;
         return this;
     }
 

@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ArtistLikeRepository extends JpaRepository<ArtistLike, Long> {
+    long countByArtistId(Long artistId);
 }

@@ -6,8 +6,10 @@ import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceListElement;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceListResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
+import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertImage;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertPlace;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.TicketOffice;
+import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertImageRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertPlaceRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.TicketOfficeRepository;
@@ -38,6 +40,8 @@ public class KopisApiService {
 
     private final TicketOfficeRepository ticketOfficeRepository;
 
+    private final ConcertImageRepository imageRepository;
+
     @Value("${kopis.api-key}")
     private String serviceKey;
     private LocalDate sdate = LocalDate.of(2025, 12, 1);
@@ -45,10 +49,11 @@ public class KopisApiService {
 
     private final RestClient restClient;
 
-    public KopisApiService(ConcertRepository concertRepository, ConcertPlaceRepository placeRepository, TicketOfficeRepository ticketOfficeRepository) {
+    public KopisApiService(ConcertRepository concertRepository, ConcertPlaceRepository placeRepository, TicketOfficeRepository ticketOfficeRepository,ConcertImageRepository imageRepository) {
         this.concertRepository = concertRepository;
         this.placeRepository = placeRepository;
         this.ticketOfficeRepository = ticketOfficeRepository;
+        this.imageRepository = imageRepository;
         this.restClient = RestClient.builder()
                 .baseUrl("https://kopis.or.kr/openApi/restful")
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML_VALUE)
@@ -113,7 +118,7 @@ public class KopisApiService {
                     concertDetail.getConcertDescription(),
                     dateStringToDateTime(concertDetail.getStartDate()),
                     dateStringToDateTime(concertDetail.getEndDate()),
-                    "",
+                    null,
                     ticketPrice.maxPrice,
                     ticketPrice.minPrice,
                     concertDetail.getPosterUrl(),
@@ -132,6 +137,15 @@ public class KopisApiService {
                 );
                 ticketOfficeRepository.save(to);
             }
+
+            List<ConcertImage> concertImages = new ArrayList<>();
+            for(String imageUrl :  concertDetail.getConcertImageUrls()){
+                ConcertImage concertImage = new ConcertImage(savedConcert, imageUrl);
+                concertImages.add(concertImage);
+            }
+
+            imageRepository.saveAll(concertImages);
+
             log.info("Concert saved: " + savedConcert);
             Thread.sleep(300);
         }
@@ -193,7 +207,7 @@ public class KopisApiService {
                         concertDetail.getConcertDescription(),
                         dateStringToDateTime(concertDetail.getStartDate()),
                         dateStringToDateTime(concertDetail.getEndDate()),
-                        "",
+                        null,
                         ticketPrice.maxPrice,
                         ticketPrice.minPrice,
                         concertDetail.getPosterUrl(),
@@ -203,7 +217,7 @@ public class KopisApiService {
                 concert = concert.update(
                         concertPlace,
                         concertDetail.getConcertDescription(),
-                        "",
+                        null,
                         ticketPrice.maxPrice,
                         ticketPrice.minPrice
                 );
@@ -221,6 +235,14 @@ public class KopisApiService {
                 );
                 ticketOfficeRepository.save(to);
             }
+
+            List<ConcertImage> concertImages = new ArrayList<>();
+            for(String imageUrl :  concertDetail.getConcertImageUrls()){
+                ConcertImage concertImage = new ConcertImage(savedConcert, imageUrl);
+                concertImages.add(concertImage);
+            }
+            imageRepository.saveAll(concertImages);
+
             log.info("Concert saved: " + savedConcert);
 
             Thread.sleep(300);

@@ -3,6 +3,7 @@ package com.back.web7_9_codecrete_be.domain.plans.dto.response;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 
@@ -11,8 +12,9 @@ import java.time.LocalDateTime;
 public class PlanResponse {
     private Long id;
     private Long concertId;
+    private Long createdBy;
     private String title;
-    private String date;
+    private LocalDate planDate;
     private LocalDateTime createdDate;
     private LocalDateTime modifiedDate;
 }

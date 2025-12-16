@@ -1,18 +1,9 @@
 package com.back.web7_9_codecrete_be.domain.concerts.service;
 
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertLikeResponse;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertUpdateRequest;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.*;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOfficeElement;
-import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
-import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertLike;
-import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertPlace;
-import com.back.web7_9_codecrete_be.domain.concerts.entity.TicketOffice;
-import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertLikeRepository;
-import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertPlaceRepository;
-import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRepository;
-import com.back.web7_9_codecrete_be.domain.concerts.repository.TicketOfficeRepository;
+import com.back.web7_9_codecrete_be.domain.concerts.entity.*;
+import com.back.web7_9_codecrete_be.domain.concerts.repository.*;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
 import com.back.web7_9_codecrete_be.global.error.code.AuthErrorCode;
@@ -39,7 +30,8 @@ public class ConcertService {
 
     private final TicketOfficeRepository ticketOfficeRepository;
 
-    private final JsoupApiService jsoupApiService;
+    private final ConcertImageRepository concertImageRepository;
+
 
     public List<ConcertItem> getConcertsList(Pageable pageable) {
         return concertRepository.getConcertItems(pageable);
@@ -53,8 +45,19 @@ public class ConcertService {
         return concertRepository.getLikedConcertsList(pageable, user.getId());
     }
 
+    public List<ConcertItem> getNoTicketTimeConcertsList(Pageable pageable) {
+        return concertRepository.getNoTicketTimeConcertList(pageable);
+    }
+
     public ConcertDetailResponse getConcertDetail(long concertId) {
-        return concertRepository.getConcertDetailById(concertId);
+        ConcertDetailResponse concertDetailResponse = concertRepository.getConcertDetailById(concertId);
+        List<ConcertImage>  concertImages = concertImageRepository.getConcertImagesByConcert_ConcertId(concertId);
+        List<String> concertImageUrls = new ArrayList<>();
+        for(ConcertImage concertImage : concertImages){
+            concertImageUrls.add(concertImage.getImageUrl());
+        }
+        concertDetailResponse.setConcertImageUrls(concertImageUrls);
+        return concertDetailResponse;
     }
 
     // N+1 문제 발생해서 버림
@@ -116,6 +119,13 @@ public class ConcertService {
         concert.update(concertUpdateRequest, concertPlace);
         Concert updatedConcert = concertRepository.save(concert);
         return new ConcertItem(updatedConcert);
+    }
+
+    public ConcertDetailResponse setConcertTime(ConcertTicketTimeSetRequest concertTicketTimeSetRequest) {
+        Concert concert = concertRepository.findById(concertTicketTimeSetRequest.getConcertId()).orElseThrow();
+        concert.ticketTimeSet(concertTicketTimeSetRequest.getTicketTime());
+        Concert savedConcert = concertRepository.save(concert);
+        return concertRepository.getConcertDetailById(savedConcert.getConcertId());
     }
 
     public void deleteConcert(long concertId) {

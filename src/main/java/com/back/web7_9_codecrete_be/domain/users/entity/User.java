@@ -107,4 +107,3 @@ public class User {
         this.deletedDate = null;
     }
 }
-
