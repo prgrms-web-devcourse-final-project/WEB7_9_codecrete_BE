@@ -44,10 +44,33 @@ public class Artist {
         this.genre = genre;
     }
 
+    public Artist(String artistName, String artistGroup, String artistType, Genre genre) {
+        this.artistName = artistName;
+        this.artistGroup = artistGroup;
+        this.artistType = artistType;
+        this.genre = genre;
+    }
+
     public void updateProfile(String nameKo, String artistGroup, String artistType) {
         this.nameKo = nameKo;
         this.artistGroup = artistGroup;   // nullable
         this.artistType = artistType;     // "SOLO" / "GROUP"
+    }
+
+    public void changeName(String name) {
+        this.artistName = name;
+    }
+
+    public void changeGroup(String group) {
+        this.artistGroup = group;
+    }
+
+    public void changeType(String type) {
+        this.artistType = type;
+    }
+
+    public void changeGenre(Genre genre) {
+        this.genre = genre;
     }
 
 

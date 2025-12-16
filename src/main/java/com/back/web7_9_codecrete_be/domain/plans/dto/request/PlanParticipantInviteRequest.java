@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class PlanInviteRequest {
+public class PlanParticipantInviteRequest {
     @NotNull(message = "사용자 ID는 필수입니다.")
     private Long userId;
 }
