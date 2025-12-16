@@ -44,7 +44,7 @@ public class ArtistsController {
     @Operation(summary = "아티스트 생성", description = "아티스트를 등록합니다.")
     @PostMapping()
     public RsData<Void> create(
-            @RequestBody CreateRequest reqBody
+            @Valid @RequestBody CreateRequest reqBody
     ) {
         artistService.createArtist(reqBody.artistName(), reqBody.artistGroup(), reqBody.artistType(), reqBody.genreName());
         return RsData.success("아티스트 생성이 완료되었습니다.", null);
@@ -68,7 +68,7 @@ public class ArtistsController {
     @PatchMapping("/{id}")
     public RsData<Void> update(
             @PathVariable Long id,
-            @RequestBody UpdateRequest reqBody
+            @Valid @RequestBody UpdateRequest reqBody
     ) {
         artistService.updateArtist(id, reqBody);
         return RsData.success("아티스트 정보 수정을 완료했습니다.", null);

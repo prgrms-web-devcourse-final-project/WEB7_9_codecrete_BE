@@ -110,9 +110,8 @@ public class ArtistService {
         artistRepository.delete(artist);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<SearchResponse> search(String artistName) {
-
         List<Artist> artists =
                 artistRepository.findAllByArtistNameContainingIgnoreCaseOrNameKoContainingIgnoreCase(artistName, artistName);
 
