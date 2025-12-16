@@ -100,5 +100,10 @@ public class User {
     public void promoteToAdmin() {
         this.role = Role.ADMIN;
     }
-}
 
+    public void restore() {
+        this.isDeleted = false;
+        this.status = UserStatus.ACTIVE;
+        this.deletedDate = null;
+    }
+}

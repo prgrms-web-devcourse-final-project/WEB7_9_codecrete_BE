@@ -8,8 +8,13 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 @RequiredArgsConstructor
@@ -36,6 +41,10 @@ public class SecurityConfig {
                 // H2 Console 설정
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()))
 
+                // 세션 관리 설정 - Stateless
+                .sessionManagement((session) -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
                 // Authorization 설정
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -46,6 +55,13 @@ public class SecurityConfig {
                                 "/api/v1/concerts/**",     // concert 정보 조회 도메인
                                 "/api/v1/artists/**"    // artist 정보 저장 도메인(임시)
                         ).permitAll()
+
+                        // ADMIN 전용
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+
+                        // USER, ADMIN 허용
+                        .requestMatchers("/api/v1/users/**").hasAnyRole("USER", "ADMIN")
+
                         .anyRequest().authenticated()
                 )
 
@@ -60,5 +76,24 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
+    }
+
+    // CORS 설정(로컬 프론트 통신 허용)
+    @Bean
+    public UrlBasedCorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration =new CorsConfiguration();
+
+        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+
+        configuration.setAllowedHeaders(List.of("*"));
+
+        //쿠키 자동으로 넘어가게 설정
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", configuration);
+
+        return source;
     }
 }

@@ -73,4 +73,18 @@ public class UserController {
 
         return RsData.success("회원 탈퇴가 완료되었습니다.");
     }
+
+    @Operation(summary = "계정 복구 링크 발송", description = "이메일로 계정 복구 링크를 발송합니다.")
+    @PostMapping("/restore/request")
+    public RsData<?> requestRestore(@RequestParam String email) {
+        userService.sendRestoreLink(email);
+        return RsData.success("계정 복구 링크가 이메일로 발송되었습니다.");
+    }
+
+    @Operation(summary = "계정 복구 (복구 링크)", description = "이메일로 받은 복구 링크를 통해 계정을 복구합니다.")
+    @GetMapping("/restore/confirm")
+    public RsData<?> restoreByToken(@RequestParam String token) {
+        userService.restoreByToken(token);
+        return RsData.success("계정이 성공적으로 복구되었습니다.");
+    }
 }

@@ -65,7 +65,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(auth);
 
         } catch (BusinessException ex) {
-            // Refresh도 실패 → 익명 사용자 유지
+            // 재발급 실패 시 SecurityContext 비우기
+            SecurityContextHolder.clearContext();
             log.debug("Access Token 재발급 실패: {}", ex.getErrorCode());
         }
 

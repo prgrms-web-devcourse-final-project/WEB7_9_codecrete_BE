@@ -5,6 +5,7 @@ import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertPlace;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertTime;
+import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -66,6 +67,35 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     );
 
     @Query("""
+    SELECT 
+    new com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem(
+    c.concertId as id,
+    c.name as name,
+    c.concertPlace.placeName as placeName,
+    c.startDate as startDate,
+    c.endDate as endDate,
+    c.posterUrl as posterUrl,
+    c.maxPrice as maxPrice,
+    c.minPrice as minPrice,
+    c.viewCount as viewCount,
+    c.likeCount as likeCount
+    )
+    FROM 
+    Concert c,
+    ConcertLike cl
+    WHERE 
+    c.concertId = cl.concert.concertId
+    AND 
+    cl.user.id = :userId
+    ORDER BY
+    cl.createdAt
+    DESC 
+"""
+    )
+    List<ConcertItem> getLikedConcertsList(Pageable pageable,
+                                           @Param("userId") Long userId);
+
+    @Query("""
     SELECT
     new com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse(
     c.concertId as concertId,
@@ -86,4 +116,8 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     c.concertId = :concertId
 """)
     ConcertDetailResponse getConcertDetailById(@Param("concertId")long concertId);
+
+
+
+    Concert getConcertByConcertId(Long concertId);
 }

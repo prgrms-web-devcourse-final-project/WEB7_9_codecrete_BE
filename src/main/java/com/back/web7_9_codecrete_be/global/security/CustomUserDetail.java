@@ -3,10 +3,11 @@ package com.back.web7_9_codecrete_be.global.security;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 
 @Getter
 public class CustomUserDetail implements UserDetails {
@@ -19,8 +20,9 @@ public class CustomUserDetail implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // 현재 권한 시스템 없으면 빈 리스트
-        return Collections.emptyList();
+        return List.of(
+                new SimpleGrantedAuthority("ROLE_" + user.getRole())
+        );
     }
 
     @Override
