@@ -54,7 +54,7 @@ public class ConcertController {
     }
 
     // todo: 내용 구현 필요
-    @Operation(summary = "공연 예매일 기준 조회", description = "현 시간을 기준으로 예매시간을 내림차순으로 출력하는 공연 목록을 조회합니다.")
+    @Operation(summary = "공연 예매일 기준 조회(구현 전)", description = "현 시간을 기준으로 예매시간을 내림차순으로 출력하는 공연 목록을 조회합니다.")
     @GetMapping("upComingTicketingList")
     public RsData<List<ConcertItem>> getUpComingTicketingList (
             @Schema(description = "페이징 처리 또는 무한 스크롤 구현에 사용할 Pageable 객체입니다.")
@@ -123,7 +123,7 @@ public class ConcertController {
     }
 
     // todo : 내용 구현 필요
-    @Operation(summary = "공연 검색", description = "공연 정보를 검색합니다.")
+    @Operation(summary = "공연 검색(구현 전)", description = "공연 정보를 검색합니다.")
     @GetMapping("search")
     public RsData<List<ConcertItem>> searchConcert(
             @Schema(description = "공연 정보 검색 키워드입니다.")

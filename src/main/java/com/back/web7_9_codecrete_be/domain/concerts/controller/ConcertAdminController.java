@@ -71,7 +71,7 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
     }
 
     // todo: 내용 구현 필요
-    @Operation(summary = "개별 공연 API통한 갱신",description = "개별 공연에 대해서 공연 예술 통합망(Kopis)을 통해 데이터를 조회하고 해당 데이터를 갱신합니다.")
+    @Operation(summary = "개별 공연 API통한 갱신(구현 전)",description = "개별 공연에 대해서 공연 예술 통합망(Kopis)을 통해 데이터를 조회하고 해당 데이터를 갱신합니다.")
     @PatchMapping("updateConcertByKopisAPI/{concertId}")
     public RsData<ConcertDetailResponse> updateConcertByKopisAPI(
             @Schema(description = "갱신 대상이 될 공연의 ID 값입니다.")
@@ -81,7 +81,7 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
     }
 
     // todo: 내용 구현 필요, 결과 DTO 따로 만들기.
-    @Operation(summary = "공연 목록 갱신", description = "전체 공연에 대해서 공연 예술 통합망(Kopis)을 통해 데이터를 조회하고, 바뀐 내용을 갱신하고 추가된 공연을 가져옵니다.")
+    @Operation(summary = "공연 목록 갱신(구현 전)", description = "전체 공연에 대해서 공연 예술 통합망(Kopis)을 통해 데이터를 조회하고, 바뀐 내용을 갱신하고 추가된 공연을 가져옵니다.")
     @PostMapping("updateConcert")
     public RsData<Void> updateConcert(){
         return null;
