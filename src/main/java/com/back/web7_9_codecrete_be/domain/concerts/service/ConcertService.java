@@ -49,6 +49,14 @@ public class ConcertService {
         return concertRepository.getNoTicketTimeConcertList(pageable);
     }
 
+    public List<ConcertItem> getConcertListByKeyword(String keyword, Pageable pageable) {
+        if(keyword == null || keyword.isEmpty()){
+
+        }
+
+        return concertRepository.getConcertItemsByKeyword(keyword, pageable);
+    }
+
     public ConcertDetailResponse getConcertDetail(long concertId) {
         ConcertDetailResponse concertDetailResponse = concertRepository.getConcertDetailById(concertId);
         List<ConcertImage>  concertImages = concertImageRepository.getConcertImagesByConcert_ConcertId(concertId);

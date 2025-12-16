@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.converters.models.PageableAsQueryParam;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.swing.*;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("api/v1/concerts/")
 @RequiredArgsConstructor
@@ -122,17 +124,17 @@ public class ConcertController {
         return RsData.success(concertService.isLikeConcert(concertId, user));
     }
 
-    // todo : 내용 구현 필요
-    @Operation(summary = "공연 검색(구현 전)", description = "공연 정보를 검색합니다.")
+    // todo : 제목으로 만 검색 기능 구현 -> 추후 아티스트 정보랑 연동 <- 중요 / 정렬 기준? 최신등록순 정렬
+    @Operation(summary = "공연 검색", description = "공연 정보를 검색합니다.")
     @GetMapping("search")
     public RsData<List<ConcertItem>> searchConcert(
             @Schema(description = "공연 정보 검색 키워드입니다.")
-            @RequestParam String keyword
+            @RequestParam String keyword,
+            @Schema(description = "페이징 처리 또는 무한 스크롤 구현에 쓸 Pageable 객체입니다.")
+            Pageable pageable
+
     ){
-        return null;
+        return RsData.success(concertService.getConcertListByKeyword(keyword,pageable));
     }
-
-
-
 
 }

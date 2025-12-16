@@ -124,6 +124,33 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     )
     List<ConcertItem> getLikedConcertsList(Pageable pageable,
                                            @Param("userId") Long userId);
+    @Query("""
+    SELECT
+    new com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem(
+    c.concertId as id,
+    c.name as name,
+    c.concertPlace.placeName as placeName,
+    c.ticketTime as ticketTime,
+    c.startDate as startDate,
+    c.endDate as endDate,
+    c.posterUrl as posterUrl,
+    c.maxPrice as maxPrice,
+    c.minPrice as minPrice,
+    c.viewCount as viewCount,
+    c.likeCount as likeCount
+    )
+    FROM 
+    Concert c
+    WHERE 
+    c.name LIKE %:keyword%
+    ORDER BY 
+    c.concertId
+    DESC
+""")
+    List<ConcertItem> getConcertItemsByKeyword(
+            @Param("keyword")
+            String keyword,
+            Pageable pageable);
 
     @Query("""
     SELECT
