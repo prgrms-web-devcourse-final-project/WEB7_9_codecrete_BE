@@ -25,6 +25,25 @@ public class KakaoLocalService {
                         .queryParam("y", lat)
                         .queryParam("x", lng)
                         .queryParam("radius", 1000)  // 반경 1km
+                        .queryParam("sort", "distance")
+                        .build()
+                )
+                .retrieve()
+                .bodyToMono(KakaoLocalResponse.class)
+                .block() // 동기 호출 (필요하면 비동기로 변경 가능)
+                .getDocuments();
+    }
+    public List<KakaoLocalResponse.Document> searchNearbyCafes(double lat, double lng) {
+
+        return kakaoWebClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v2/local/search/keyword.json")
+                        .queryParam("query", "카페")
+                        .queryParam("category_group_code", "CE7")
+                        .queryParam("y", lat)
+                        .queryParam("x", lng)
+                        .queryParam("radius", 1000)  // 반경 1km
+                        .queryParam("sort", "distance")
                         .build()
                 )
                 .retrieve()
