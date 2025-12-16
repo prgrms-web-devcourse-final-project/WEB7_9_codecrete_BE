@@ -14,6 +14,7 @@ import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.ArtistErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import com.back.web7_9_codecrete_be.global.rq.Rq;
+import lombok.AccessLevel;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public class ArtistService {
 
     private final SpotifyService spotifyService;
@@ -139,6 +140,17 @@ public class ArtistService {
         }
         artistLikeRepository.save(new ArtistLike(artist, user));
         artist.increaseLikeCount();
+    }
+
+    @Transactional
+    public void deleteLikeArtist(Long artistId) {
+        User user = rq.getUser();
+        Artist artist = artistRepository.findById(artistId)
+                .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
+        ArtistLike likes = artistLikeRepository.findByArtistAndUser(artist, user)
+                .orElseThrow(() -> new BusinessException(ArtistErrorCode.LIKES_NOT_FOUND));
+        artistLikeRepository.delete(likes);
+        artist.decreaseLikeCount();
     }
 
 }

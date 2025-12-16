@@ -103,9 +103,12 @@ public class ArtistsController {
 
     @Operation(summary = "아티스트 찜 해체", description = "id 에 해당하는 아티스트에게 등록했던 찜을 해제합니다.")
     @DeleteMapping("/likes/{id}")
-    public void deleteArtistLikes(
+    public RsData<Void> deleteArtistLikes(
             @PathVariable Long id
-    ) {}
+    ) {
+        artistService.deleteLikeArtist(id);
+        return RsData.success("아티스트 찜 해제 성공", null);
+    }
 
     @Operation(summary = "개인화된 공연 리스트 생성", description = "유저가 찜한 아티스트를 기반으로 공연 리스트를 생성합니다.")
     @PostMapping("/list")

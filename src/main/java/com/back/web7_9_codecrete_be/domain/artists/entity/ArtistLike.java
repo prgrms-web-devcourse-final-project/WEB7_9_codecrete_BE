@@ -3,11 +3,13 @@ package com.back.web7_9_codecrete_be.domain.artists.entity;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
+@NoArgsConstructor
 @Table(name = "artist_like")
 public class ArtistLike {
     @Id
@@ -27,6 +29,7 @@ public class ArtistLike {
     private Artist artist;
 
     public ArtistLike(Artist artist, User user) {
+        this.createdDate = LocalDateTime.now();
         this.artist = artist;
         this.user = user;
     }

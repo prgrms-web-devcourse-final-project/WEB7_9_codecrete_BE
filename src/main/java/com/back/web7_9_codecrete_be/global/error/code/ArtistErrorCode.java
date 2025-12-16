@@ -16,7 +16,8 @@ public enum ArtistErrorCode implements ErrorCode {
     SPOTIFY_NOT_FOUND(HttpStatus.NOT_FOUND, "AT-104", "존재하지 않는 Spotify Artist Key 입니다."),
     INVALID_UPDATE_REQUEST(HttpStatus.BAD_REQUEST, "AT-105", "수정할 내용이 없습니다."),
     INVALID_SEARCH_KEYWORD(HttpStatus.BAD_REQUEST, "AT-106", "입력 값이 없습니다."),
-    LIKES_ALREADY_EXISTS(HttpStatus.CONFLICT, "AT-107", "이미 좋아요를 눌렀습니다.");
+    LIKES_ALREADY_EXISTS(HttpStatus.CONFLICT, "AT-107", "이미 찜한 아티스트입니다."),
+    LIKES_NOT_FOUND(HttpStatus.NOT_FOUND, "AT-108", "찜한 아티스트가 아닙니다.");
 
     private final HttpStatus status;
     private final String code;
