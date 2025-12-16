@@ -20,7 +20,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -74,7 +73,7 @@ public class PlanController {
             @Valid @RequestBody PlanAddRequest request) {
         User user = rq.getUser();
         PlanResponse planResponse = planService.createPlan(user, request);
-        return RsData.success(HttpStatus.CREATED, "계획 생성 성공", planResponse);
+        return RsData.success("계획 생성 성공", planResponse);
     }
 
     /**
@@ -124,7 +123,7 @@ public class PlanController {
             @Valid @RequestBody ScheduleAddRequest request) {
         User user = rq.getUser();
         ScheduleResponse response = planService.addSchedule(planId, user, request);
-        return RsData.success(HttpStatus.CREATED, "일정 추가 성공", response);
+        return RsData.success("일정 추가 성공", response);
     }
 
     /**
