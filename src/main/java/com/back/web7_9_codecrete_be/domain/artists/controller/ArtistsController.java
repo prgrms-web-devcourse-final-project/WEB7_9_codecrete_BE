@@ -1,14 +1,17 @@
 package com.back.web7_9_codecrete_be.domain.artists.controller;
 
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.CreateRequest;
+import com.back.web7_9_codecrete_be.domain.artists.dto.request.SearchRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.UpdateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistListResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
+import com.back.web7_9_codecrete_be.domain.artists.dto.response.SearchResponse;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistService;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistEnrichService;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -80,12 +83,13 @@ public class ArtistsController {
         return RsData.success("아티스트 정보를 삭제했습니다.", null);
     }
 
-    @Operation(summary = "아티스트 검색", description = "아티스트 이름을 입력받아 검색합니다.")
-    @PostMapping("/{id}")
-    public RsData<Void> search(
-            @PathVariable Long id
+    @Operation(summary = "아티스트 검색",
+            description = "아티스트 이름 또는 키워드를 입력하면, 해당 키워드가 포함된 아티스트 목록 또는 이름에 해당하는 아티스트를 조회합니다.")
+    @PostMapping("/search")
+    public RsData<List<SearchResponse>> search(
+            @Valid @RequestBody SearchRequest reqBody
     ) {
-        return RsData.success("아티스트 검색에 성공했습니다.", null);
+        return RsData.success("아티스트 검색에 성공했습니다.", artistService.search(reqBody.artistName()));
     }
 
     @Operation(summary = "아티스트 찜하기", description = "id 에 해당하는 특정 아티스트를 찜합니다.")
