@@ -13,17 +13,29 @@ import java.util.Optional;
 public interface PlanRepository extends JpaRepository<Plan, Long> {
 
     /**
-     * @EntityGraph 사용 시:
-     * - Plan + participants + routes를 LEFT OUTER JOIN으로 한 번에 조회.
-     * - 총 1번의 쿼리만 실행되어 N + 1 문제 방지 & 성능 향상.
+     * - Plan 상세 조회 및 권한 체크 시
+     * @param id Plan ID
+     * @return Plan 엔티티 (concert, participants, schedules 포함)
+     * @EntityGraph:
+     * - Plan + concert + participants + schedules를 LEFT OUTER JOIN으로 한 번에 조회
+     * - 총 1번의 쿼리만 실행되어 N + 1 문제 방지 & 성능 향상
      */
-    @EntityGraph(attributePaths = {"participants", "routes"})
+    @EntityGraph(attributePaths = {"concert", "participants", "schedules"})
     Optional<Plan> findById(Long id);
 
     /**
-     * @param userId
-     * @return userId가 참가자로 연결된 모든 Plan을 조회
+     * - 특정 사용자가 참가자로 포함된 모든 Plan 조회
+     * @param userId 참가자로 포함된 사용자 ID
+     * @return 해당 사용자가 참가자인 모든 Plan 목록 (concert, participants, schedules 포함)
      */
-    @EntityGraph(attributePaths = {"participants"})
-    List<Plan> findDistinctByParticipants_UserId(Long userId);
+    @EntityGraph(attributePaths = {"concert", "participants", "schedules"})
+    List<Plan> findDistinctByParticipants_User_Id(Long userId);
+
+    /**
+     * - 사용자가 소유자인 Plan들을 조회
+     * @param userId Plan을 생성한 사용자 ID
+     * @return 해당 사용자가 생성한 모든 Plan 목록 (schedules만 포함)
+     */
+    @EntityGraph(attributePaths = {"schedules"})
+    List<Plan> findByUser_Id(Long userId);
 }
