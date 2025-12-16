@@ -125,7 +125,7 @@ public class ConcertController {
     }
 
     // todo : 제목으로 만 검색 기능 구현 -> 추후 아티스트 정보랑 연동 <- 중요 / 정렬 기준? 최신등록순 정렬
-    @Operation(summary = "공연 검색", description = "공연 정보를 검색합니다.")
+    @Operation(summary = "공연 검색", description = "제목에 키워드를 포함하고 있는 공연 정보를 검색합니다.")
     @GetMapping("search")
     public RsData<List<ConcertItem>> searchConcert(
             @Schema(description = "공연 정보 검색 키워드입니다.")
