@@ -48,3 +48,9 @@ kopis:
 spotify:
   client-id: ${SPOTIFY_CLIENT_ID}
   client-secret: ${SPOTIFY_CLIENT_SECRET}
+
+oauth:
+  kakao:
+    client-id: ${KAKAO_REST_API_KEY}   # 카카오 REST API 키
+    client-secret: ${KAKAO_CLIENT_SECRET} # 카카오 Client Secret
+    redirect-uri: ${KAKAO_REDIRECT_URI} # 카카오 로그인 Redirect URI
