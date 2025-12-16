@@ -32,7 +32,7 @@ public class ArtistService {
     @Transactional
     public Artist createArtist(String artistName, String artistGroup, String artistType, String genreName) {
         Genre genre = genreService.findByGenreName(genreName);
-        if(!artistRepository.existsByArtistName(artistName) || !artistRepository.existsByNameKo(artistName)) {
+        if(artistRepository.existsByArtistName(artistName) || artistRepository.existsByNameKo(artistName)) {
             throw new BusinessException(ArtistErrorCode.ARTIST_ALREADY_EXISTS);
         }
         Artist artist = new Artist(artistName, artistGroup, artistType, genre);
