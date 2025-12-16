@@ -72,7 +72,7 @@ public class LocationService {
     public void removeLocation(User user){                    //내 위치 삭제
         Location location = locationRepository.findByUser(user);
         if(location == null){
-            throw new BusinessException(LocationErrorCode.LOCATION_NOT_FOUND);
+            throw new BusinessException(LocationErrorCode.LOCATION_NOT_HAVE);
         }
         locationRepository.delete(location);
     }
