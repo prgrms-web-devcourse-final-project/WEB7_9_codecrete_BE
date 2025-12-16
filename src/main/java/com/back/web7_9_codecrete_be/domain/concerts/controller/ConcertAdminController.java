@@ -2,15 +2,20 @@ package com.back.web7_9_codecrete_be.domain.concerts.controller;
 
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concert.ConcertListResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceListResponse;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertTicketTimeSetRequest;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertUpdateRequest;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
 import com.back.web7_9_codecrete_be.domain.concerts.service.KopisApiService;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -20,15 +25,11 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
     private final ConcertService concertService;
     private final KopisApiService kopisApiService;
 
-    @GetMapping("tests")
-    public ConcertListResponse tests() {
-        return kopisApiService.getConcertsList();
-    }
-
     @GetMapping("totalGetTest")
     public ConcertListResponse totalGetTest() throws InterruptedException {
         return kopisApiService.setConcertsList();
     }
+
 
     @GetMapping("setConcertPlace")
     public ConcertPlaceListResponse setConcertPlace() throws InterruptedException {
@@ -44,9 +45,23 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
         return RsData.success("공연 정보 수정이 완료되었습니다.",concertItem);
     }
 
+    @GetMapping("noTicketTimeList")
+    public List<ConcertItem> getNoTicketTimeConcertsList(
+            Pageable pageable
+    ) {
+        return concertService.getNoTicketTimeConcertsList(pageable);
+    }
+
     @DeleteMapping("deleteConcert/{concertId}")
     public RsData<Void> deleteConcert(@PathVariable Long concertId){
         concertService.deleteConcert(concertId);
         return RsData.success("공연 정보 삭제에 성공하였습니다.",null);
+    }
+
+    @PatchMapping("ticketTimeSet")
+    public RsData<ConcertDetailResponse>  ticketTimeSet(
+            @RequestBody ConcertTicketTimeSetRequest concertTicketTimeSetRequest
+    ){
+        return RsData.success(concertService.setConcertTime(concertTicketTimeSetRequest));
     }
 }

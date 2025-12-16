@@ -25,7 +25,7 @@ public class ConcertLike {
     private User user;
 
     @CreationTimestamp
-    private LocalDateTime createdAt;
+    private LocalDateTime createDate;
 
     public ConcertLike(Concert concert, User user) {
         this.concert = concert;

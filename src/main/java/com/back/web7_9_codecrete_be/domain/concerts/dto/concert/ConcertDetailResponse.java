@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -24,6 +25,9 @@ public class ConcertDetailResponse {
 
     @Schema(description = "콘서트 장소 이름입니다.")
     private String placeName;
+
+    @Schema(description = "콘서트 예매 시작 날짜입니다.")
+    private LocalDateTime ticketTime;
 
     @Schema(description = "콘서트 시작 날짜입니다.",format = "yyyy-MM-dd")
     private LocalDate startDate;
