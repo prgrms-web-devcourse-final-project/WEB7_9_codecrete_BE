@@ -22,7 +22,7 @@ public class ArtistsController {
     private final ArtistService artistService;
     private final ArtistEnrichService enrichService;
 
-    @Operation(summary = "아티스트 저장", description = "임의의 가수 300명(or 팀)을 DB에 저장합니다.")
+    @Operation(summary = "아티스트 저장", description = "임의의 가수(or 팀)을 DB에 저장합니다.")
     @GetMapping("/saved")
     public RsData<Integer> saveArtist() {
         int saved = artistService.setArtist();
@@ -79,4 +79,29 @@ public class ArtistsController {
         artistService.delete(id);
         return RsData.success("아티스트 정보를 삭제했습니다.", null);
     }
+
+    @Operation(summary = "아티스트 검색", description = "아티스트 이름을 입력받아 검색합니다.")
+    @PostMapping("/{id}")
+    public RsData<Void> search(
+            @PathVariable Long id
+    ) {
+        return RsData.success("아티스트 검색에 성공했습니다.", null);
+    }
+
+    @Operation(summary = "아티스트 찜하기", description = "id 에 해당하는 특정 아티스트를 찜합니다.")
+    @PostMapping("/likes/{id}")
+    public void artistLikes(
+            @PathVariable Long id
+    ) {}
+
+    @Operation(summary = "아티스트 찜 해체", description = "id 에 해당하는 아티스트에게 등록했던 찜을 해제합니다.")
+    @DeleteMapping("/likes/{id}")
+    public void deleteArtistLikes(
+            @PathVariable Long id
+    ) {}
+
+    @Operation(summary = "개인화된 공연 리스트 생성", description = "유저가 찜한 아티스트를 기반으로 공연 리스트를 생성합니다.")
+    @PostMapping("/list")
+    public void concertList() {}
+
 }
