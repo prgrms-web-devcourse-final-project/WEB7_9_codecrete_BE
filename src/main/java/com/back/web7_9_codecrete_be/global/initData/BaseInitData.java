@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.global.initData;
 
+import com.back.web7_9_codecrete_be.domain.users.entity.SocialType;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
 import jakarta.annotation.PostConstruct;
@@ -35,6 +36,8 @@ public class BaseInitData {
                 .password(passwordEncoder.encode("test1234!"))
                 .birth(LocalDate.of(1999, 1, 1))
                 .profileImage("https://example.com/profile.jpg")
+                .socialType(SocialType.LOCAL)
+                .socialId(null)
                 .build();
 
         userRepository.save(testUser);
@@ -51,6 +54,8 @@ public class BaseInitData {
                 .password(passwordEncoder.encode("admin1234!"))
                 .birth(LocalDate.of(1990, 1, 1))
                 .profileImage("https://example.com/profile.jpg")
+                .socialType(SocialType.LOCAL)
+                .socialId(null)
                 .build();
 
         // dev 전용 어드민 권한 부여
