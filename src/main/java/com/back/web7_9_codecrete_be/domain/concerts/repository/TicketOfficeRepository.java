@@ -27,4 +27,6 @@ public interface TicketOfficeRepository  extends JpaRepository<TicketOffice, Lon
     void deleteByConcertId(
             @Param("concertId")
             Long concertId);
+
+    List<TicketOffice> getTicketOfficesByConcert_ConcertId(Long concertConcertId);
 }
