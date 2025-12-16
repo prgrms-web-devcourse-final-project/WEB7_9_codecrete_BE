@@ -1,8 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.email.service;
 
-import com.back.web7_9_codecrete_be.domain.email.entity.VerifiedEmail;
 import com.back.web7_9_codecrete_be.domain.email.repository.VerificationCodeRedisRepository;
-import com.back.web7_9_codecrete_be.domain.email.repository.VerifiedEmailRepository;
+import com.back.web7_9_codecrete_be.domain.email.repository.VerifiedEmailRedisRepository;
 import com.back.web7_9_codecrete_be.global.error.code.MailErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import jakarta.transaction.Transactional;
@@ -23,11 +22,15 @@ import java.security.SecureRandom;
 public class EmailService {
 
     private final VerificationCodeRedisRepository verificationCodeRedisRepository;
-    private final VerifiedEmailRepository verifiedEmailRepository;
+    private final VerifiedEmailRedisRepository verifiedEmailRedisRepository;
     private final WebClient mailgunClient;
 
     @Value("${mailgun.from}")
     private String fromEmail;
+
+    // 임시 복구 링크 기본 URL
+    // TODO: 프론트 도메인 확정 시 application.yml로 분리 예정
+    private String restoreBaseUrl = "https://example.com/users/restore";
 
     private static final String CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int CODE_LENGTH = 6;
@@ -108,14 +111,14 @@ public class EmailService {
         // 성공 시 Redis에서 삭제
         verificationCodeRedisRepository.deleteByEmail(email);
 
-        // 인증 완료 상태 저장 (DB)
-        verifiedEmailRepository.save(new VerifiedEmail(email));
+        // 인증 완료 상태 저장 (TTL 30분)
+        verifiedEmailRedisRepository.save(email);
 
         log.info("[이메일 인증 성공] {}", email);
     }
 
     public boolean isVerified(String email) {
-        return verifiedEmailRepository.existsByEmail(email);
+        return verifiedEmailRedisRepository.exists(email);
     }
 
     // 임시 비밀번호 발급 이메일 전송
@@ -132,8 +135,23 @@ public class EmailService {
         sendEmail(email, "[NCB] 임시 비밀번호 안내", content);
     }
 
+    public void sendRestoreLink(String email, String token) {
+        String link = restoreBaseUrl + "?token=" + token;
+
+        String content = """
+                안녕하세요. NCB입니다.
+
+                아래 링크를 클릭하시면 계정 복구가 완료됩니다.
+                (링크는 15분간 유효합니다.)
+
+                %s
+                """.formatted(link);
+
+        sendEmail(email, "[NCB] 계정 복구 안내", content);
+    }
+
     @Transactional
     public void clearVerifiedEmail(String email) {
-        verifiedEmailRepository.deleteByEmail(email);
+        verifiedEmailRedisRepository.delete(email);
     }
 }
