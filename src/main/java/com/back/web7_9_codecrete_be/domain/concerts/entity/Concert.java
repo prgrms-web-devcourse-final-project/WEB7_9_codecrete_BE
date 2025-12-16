@@ -83,13 +83,15 @@ public class Concert {
         this.concertId = concertId;
     }
 
-    public Concert update(ConcertPlace concertPlace, String content, LocalDateTime ticketTime, int maxPrice, int minPrice){
+    public Concert updateByAPI(ConcertPlace concertPlace, String content,LocalDate startDate,LocalDate endDate, int maxPrice, int minPrice, String posterUrl) {
         this.concertPlace = concertPlace;
         this.content = content;
-        this.ticketTime = ticketTime;
+        this.startDate = startDate;
+        this.endDate = endDate;
         this.modifiedDate = LocalDateTime.now();
         this.maxPrice = maxPrice;
         this.minPrice = minPrice;
+        this.posterUrl = posterUrl;
         return this;
     }
 
