@@ -92,11 +92,14 @@ public class ArtistsController {
         return RsData.success("아티스트 검색에 성공했습니다.", artistService.search(reqBody.artistName()));
     }
 
-    @Operation(summary = "아티스트 찜하기", description = "id 에 해당하는 특정 아티스트를 찜합니다.")
+    @Operation(summary = "아티스트 찜하기", description = "id 에 해당하는 특정 아티스트를 찜합니다. 로그인 상태에서만 가능합니다.")
     @PostMapping("/likes/{id}")
-    public void artistLikes(
+    public RsData<Void> artistLikes(
             @PathVariable Long id
-    ) {}
+    ) {
+        artistService.likeArtist(id);
+        return RsData.success("아티스트 찜 성공", null);
+    }
 
     @Operation(summary = "아티스트 찜 해체", description = "id 에 해당하는 아티스트에게 등록했던 찜을 해제합니다.")
     @DeleteMapping("/likes/{id}")

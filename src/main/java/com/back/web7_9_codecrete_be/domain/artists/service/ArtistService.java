@@ -5,12 +5,15 @@ import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistListRespon
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.SearchResponse;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
+import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistLike;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Genre;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistLikeRepository;
+import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.ArtistErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
+import com.back.web7_9_codecrete_be.global.rq.Rq;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +28,7 @@ public class ArtistService {
     private final ArtistRepository artistRepository;
     private final GenreService genreService;
     private final ArtistLikeRepository artistLikeRepository;
+    private final Rq rq;
 
     @Transactional
     public int setArtist() {
@@ -122,6 +126,19 @@ public class ArtistService {
         return artists.stream()
                 .map(SearchResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public void likeArtist(Long artistId) {
+        User user = rq.getUser();
+        Artist artist = artistRepository.findById(artistId)
+                .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
+
+        if(artistLikeRepository.existsByArtistAndUser(artist, user)) {
+            throw new BusinessException(ArtistErrorCode.LIKES_ALREADY_EXISTS);
+        }
+        artistLikeRepository.save(new ArtistLike(artist, user));
+        artist.increaseLikeCount();
     }
 
 }
