@@ -4,10 +4,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
+@Setter
 public class ConcertDetailResponse {
 
     @Schema(description = "콘서트 Id입니다.")
@@ -43,4 +46,6 @@ public class ConcertDetailResponse {
     @Schema(description = "콘서트 좋아요수입니다.")
     private int likeCount;
 
+    @Schema(description = "콘서트 이미지 목록입니다.")
+    private List<String> concertImageUrls;
 }
