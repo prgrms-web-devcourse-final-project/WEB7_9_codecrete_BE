@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Getter
 @NoArgsConstructor
@@ -22,7 +22,7 @@ public class ScheduleUpdateRequest {
     @Size(max = 100, message = "제목은 100자 이하여야 합니다.")
     private String title;
 
-    private LocalDateTime startAt;
+    private LocalTime startAt;
 
     @Positive(message = "소요 시간은 양수여야 합니다.")
     private Integer duration;
@@ -42,10 +42,6 @@ public class ScheduleUpdateRequest {
     private Integer estimatedCost;
 
     private String details;
-
-    // 정렬 순서 (미지정 시 기존 값 유지)
-    @Positive(message = "정렬 순서는 양수여야 합니다.")
-    private Integer sequenceOrder;
 
     // 교통 수단인 경우 사용
     @Min(value = -90, message = "출발지 위도는 -90 이상이어야 합니다.")
