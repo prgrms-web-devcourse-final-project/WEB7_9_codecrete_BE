@@ -18,4 +18,7 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
 
     boolean existsByArtistName(String artistName);
     boolean existsByNameKo(String nameKo);
+
+    List<Artist> findTop5ByArtistGroupAndIdNot(String artistGroup, long excludeId);
+    List<Artist> findTop5ByGenreIdAndIdNot(Long genreId, long excludeId);
 }

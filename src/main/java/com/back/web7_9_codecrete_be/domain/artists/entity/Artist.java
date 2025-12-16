@@ -57,5 +57,21 @@ public class Artist {
         this.artistType = artistType;     // "SOLO" / "GROUP"
     }
 
+    public void changeName(String name) {
+        this.artistName = name;
+    }
+
+    public void changeGroup(String group) {
+        this.artistGroup = group;
+    }
+
+    public void changeType(String type) {
+        this.artistType = type;
+    }
+
+    public void changeGenre(Genre genre) {
+        this.genre = genre;
+    }
+
 
 }
