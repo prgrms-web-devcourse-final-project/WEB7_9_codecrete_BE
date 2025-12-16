@@ -9,12 +9,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/tmap")
+@RequestMapping("/api/v1/location")
 public class TmapController {
 
     private final TmapService tmapService;
 
-    @GetMapping("/transit")
+    @GetMapping("/tmap/transit")
     public String getTransit(
             @RequestParam double startX,
             @RequestParam double startY,

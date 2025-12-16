@@ -34,13 +34,32 @@ public class Location {
 
     private double lon;
 
-    public double setlat(double lat){
-        this.lat = lat;
-        return lat;
+
+    @PrePersist
+    public void prePersist() {
+        this.modified_date = LocalDateTime.now(); // ⭐ insert 때도 채움
     }
 
-    public double setlon(double lon){
+    @PreUpdate
+    public void preUpdate() {
+        this.modified_date = LocalDateTime.now();
+    }
+
+    protected Location(User user, double lat, double lon, String address) {
+        this.user = user;
+        this.lat = lat;
         this.lon = lon;
-        return lon;
+        this.address = address;
+    }
+
+    public static Location create(User user, double lat, double lon, String addressName) {
+        return new Location(user, lat, lon, addressName);
+    }
+
+    public void update(double lat, double lon, String address) {
+
+        this.lat = lat;
+        this.lon = lon;
+        this.address = address;
     }
 }
