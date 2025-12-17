@@ -65,8 +65,8 @@ public class AuthController {
     @Operation(summary = "닉네임 중복 체크", description = "닉네임이 사용 가능한지 확인합니다.")
     @GetMapping("/nickname/check")
     public RsData<?> checkNickname(@RequestParam String nickname) {
-        boolean available = authService.isNicknameAvailable(nickname);
-        return RsData.success("닉네임 사용 가능 여부 확인", available);
+        authService.isNicknameAvailable(nickname);
+        return RsData.success("사용 가능한 닉네임입니다.");
     }
 
     @Operation(summary = "임시 비밀번호 재발급", description = "특정 이메일로 임시 비밀번호를 발송합니다.")

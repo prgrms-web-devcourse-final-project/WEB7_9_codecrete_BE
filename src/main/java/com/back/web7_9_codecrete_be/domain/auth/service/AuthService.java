@@ -94,8 +94,10 @@ public class AuthService {
     }
 
     // 닉네임 중복 체크
-    public boolean isNicknameAvailable(String nickname) {
-        return !userRepository.existsByNickname(nickname);
+    public void isNicknameAvailable(String nickname) {
+        if (userRepository.existsByNickname(nickname)) {
+            throw new BusinessException(UserErrorCode.NICKNAME_DUPLICATED);
+        }
     }
 
     // 임시 비밀번호 재발급
