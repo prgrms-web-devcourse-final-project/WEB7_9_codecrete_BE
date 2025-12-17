@@ -6,9 +6,11 @@ import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertPlace;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertTime;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
+import jakarta.persistence.ManyToOne;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -175,6 +177,33 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
 """)
     ConcertDetailResponse getConcertDetailById(@Param("concertId")long concertId);
 
+
+    @Modifying
+    @Query("""
+    UPDATE 
+    Concert c
+    SET c.viewCount = c.viewCount + 1
+    where c.concertId = :concertId
+""")
+    Integer concertViewCountUp(@Param("concertId") long concertId);
+
+    @Modifying
+    @Query("""
+    UPDATE 
+    Concert c
+    SET c.likeCount = c.likeCount + 1
+    where c.concertId = :concertId
+""")
+    Integer concertLikeCountUp(@Param("concertId") long concertId);
+
+    @Modifying
+    @Query("""
+    UPDATE 
+    Concert c
+    SET c.likeCount = c.likeCount - 1
+    where c.concertId = :concertId
+""")
+    Integer concertLikeCountDown(@Param("concertId") long concertId);
 
 
     Concert getConcertByConcertId(Long concertId);

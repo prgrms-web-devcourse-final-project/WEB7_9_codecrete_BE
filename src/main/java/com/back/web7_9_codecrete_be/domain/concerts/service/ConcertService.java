@@ -5,15 +5,12 @@ import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOffic
 import com.back.web7_9_codecrete_be.domain.concerts.entity.*;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.*;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
-import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
-import com.back.web7_9_codecrete_be.global.error.code.AuthErrorCode;
 import com.back.web7_9_codecrete_be.global.error.code.ConcertErrorCode;
-import com.back.web7_9_codecrete_be.global.error.code.ErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -57,6 +54,7 @@ public class ConcertService {
         return concertRepository.getConcertItemsByKeyword(keyword, pageable);
     }
 
+    @Transactional
     public ConcertDetailResponse getConcertDetail(long concertId) {
         ConcertDetailResponse concertDetailResponse = concertRepository.getConcertDetailById(concertId);
         List<ConcertImage>  concertImages = concertImageRepository.getConcertImagesByConcert_ConcertId(concertId);
@@ -64,7 +62,9 @@ public class ConcertService {
         for(ConcertImage concertImage : concertImages){
             concertImageUrls.add(concertImage.getImageUrl());
         }
+        concertRepository.concertViewCountUp(concertId);
         concertDetailResponse.setConcertImageUrls(concertImageUrls);
+        concertDetailResponse.setViewCount(concertDetailResponse.getViewCount() + 1);
         return concertDetailResponse;
     }
 
@@ -103,6 +103,7 @@ public class ConcertService {
         return concertLikeResponse;
     }
 
+    @Transactional
     public void likeConcert(long concertId, User user) {
         Concert concert = concertRepository.findById(concertId).orElseThrow();
         if(concertLikeRepository.existsConcertLikeByConcertAndUser(concert,user)){
@@ -110,8 +111,10 @@ public class ConcertService {
         }
         ConcertLike concertLike = new ConcertLike(concert, user);
         concertLikeRepository.save(concertLike);
+        concertRepository.concertLikeCountUp(concertId);
     }
 
+    @Transactional
     public void dislikeConcert(long concertId, User user) {
         Concert concert = concertRepository.findById(concertId).orElseThrow();
         ConcertLike concertLike = concertLikeRepository.findConcertLikeByConcertAndUser(concert, user);
@@ -119,6 +122,7 @@ public class ConcertService {
             throw new BusinessException(ConcertErrorCode.NOT_FOUND_CONCERTLIKE);
         }
         concertLikeRepository.delete(concertLike);
+        concertRepository.concertLikeCountDown(concertId);
     }
 
     public ConcertItem updateConcert(long concertId, ConcertUpdateRequest concertUpdateRequest) {
@@ -140,6 +144,5 @@ public class ConcertService {
         Concert concert = concertRepository.findById(concertId).orElseThrow();
         concertRepository.deleteById(concertId);
     }
-
 
 }
