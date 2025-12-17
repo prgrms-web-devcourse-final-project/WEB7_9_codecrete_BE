@@ -11,9 +11,9 @@ import java.util.Optional;
 public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
 
     /**
-     * 특정 Plan의 모든 일정을 순서대로 조회
+     * 특정 Plan의 모든 일정을 시작 시간 순서대로 조회
      */
-    List<Schedule> findByPlan_PlanIdOrderBySequenceOrderAsc(Long planId);
+    List<Schedule> findByPlan_PlanIdOrderByStartAtAsc(Long planId);
 
     /**
      * 특정 Plan에 속한 Schedule의 개수 조회 (다음 순서 계산용)

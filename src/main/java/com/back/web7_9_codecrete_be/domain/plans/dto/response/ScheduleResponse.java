@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Getter
 @Builder
@@ -12,14 +13,13 @@ public class ScheduleResponse {
     private Long id;
     private Schedule.ScheduleType scheduleType;
     private String title;
-    private LocalDateTime startAt;
+    private LocalTime startAt;
     private Integer duration;
     private String location;
     private Double locationLat;
     private Double locationLon;
     private Integer estimatedCost;
     private String details;
-    private Integer sequenceOrder;
     // 교통 수단 정보
     private Double startPlaceLat;
     private Double startPlaceLon;

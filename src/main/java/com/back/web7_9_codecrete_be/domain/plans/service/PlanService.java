@@ -128,9 +128,9 @@ public class PlanService {
                         .build())
                 .collect(Collectors.toList());
         
-        // 타임라인 형태로 일정 정렬 (sequenceOrder 기준) - Repository 메서드 사용으로 일관성 향상
+        // 타임라인 형태로 일정 정렬 (startAt 기준)
         List<Schedule> sortedSchedules = scheduleRepository
-                .findByPlan_PlanIdOrderBySequenceOrderAsc(planId);
+                .findByPlan_PlanIdOrderByStartAtAsc(planId);
         
         List<PlanDetailResponse.ScheduleInfo> schedules = sortedSchedules.stream()
                 .map(item -> PlanDetailResponse.ScheduleInfo.builder()
@@ -144,7 +144,6 @@ public class PlanService {
                         .locationLon(item.getLocationLon())
                         .estimatedCost(item.getEstimatedCost())
                         .details(item.getDetails())
-                        .sequenceOrder(item.getSequenceOrder())
                         .startPlaceLat(item.getStartPlaceLat())
                         .startPlaceLon(item.getStartPlaceLon())
                         .endPlaceLat(item.getEndPlaceLat())
@@ -256,13 +255,6 @@ public class PlanService {
             }
         }
 
-        // 순서가 지정되지 않은 경우, 마지막 순서 + 1로 설정
-        Integer sequenceOrder = request.getSequenceOrder();
-        if (sequenceOrder == null) {
-            long count = scheduleRepository.countByPlan_PlanId(planId);
-            sequenceOrder = (int) count + 1;
-        }
-
         Schedule schedule = Schedule.builder()
                 .plan(plan)
                 .scheduleType(request.getScheduleType())
@@ -274,7 +266,6 @@ public class PlanService {
                 .locationLon(request.getLocationLon())
                 .estimatedCost(request.getEstimatedCost())
                 .details(request.getDetails())
-                .sequenceOrder(sequenceOrder)
                 .startPlaceLat(request.getStartPlaceLat())
                 .startPlaceLon(request.getStartPlaceLon())
                 .endPlaceLat(request.getEndPlaceLat())
@@ -302,7 +293,7 @@ public class PlanService {
         findPlanWithParticipantCheck(planId, user);
 
         List<Schedule> schedules = scheduleRepository
-                .findByPlan_PlanIdOrderBySequenceOrderAsc(planId);
+                .findByPlan_PlanIdOrderByStartAtAsc(planId);
 
         List<ScheduleResponse> scheduleResponses = schedules.stream()
                 .map(this::toScheduleResponse)
@@ -420,7 +411,6 @@ public class PlanService {
                 request.getLocationLon() != null ? request.getLocationLon() : schedule.getLocationLon(),
                 request.getEstimatedCost() != null ? request.getEstimatedCost() : schedule.getEstimatedCost(),
                 request.getDetails() != null ? request.getDetails() : schedule.getDetails(),
-                request.getSequenceOrder() != null ? request.getSequenceOrder() : schedule.getSequenceOrder(),
                 request.getStartPlaceLat() != null ? request.getStartPlaceLat() : schedule.getStartPlaceLat(),
                 request.getStartPlaceLon() != null ? request.getStartPlaceLon() : schedule.getStartPlaceLon(),
                 request.getEndPlaceLat() != null ? request.getEndPlaceLat() : schedule.getEndPlaceLat(),
@@ -450,38 +440,7 @@ public class PlanService {
                 .findByScheduleIdAndPlan_PlanId(scheduleId, planId)
                 .orElseThrow(() -> new BusinessException(PlanErrorCode.SCHEDULE_NOT_FOUND));
 
-        Integer deletedSequenceOrder = schedule.getSequenceOrder();
         scheduleRepository.delete(schedule);
-        
-        // 삭제된 일정 이후의 일정들의 sequenceOrder를 1씩 감소시켜 재정렬
-        if (deletedSequenceOrder != null) {
-            List<Schedule> remainingSchedules = scheduleRepository
-                    .findByPlan_PlanIdOrderBySequenceOrderAsc(planId);
-            
-            // 삭제된 순서보다 큰 일정들만 업데이트
-            remainingSchedules.stream()
-                    .filter(s -> s.getSequenceOrder() != null && s.getSequenceOrder() > deletedSequenceOrder)
-                    .forEach(remainingSchedule -> {
-                        remainingSchedule.update(
-                                remainingSchedule.getScheduleType(),
-                                remainingSchedule.getTitle(),
-                                remainingSchedule.getStartAt(),
-                                remainingSchedule.getDuration(),
-                                remainingSchedule.getLocation(),
-                                remainingSchedule.getLocationLat(),
-                                remainingSchedule.getLocationLon(),
-                                remainingSchedule.getEstimatedCost(),
-                                remainingSchedule.getDetails(),
-                                remainingSchedule.getSequenceOrder() - 1,
-                                remainingSchedule.getStartPlaceLat(),
-                                remainingSchedule.getStartPlaceLon(),
-                                remainingSchedule.getEndPlaceLat(),
-                                remainingSchedule.getEndPlaceLon(),
-                                remainingSchedule.getDistance(),
-                                remainingSchedule.getTransportType()
-                        );
-                    });
-        }
         
         return ScheduleDeleteResponse.builder()
                 .scheduleId(scheduleId)
@@ -566,7 +525,6 @@ public class PlanService {
                 .locationLon(schedule.getLocationLon())
                 .estimatedCost(schedule.getEstimatedCost())
                 .details(schedule.getDetails())
-                .sequenceOrder(schedule.getSequenceOrder())
                 .startPlaceLat(schedule.getStartPlaceLat())
                 .startPlaceLon(schedule.getStartPlaceLon())
                 .endPlaceLat(schedule.getEndPlaceLat())

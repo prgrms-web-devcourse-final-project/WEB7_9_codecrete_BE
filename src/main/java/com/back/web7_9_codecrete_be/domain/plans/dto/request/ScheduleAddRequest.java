@@ -12,7 +12,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Getter
 @NoArgsConstructor
@@ -25,8 +25,8 @@ public class ScheduleAddRequest {
     @Size(max = 100, message = "제목은 100자 이하여야 합니다.")
     private String title;
 
-    @NotNull(message = "시작 일시는 필수입니다.")
-    private LocalDateTime startAt;
+    @NotNull(message = "시작 시간은 필수입니다.")
+    private LocalTime startAt;
 
     @NotNull(message = "소요 시간(분)은 필수입니다.")
     @Positive(message = "소요 시간은 양수여야 합니다.")
@@ -51,10 +51,6 @@ public class ScheduleAddRequest {
 
     @NotBlank(message = "상세 정보는 필수입니다.")
     private String details;
-
-    // 정렬 순서 (미지정 시 자동 계산)
-    @Positive(message = "정렬 순서는 양수여야 합니다.")
-    private Integer sequenceOrder;
 
     // 교통 수단인 경우 사용
     @Min(value = -90, message = "출발지 위도는 -90 이상이어야 합니다.")
