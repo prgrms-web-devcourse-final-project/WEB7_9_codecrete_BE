@@ -22,25 +22,10 @@ public class KakaoTestController {
 
     private final KakaoLocalService kakaoLocalService;
 
-    @Operation(
-            summary = "주변 음식점 조회(테스트)",
-            description = "테스트용 하드코딩 좌표(서울 시청 근처)로 카카오 로컬에서 주변 음식점을 조회합니다., 하드코딩 좌표 : lat - 37.5665, lng -126.9780"
-    )
-    @ApiResponse(responseCode = "200", description = "조회 성공",
-            content = @Content(schema = @Schema(implementation = KakaoLocalResponse.Document.class)))
-    @GetMapping("/restaurants")
-
-    public List<KakaoLocalResponse.Document> testKakaoRestaurants() {
-
-        double lat = 37.5665;
-        double lng = 126.9780;
-
-        return kakaoLocalService.searchNearbyRestaurants(lat, lng);
-    }
 
     @Operation(
-            summary = "주변 음식점 조회(테스트)",
-            description = "테스트용 좌표(서울 시청 근처)로 카카오 로컬에서 주변 음식점을 조회합니다, 좌표는 입력하면 됩니다." +
+            summary = "주변 음식점 조회",
+            description = "좌표(서울 시청 근처)로 카카오 로컬에서 주변 음식점을 조회합니다, 좌표는 입력하면 됩니다." +
                     "예시 : http://localhost:8080/api/v1/location/kakao/restaurant?lat=37.5665&lng=126.9780"
     )
     @PostMapping("/restaurant")
@@ -51,24 +36,10 @@ public class KakaoTestController {
         return kakaoLocalService.searchNearbyRestaurants(lat, lng);
     }
 
-    @Operation(
-            summary = "주변 카페 조회(테스트)",
-            description = "테스트용 하드코딩 좌표(서울 시청 근처)로 카카오 로컬에서 주변 카페를 조회합니다., 하드코딩 좌표 : lat - 37.5665, lng -126.9780"
-    )
-    @ApiResponse(responseCode = "200", description = "조회 성공",
-            content = @Content(schema = @Schema(implementation = KakaoLocalResponse.Document.class)))
-    @GetMapping("/cafes")
-    public List<KakaoLocalResponse.Document> testKakaoCafes() {
-
-        double lat = 37.5665;
-        double lng = 126.9780;
-
-        return kakaoLocalService.searchNearbyCafes(lat, lng);
-    }
 
     @Operation(
-            summary = "주변 카페 조회(테스트)",
-            description = "테스트용 좌표(서울 시청 근처)로 카카오 로컬에서 주변 카페를 조회합니다, 좌표는 입력하면 됩니다." +
+            summary = "주변 카페 조회",
+            description = "좌표(서울 시청 근처)로 카카오 로컬에서 주변 카페를 조회합니다, 좌표는 입력하면 됩니다." +
                     "예시 : http://localhost:8080/api/v1/location/kakao/cafes?lat=37.5665&lng=126.9780"
     )
     @PostMapping("/cafes")
