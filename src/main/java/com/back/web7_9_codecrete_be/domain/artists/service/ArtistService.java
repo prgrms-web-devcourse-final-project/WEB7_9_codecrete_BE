@@ -130,8 +130,7 @@ public class ArtistService {
     }
 
     @Transactional
-    public void likeArtist(Long artistId) {
-        User user = rq.getUser();
+    public void likeArtist(Long artistId, User user) {
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
 
@@ -143,8 +142,7 @@ public class ArtistService {
     }
 
     @Transactional
-    public void deleteLikeArtist(Long artistId) {
-        User user = rq.getUser();
+    public void deleteLikeArtist(Long artistId, User user) {
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
         ArtistLike likes = artistLikeRepository.findByArtistAndUser(artist, user)

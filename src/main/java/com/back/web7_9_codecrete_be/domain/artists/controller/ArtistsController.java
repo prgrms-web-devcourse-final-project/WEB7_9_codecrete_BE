@@ -8,6 +8,8 @@ import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResp
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.SearchResponse;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistService;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistEnrichService;
+import com.back.web7_9_codecrete_be.domain.users.entity.User;
+import com.back.web7_9_codecrete_be.global.rq.Rq;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +26,7 @@ import java.util.List;
 public class ArtistsController {
     private final ArtistService artistService;
     private final ArtistEnrichService enrichService;
+    private final Rq rq;
 
     @Operation(summary = "아티스트 저장", description = "임의의 가수(or 팀)을 DB에 저장합니다.")
     @GetMapping("/saved")
@@ -97,7 +100,8 @@ public class ArtistsController {
     public RsData<Void> artistLikes(
             @PathVariable Long id
     ) {
-        artistService.likeArtist(id);
+        User user = rq.getUser();
+        artistService.likeArtist(id, user);
         return RsData.success("아티스트 찜 성공", null);
     }
 
@@ -106,7 +110,8 @@ public class ArtistsController {
     public RsData<Void> deleteArtistLikes(
             @PathVariable Long id
     ) {
-        artistService.deleteLikeArtist(id);
+        User user = rq.getUser();
+        artistService.deleteLikeArtist(id, user);
         return RsData.success("아티스트 찜 해제 성공", null);
     }
 
