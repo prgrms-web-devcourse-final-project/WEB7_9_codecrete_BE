@@ -10,6 +10,8 @@ import com.back.web7_9_codecrete_be.domain.email.service.EmailService;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -22,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@EnableScheduling
 @RequiredArgsConstructor
 public class ConcertNotifyService {
     private final UserRepository userRepository;
@@ -86,6 +89,7 @@ public class ConcertNotifyService {
         return emailMap;
     }
 
+    @Scheduled(cron = "0 0 9 * * *")
     public String sendTodayTicketingConcertsNotifyingEmail() {
         List<Concert> concerts = getTodayTicketingConcerts();
         // 빠른 조회를 위해 Map으로 변환
