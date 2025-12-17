@@ -26,28 +26,28 @@ public class KakaoTestController {
     @Operation(
             summary = "주변 음식점 조회",
             description = "좌표(서울 시청 근처)로 카카오 로컬에서 주변 음식점을 조회합니다, 좌표는 입력하면 됩니다." +
-                    "예시 : http://localhost:8080/api/v1/location/kakao/restaurant?lat=37.5665&lng=126.9780"
+                    "예시 : http://localhost:8080/api/v1/location/kakao/restaurant?lat=37.5665&lon=126.9780"
     )
     @PostMapping("/restaurant")
     public List<KakaoLocalResponse.Document> KakaoRestaurants(
             @RequestParam double lat,
-            @RequestParam double lng
+            @RequestParam double lon
     ){
-        return kakaoLocalService.searchNearbyRestaurants(lat, lng);
+        return kakaoLocalService.searchNearbyRestaurants(lat, lon);
     }
 
 
     @Operation(
             summary = "주변 카페 조회",
             description = "좌표(서울 시청 근처)로 카카오 로컬에서 주변 카페를 조회합니다, 좌표는 입력하면 됩니다." +
-                    "예시 : http://localhost:8080/api/v1/location/kakao/cafes?lat=37.5665&lng=126.9780"
+                    "예시 : http://localhost:8080/api/v1/location/kakao/cafes?lat=37.5665&lon=126.9780"
     )
     @PostMapping("/cafes")
     public List<KakaoLocalResponse.Document> KakaoCafes(
             @RequestParam double lat,
-            @RequestParam double lng
+            @RequestParam double lon
     ){
-        return kakaoLocalService.searchNearbyCafes(lat, lng);
+        return kakaoLocalService.searchNearbyCafes(lat, lon);
     }
 
 
