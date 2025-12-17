@@ -5,6 +5,7 @@ import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertLikeResponse;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ListSort;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOfficeElement;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.TicketOffice;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
@@ -37,42 +38,39 @@ public class ConcertController {
     private final ConcertService concertService;
     private final Rq rq;
 
-    @Operation(summary = "공연목록", description = "공연 전체 목록을 조회합니다. 시작일자를 기준으로 오름차순 조회합니다.")
-    @GetMapping("list")
-    public RsData<List<ConcertItem>> getList (
+    @Operation(summary = "공연목록",
+            description = """
+                    <h3>공연 전체 목록을 조회하는 통합 API입니다.</h3>
+                    <hr/>
+                    다양한 조회 기준에 따라 공연 목록을 조회합니다.<br/>
+                    """)
+    @GetMapping("list/{sort}")
+    public RsData<List<ConcertItem>> getList(
+            @Schema(description = """
+                    <h3>리스트를 받아올 기준이 될 경로 변수입니다. 대문자로 예시에 있는 것만 사용해 주세요.</h3>
+                    <hr/>
+                    LIKE : 좋아요 순<br/>
+                    VIEW : 조회수 순<br/>
+                    TICKETING : 오늘을 기준으로 다가오는 티켓팅 날짜 순<br/>
+                    UPCOMING : 오늘을 기준으로 다가오는 공연 시작 날짜 순<br/>
+                    REGISTERED : 가장 최근에 API에 등록된 공연 순<br/>
+                    <hr/>
+                    """, examples = {"LIKE", "VIEW", "TICKETING", "UPCOMING", "REGISTERED"})
+            @PathVariable ListSort sort,
             @Schema(description = "페이징 처리 또는 무한 스크롤 구현에 쓸 Pageable 객체입니다.")
             Pageable pageable
     ) {
-        return RsData.success(concertService.getConcertsList(pageable));
-    }
-
-    @Operation(summary = "다가오는 공연 목록", description = "오늘을 기준으로 다가오는 공연 목록을 조회합니다.")
-    @GetMapping("upComingList")
-    public RsData<List<ConcertItem>> getUpComingList (
-            @Schema(description = "페이징 처리 또는 무한 스크롤 구현에 쓸 Pageable 객체입니다.")
-            Pageable pageable
-    ) {
-      return RsData.success(concertService.getUpcomingConcertsList(pageable));
-    }
-
-    // todo: 내용 구현 필요
-    @Operation(summary = "공연 예매일 기준 조회(구현 전)", description = "현 시간을 기준으로 예매시간을 내림차순으로 출력하는 공연 목록을 조회합니다.")
-    @GetMapping("upComingTicketingList")
-    public RsData<List<ConcertItem>> getUpComingTicketingList (
-            @Schema(description = "페이징 처리 또는 무한 스크롤 구현에 사용할 Pageable 객체입니다.")
-            Pageable pageable
-    ){
-        return null;
+        return RsData.success(concertService.getConcertsList(pageable, sort));
     }
 
     @Operation(summary = "좋아요 한 공연 조회", description = "좋아요를 누른 공연에 대한 목록을 조회합니다. 저장 날짜를 기준으로 내림차순 정렬로 표시합니다.(최신으로 추가된 목록순입니다.)")
     @GetMapping("likedConcertList")
-    public RsData<List<ConcertItem>> getLikedConcertList (
+    public RsData<List<ConcertItem>> getLikedConcertList(
             @Schema(description = "페이징 처리 또는 무한 스크롤 구현에 쓸 Pageable 객체입니다.")
             Pageable pageable
-    ){
+    ) {
         User user = rq.getUser();
-        return RsData.success(concertService.getLikedConcertsList(pageable,user));
+        return RsData.success(concertService.getLikedConcertsList(pageable, user));
     }
 
     @Operation(summary = "공연 상세 조회", description = "공연에 대한 상세 목록을 조회합니다.")
@@ -87,11 +85,11 @@ public class ConcertController {
 
     @Operation(summary = "공연 예매처 조회", description = "공연에 대한 예매처들을 조회합니다.")
     @GetMapping("ticketOffices")
-    public RsData<List<TicketOfficeElement>> getTicketOffices (
+    public RsData<List<TicketOfficeElement>> getTicketOffices(
             @RequestParam
             @Schema(description = "조회 기준이 되는 concertId입니다. ?concertId={concertId} 로 값을 넘기시면 됩니다.")
             long concertId
-    ){
+    ) {
         return RsData.success(concertService.getTicketOfficesList(concertId));
     }
 
@@ -119,7 +117,7 @@ public class ConcertController {
     @GetMapping("isLike/{concertId}")
     public RsData<ConcertLikeResponse> isLikeConcert(
             @PathVariable long concertId
-    ){
+    ) {
         User user = rq.getUser();
         return RsData.success(concertService.isLikeConcert(concertId, user));
     }
@@ -133,8 +131,8 @@ public class ConcertController {
             @Schema(description = "페이징 처리 또는 무한 스크롤 구현에 쓸 Pageable 객체입니다.")
             Pageable pageable
 
-    ){
-        return RsData.success(concertService.getConcertListByKeyword(keyword,pageable));
+    ) {
+        return RsData.success(concertService.getConcertListByKeyword(keyword, pageable));
     }
 
 }
