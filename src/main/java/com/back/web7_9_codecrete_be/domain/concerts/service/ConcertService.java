@@ -145,4 +145,8 @@ public class ConcertService {
         concertRepository.deleteById(concertId);
     }
 
+    public List<Concert> findConcertsByArtistIds(List<Long> artistIds) {
+        return concertRepository.findDistinctByArtistIds(artistIds);
+    }
+
 }

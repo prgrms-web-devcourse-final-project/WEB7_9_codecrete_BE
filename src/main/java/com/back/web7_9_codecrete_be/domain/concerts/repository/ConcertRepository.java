@@ -207,4 +207,12 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
 
 
     Concert getConcertByConcertId(Long concertId);
+
+    @Query("""
+        select distinct c
+        from Concert c
+        join ConcertArtist ca on ca.concert = c
+        where ca.artist.id in :artistIds
+    """)
+    List<Concert> findDistinctByArtistIds(@Param("artistIds") List<Long> artistIds);
 }

@@ -5,6 +5,7 @@ import com.back.web7_9_codecrete_be.domain.artists.dto.request.SearchRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.UpdateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistListResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
+import com.back.web7_9_codecrete_be.domain.artists.dto.response.ConcertListByArtistResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.SearchResponse;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistService;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistEnrichService;
@@ -125,28 +126,31 @@ public class ArtistsController {
         return RsData.success("아티스트 공연 기록 저장 성공", null);
     }
 
-    @Operation(summary = "개인화된 공연 리스트 생성", description = "유저가 찜한 아티스트를 기반으로 공연 리스트를 생성합니다.")
-    @PostMapping("/list")
-    public void concertList() {}
+    @Operation(summary = "개인화된 공연 리스트 생성", description = "유저가 찜한 아티스트들의 공연 리스트를 조회합니다. 로그인한 유저만 가능합니다.")
+    @GetMapping("/list")
+    public RsData<List<ConcertListByArtistResponse>> concertList() {
+        User user = rq.getUser();
+        return RsData.success("찜한 아티스트 공연 리스트 조회 성공", artistService.getConcertList(user.getId()));
+    }
 
-    @Operation(summary = "아티스트 인기 순위", description = "Spotify 인기도를 바탕으로 아티스트 인기 순위 랭킹을 제공합니다.")
+    @Operation(summary = "아티스트 인기 순위(구현 전)", description = "Spotify 인기도를 바탕으로 아티스트 인기 순위 랭킹을 제공합니다.")
     @GetMapping("/ranking")
     public void artistRanking() {}
 
-    @Operation(summary = "장르 기반 아티스트 추천", description = "찜한 장르를 기반으로 아티스트 추천 리스트를 제공합니다.")
+    @Operation(summary = "장르 기반 아티스트 추천(구현 전)", description = "찜한 장르를 기반으로 아티스트 추천 리스트를 제공합니다.")
     @GetMapping("/recommendation/{genreId}")
     public void recommendArtist(
             @PathVariable Long genreId
     ) {}
 
-    @Operation(summary = "공연 셋리스트 생성", description = "사용자가 공연 셋리스트를 생성합니다.")
+    @Operation(summary = "공연 셋리스트 생성(구현 전)", description = "사용자가 공연 셋리스트를 생성합니다.")
     @PostMapping("/setlist/{concertId}/{artistId}")
     public void makeSetlist(
             @PathVariable Long concertId,
             @PathVariable Long artistId
     ) {}
 
-    @Operation(summary = "공연 셋리스트 조회", description = "다른 사용자들이 생성한 셋리스트를 조회합니다.")
+    @Operation(summary = "공연 셋리스트 조회(구현 전)", description = "다른 사용자들이 생성한 셋리스트를 조회합니다.")
     @GetMapping("/setlist/{concertId}/{artistId}")
     public void getSetlist(
             @PathVariable Long concertId,
