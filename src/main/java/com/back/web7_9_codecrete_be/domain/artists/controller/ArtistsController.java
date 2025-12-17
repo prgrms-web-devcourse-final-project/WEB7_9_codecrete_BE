@@ -8,6 +8,8 @@ import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResp
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.SearchResponse;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistService;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistEnrichService;
+import com.back.web7_9_codecrete_be.domain.users.entity.User;
+import com.back.web7_9_codecrete_be.global.rq.Rq;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +26,7 @@ import java.util.List;
 public class ArtistsController {
     private final ArtistService artistService;
     private final ArtistEnrichService enrichService;
+    private final Rq rq;
 
     @Operation(summary = "아티스트 저장", description = "임의의 가수(or 팀)을 DB에 저장합니다.")
     @GetMapping("/saved")
@@ -44,7 +47,7 @@ public class ArtistsController {
     @Operation(summary = "아티스트 생성", description = "아티스트를 등록합니다.")
     @PostMapping()
     public RsData<Void> create(
-            @RequestBody CreateRequest reqBody
+            @Valid @RequestBody CreateRequest reqBody
     ) {
         artistService.createArtist(reqBody.artistName(), reqBody.artistGroup(), reqBody.artistType(), reqBody.genreName());
         return RsData.success("아티스트 생성이 완료되었습니다.", null);
@@ -68,7 +71,7 @@ public class ArtistsController {
     @PatchMapping("/{id}")
     public RsData<Void> update(
             @PathVariable Long id,
-            @RequestBody UpdateRequest reqBody
+            @Valid @RequestBody UpdateRequest reqBody
     ) {
         artistService.updateArtist(id, reqBody);
         return RsData.success("아티스트 정보 수정을 완료했습니다.", null);
@@ -92,17 +95,25 @@ public class ArtistsController {
         return RsData.success("아티스트 검색에 성공했습니다.", artistService.search(reqBody.artistName()));
     }
 
-    @Operation(summary = "아티스트 찜하기", description = "id 에 해당하는 특정 아티스트를 찜합니다.")
+    @Operation(summary = "아티스트 찜하기", description = "id 에 해당하는 특정 아티스트를 찜합니다. 로그인 상태에서만 가능합니다.")
     @PostMapping("/likes/{id}")
-    public void artistLikes(
+    public RsData<Void> artistLikes(
             @PathVariable Long id
-    ) {}
+    ) {
+        User user = rq.getUser();
+        artistService.likeArtist(id, user);
+        return RsData.success("아티스트 찜 성공", null);
+    }
 
     @Operation(summary = "아티스트 찜 해체", description = "id 에 해당하는 아티스트에게 등록했던 찜을 해제합니다.")
     @DeleteMapping("/likes/{id}")
-    public void deleteArtistLikes(
+    public RsData<Void> deleteArtistLikes(
             @PathVariable Long id
-    ) {}
+    ) {
+        User user = rq.getUser();
+        artistService.deleteLikeArtist(id, user);
+        return RsData.success("아티스트 찜 해제 성공", null);
+    }
 
     @Operation(summary = "개인화된 공연 리스트 생성", description = "유저가 찜한 아티스트를 기반으로 공연 리스트를 생성합니다.")
     @PostMapping("/list")

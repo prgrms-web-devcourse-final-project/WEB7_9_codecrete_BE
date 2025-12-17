@@ -5,12 +5,16 @@ import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistListRespon
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.SearchResponse;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
+import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistLike;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Genre;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistLikeRepository;
+import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.ArtistErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
+import com.back.web7_9_codecrete_be.global.rq.Rq;
+import lombok.AccessLevel;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,13 +22,19 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public class ArtistService {
 
     private final SpotifyService spotifyService;
     private final ArtistRepository artistRepository;
     private final GenreService genreService;
     private final ArtistLikeRepository artistLikeRepository;
+
+    @Transactional(readOnly = true)
+    public Artist findArtist(Long artistId) {
+        return artistRepository.findById(artistId)
+                .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
+    }
 
     @Transactional
     public int setArtist() {
@@ -110,9 +120,8 @@ public class ArtistService {
         artistRepository.delete(artist);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<SearchResponse> search(String artistName) {
-
         List<Artist> artists =
                 artistRepository.findAllByArtistNameContainingIgnoreCaseOrNameKoContainingIgnoreCase(artistName, artistName);
 
@@ -123,6 +132,25 @@ public class ArtistService {
         return artists.stream()
                 .map(SearchResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public void likeArtist(Long artistId, User user) {
+        Artist artist = findArtist(artistId);
+        if(artistLikeRepository.existsByArtistAndUser(artist, user)) {
+            throw new BusinessException(ArtistErrorCode.LIKES_ALREADY_EXISTS);
+        }
+        artistLikeRepository.save(new ArtistLike(artist, user));
+        artist.increaseLikeCount();
+    }
+
+    @Transactional
+    public void deleteLikeArtist(Long artistId, User user) {
+        Artist artist = findArtist(artistId);
+        ArtistLike likes = artistLikeRepository.findByArtistAndUser(artist, user)
+                .orElseThrow(() -> new BusinessException(ArtistErrorCode.LIKES_NOT_FOUND));
+        artistLikeRepository.delete(likes);
+        artist.decreaseLikeCount();
     }
 
 }
