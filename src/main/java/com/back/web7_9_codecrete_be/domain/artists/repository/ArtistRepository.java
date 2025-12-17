@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface ArtistRepository extends JpaRepository<Artist, Long> {
@@ -21,4 +20,6 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
 
     List<Artist> findTop5ByArtistGroupAndIdNot(String artistGroup, long excludeId);
     List<Artist> findTop5ByGenreIdAndIdNot(Long genreId, long excludeId);
+
+    List<Artist> findAllByArtistNameContainingIgnoreCaseOrNameKoContainingIgnoreCase(String artistName1, String artistName2);
 }

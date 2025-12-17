@@ -3,6 +3,7 @@ package com.back.web7_9_codecrete_be.domain.artists.service;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.UpdateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistListResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
+import com.back.web7_9_codecrete_be.domain.artists.dto.response.SearchResponse;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Genre;
@@ -98,7 +99,7 @@ public class ArtistService {
         }
 
         if (!changed) {
-            throw new BusinessException(ArtistErrorCode.INVALID_UPDATE_REQUEST); // "수정할 값이 없습니다"
+            throw new BusinessException(ArtistErrorCode.INVALID_UPDATE_REQUEST);
         }
     }
 
@@ -107,6 +108,21 @@ public class ArtistService {
         Artist artist = artistRepository.findById(id)
                         .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
         artistRepository.delete(artist);
+    }
+
+    @Transactional
+    public List<SearchResponse> search(String artistName) {
+
+        List<Artist> artists =
+                artistRepository.findAllByArtistNameContainingIgnoreCaseOrNameKoContainingIgnoreCase(artistName, artistName);
+
+        if (artists.isEmpty()) {
+            throw new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND);
+        }
+
+        return artists.stream()
+                .map(SearchResponse::from)
+                .toList();
     }
 
 }

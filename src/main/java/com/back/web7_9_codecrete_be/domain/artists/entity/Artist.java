@@ -37,6 +37,9 @@ public class Artist {
     @Column(name = "name_ko", length = 200)
     private String nameKo;
 
+    @Column(name = "like_count", nullable = false)
+    private int likeCount = 0;
+
     public Artist(String spotifyArtistId, String artistName, String artistGroup, ArtistType artistType, Genre genre) {
         this.spotifyArtistId = spotifyArtistId;
         this.artistName = artistName;
