@@ -1,6 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.artists.service;
 
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
+import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.global.musicbrainz.MusicBrainzClient;
 import com.back.web7_9_codecrete_be.global.wikidata.WikidataClient;
@@ -95,13 +96,28 @@ public class ArtistEnrichService {
         }
 
         // 기존 artistType이 있으면 유지, 없으면 가져온 값 사용
-        String artistType = result.artistType != null ? result.artistType : artist.getArtistType();
+        String artistTypeStr = result.artistType != null ? result.artistType : 
+                (artist.getArtistType() != null ? artist.getArtistType().name() : null);
+        
+        // String을 ArtistType enum으로 변환
+        ArtistType artistType;
+        if (artistTypeStr != null) {
+            try {
+                artistType = ArtistType.valueOf(artistTypeStr);
+            } catch (IllegalArgumentException e) {
+                log.warn("잘못된 artistType 값: {}, 기본값 SOLO 사용", artistTypeStr);
+                artistType = ArtistType.SOLO;
+            }
+        } else {
+            // 기존 값이 없고 새 값도 없으면 기본값 사용
+            artistType = artist.getArtistType() != null ? artist.getArtistType() : ArtistType.SOLO;
+        }
 
-        // ✅ 기존 row를 "보강"
+        // 기존 row를 "보강"
         artist.updateProfile(result.nameKo, result.artistGroup, artistType);
         // 명시적으로 save하여 변경사항을 DB에 즉시 반영
         artistRepository.save(artist);
-        log.info("✅ Enrich 성공: artistId={}, name={}, nameKo={}, group={}, type={}, source={}",
+        log.info("Enrich 성공: artistId={}, name={}, nameKo={}, group={}, type={}, source={}",
                 artist.getId(), artist.getArtistName(), result.nameKo,
                 result.artistGroup, artistType, result.source);
     }
