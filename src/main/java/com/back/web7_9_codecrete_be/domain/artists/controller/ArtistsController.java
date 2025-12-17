@@ -22,7 +22,7 @@ public class ArtistsController {
     private final ArtistService artistService;
     private final ArtistEnrichService enrichService;
 
-    @Operation(summary = "아티스트 저장", description = "임의의 가수 300명(or 팀)을 DB에 저장합니다.")
+    @Operation(summary = "아티스트 저장", description = "임의의 가수(or 팀)을 DB에 저장합니다.")
     @GetMapping("/saved")
     public RsData<Integer> saveArtist() {
         int saved = artistService.setArtist();
@@ -79,4 +79,53 @@ public class ArtistsController {
         artistService.delete(id);
         return RsData.success("아티스트 정보를 삭제했습니다.", null);
     }
+
+    @Operation(summary = "아티스트 검색", description = "아티스트 이름을 입력받아 검색합니다.")
+    @PostMapping("/{id}")
+    public RsData<Void> search(
+            @PathVariable Long id
+    ) {
+        return RsData.success("아티스트 검색에 성공했습니다.", null);
+    }
+
+    @Operation(summary = "아티스트 찜하기", description = "id 에 해당하는 특정 아티스트를 찜합니다.")
+    @PostMapping("/likes/{id}")
+    public void artistLikes(
+            @PathVariable Long id
+    ) {}
+
+    @Operation(summary = "아티스트 찜 해체", description = "id 에 해당하는 아티스트에게 등록했던 찜을 해제합니다.")
+    @DeleteMapping("/likes/{id}")
+    public void deleteArtistLikes(
+            @PathVariable Long id
+    ) {}
+
+    @Operation(summary = "개인화된 공연 리스트 생성", description = "유저가 찜한 아티스트를 기반으로 공연 리스트를 생성합니다.")
+    @PostMapping("/list")
+    public void concertList() {}
+
+    @Operation(summary = "아티스트 인기 순위", description = "Spotify 인기도를 바탕으로 아티스트 인기 순위 랭킹을 제공합니다.")
+    @GetMapping("/ranking")
+    public void artistRanking() {}
+
+    @Operation(summary = "장르 기반 아티스트 추천", description = "찜한 장르를 기반으로 아티스트 추천 리스트를 제공합니다.")
+    @GetMapping("/recommendation/{genreId}")
+    public void recommendArtist(
+            @PathVariable Long genreId
+    ) {}
+
+    @Operation(summary = "공연 셋리스트 생성", description = "사용자가 공연 셋리스트를 생성합니다.")
+    @PostMapping("/setlist/{concertId}/{artistId}")
+    public void makeSetlist(
+            @PathVariable Long concertId,
+            @PathVariable Long artistId
+    ) {}
+
+    @Operation(summary = "공연 셋리스트 조회", description = "다른 사용자들이 생성한 셋리스트를 조회합니다.")
+    @GetMapping("/setlist/{concertId}/{artistId}")
+    public void getSetlist(
+            @PathVariable Long concertId,
+            @PathVariable Long artistId
+    ) {}
 }
+
