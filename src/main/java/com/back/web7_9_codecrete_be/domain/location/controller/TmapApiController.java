@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/location")
-public class TmapController {
+public class TmapApiController {
 
     private final TmapService tmapService;
 

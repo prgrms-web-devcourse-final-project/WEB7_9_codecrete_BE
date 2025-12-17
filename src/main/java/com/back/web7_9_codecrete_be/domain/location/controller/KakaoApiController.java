@@ -18,7 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/location/kakao")
 @RequiredArgsConstructor
-public class KakaoTestController {
+public class KakaoApiController {
 
     private final KakaoLocalService kakaoLocalService;
 
