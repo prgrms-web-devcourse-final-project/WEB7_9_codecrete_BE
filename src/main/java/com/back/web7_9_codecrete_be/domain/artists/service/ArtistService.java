@@ -4,16 +4,16 @@ import com.back.web7_9_codecrete_be.domain.artists.dto.request.UpdateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistListResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.SearchResponse;
-import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
-import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistLike;
-import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
-import com.back.web7_9_codecrete_be.domain.artists.entity.Genre;
+import com.back.web7_9_codecrete_be.domain.artists.entity.*;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistLikeRepository;
+import com.back.web7_9_codecrete_be.domain.artists.repository.ConcertArtistRepository;
+import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
+import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRepository;
+import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.ArtistErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
-import com.back.web7_9_codecrete_be.global.rq.Rq;
 import lombok.AccessLevel;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +29,8 @@ public class ArtistService {
     private final ArtistRepository artistRepository;
     private final GenreService genreService;
     private final ArtistLikeRepository artistLikeRepository;
+    private final ConcertArtistRepository concertArtistRepository;
+    private final ConcertRepository concertRepository;
 
     @Transactional(readOnly = true)
     public Artist findArtist(Long artistId) {
@@ -152,5 +154,15 @@ public class ArtistService {
         artistLikeRepository.delete(likes);
         artist.decreaseLikeCount();
     }
+
+    @Transactional
+    public void linkArtistConcert(Long artistId, Long concertId) {
+        Artist artist = findArtist(artistId);
+        Concert concert = concertRepository.findById(concertId)
+                .orElseThrow();
+
+        concertArtistRepository.save(new ConcertArtist(artist, concert));
+    }
+
 
 }

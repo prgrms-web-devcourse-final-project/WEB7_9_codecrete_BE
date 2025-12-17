@@ -115,6 +115,16 @@ public class ArtistsController {
         return RsData.success("아티스트 찜 해제 성공", null);
     }
 
+    @Operation(summary = "아티스트 공연 기록 저장", description = "아티스트 id 와 공연 id 를 받아 해당 아티스트의 공연 기록을 저장합니다.")
+    @PostMapping("/link/{artistId}/{concertId}")
+    public RsData<Void> saveConcertArtist(
+            @PathVariable Long artistId,
+            @PathVariable Long concertId
+    ) {
+        artistService.linkArtistConcert(artistId, concertId);
+        return RsData.success("아티스트 공연 기록 저장 성공", null);
+    }
+
     @Operation(summary = "개인화된 공연 리스트 생성", description = "유저가 찜한 아티스트를 기반으로 공연 리스트를 생성합니다.")
     @PostMapping("/list")
     public void concertList() {}
