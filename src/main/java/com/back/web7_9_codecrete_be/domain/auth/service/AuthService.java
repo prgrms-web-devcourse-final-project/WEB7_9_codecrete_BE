@@ -170,9 +170,6 @@ public class AuthService {
     private User registerKakaoUser(KakaoUserInfo info) {
 
         String nickname = nicknameGenerator.generate();
-        if (userRepository.existsByNickname(nickname)) {
-            nickname = nickname + "_" + System.currentTimeMillis();
-        }
 
         User user = User.builder()
                 .email(info.getEmail())
@@ -222,9 +219,6 @@ public class AuthService {
     private User registerGoogleUser(GoogleUserInfo info) {
 
         String nickname = nicknameGenerator.generate();
-        if (userRepository.existsByNickname(nickname)) {
-            nickname = nickname + "_" + System.currentTimeMillis();
-        }
 
         User user = User.builder()
                 .email(info.getEmail())
