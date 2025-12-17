@@ -90,4 +90,18 @@ public class AuthController {
         String newAccessToken = tokenService.reissueAccessToken();
         return RsData.success("토큰 재발급 완료", newAccessToken);
     }
+
+    @Operation(summary = "카카오 소셜 로그인", description = "카카오 OAuth 인가 코드를 이용해 로그인/회원가입을 진행합니다.")
+    @GetMapping("/login/kakao")
+    public RsData<?> kakaoLogin(@RequestParam String code) {
+        LoginResponse response = authService.kakaoLogin(code);
+        return RsData.success("카카오 로그인 성공", response);
+    }
+
+    @Operation(summary = "구글 소셜 로그인", description = "구글 OAuth 인가 코드를 이용해 로그인/회원가입을 진행합니다.")
+    @GetMapping("/login/google")
+    public RsData<?> googleLogin(@RequestParam String code) {
+        LoginResponse response = authService.googleLogin(code);
+        return RsData.success("구글 로그인 성공", response);
+    }
 }

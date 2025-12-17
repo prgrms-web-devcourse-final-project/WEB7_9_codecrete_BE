@@ -17,6 +17,8 @@ public enum AuthErrorCode implements ErrorCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "A-110", "존재하지 않는 이메일입니다."),
     INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "A-111", "비밀번호가 일치하지 않습니다."),
     USER_INACTIVE(HttpStatus.FORBIDDEN, "A-112", "현재 비활성화된 계정입니다."),
+    SOCIAL_USER_CANNOT_LOGIN(HttpStatus.BAD_REQUEST, "A-113", "소셜 로그인 계정은 일반 로그인으로 로그인할 수 없습니다."),
+    SOCIAL_EMAIL_NOT_PROVIDED(HttpStatus.BAD_REQUEST, "A-114", "소셜 계정에서 이메일 정보를 제공하지 않았습니다."),
 
     // 권한 관련
     UNAUTHORIZED_USER(HttpStatus.UNAUTHORIZED, "A-120", "로그인이 필요합니다."),

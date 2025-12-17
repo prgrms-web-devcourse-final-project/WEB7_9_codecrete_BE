@@ -8,3 +8,9 @@ spring:
     username: sa
     password:
     driver-class-name: org.h2.Driver
+
+oauth:
+  kakao:
+    client-id: ${KAKAO_REST_API_KEY}   # 카카오 REST API 키
+    client-secret: ${KAKAO_CLIENT_SECRET} # 카카오 Client Secret
+    redirect-uri: http://localhost:3000/oauth/kakao  # 카카오 로그인 Redirect URI
