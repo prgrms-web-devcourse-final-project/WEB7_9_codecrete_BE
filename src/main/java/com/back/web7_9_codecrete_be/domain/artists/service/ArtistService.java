@@ -29,7 +29,12 @@ public class ArtistService {
     private final ArtistRepository artistRepository;
     private final GenreService genreService;
     private final ArtistLikeRepository artistLikeRepository;
-    private final Rq rq;
+
+    @Transactional(readOnly = true)
+    public Artist findArtist(Long artistId) {
+        return artistRepository.findById(artistId)
+                .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
+    }
 
     @Transactional
     public int setArtist() {
@@ -131,9 +136,7 @@ public class ArtistService {
 
     @Transactional
     public void likeArtist(Long artistId, User user) {
-        Artist artist = artistRepository.findById(artistId)
-                .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
-
+        Artist artist = findArtist(artistId);
         if(artistLikeRepository.existsByArtistAndUser(artist, user)) {
             throw new BusinessException(ArtistErrorCode.LIKES_ALREADY_EXISTS);
         }
@@ -143,8 +146,7 @@ public class ArtistService {
 
     @Transactional
     public void deleteLikeArtist(Long artistId, User user) {
-        Artist artist = artistRepository.findById(artistId)
-                .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
+        Artist artist = findArtist(artistId);
         ArtistLike likes = artistLikeRepository.findByArtistAndUser(artist, user)
                 .orElseThrow(() -> new BusinessException(ArtistErrorCode.LIKES_NOT_FOUND));
         artistLikeRepository.delete(likes);
