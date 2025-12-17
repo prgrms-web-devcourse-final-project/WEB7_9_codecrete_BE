@@ -302,4 +302,8 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
 
 
     Concert getConcertByConcertId(Long concertId);
+
+    List<Concert> getConcertByTicketTimeAfterAndTicketTimeBefore(LocalDateTime ticketTimeAfter, LocalDateTime ticketTimeBefore);
+
+    List<Concert> getConcertByTicketTimeBetween(LocalDateTime ticketTimeAfter, LocalDateTime ticketTimeBefore);
 }
