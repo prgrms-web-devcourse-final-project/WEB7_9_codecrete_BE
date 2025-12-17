@@ -6,6 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 
 @Entity
@@ -32,7 +33,7 @@ public class Schedule {
     private String title;
 
     @Column(name = "start_at", nullable = false)
-    private LocalDateTime startAt;
+    private LocalTime startAt;
 
     @Column(name = "duration", nullable = false)
     private Integer duration;
@@ -52,9 +53,6 @@ public class Schedule {
 
     @Column(name = "details", columnDefinition = "TEXT", nullable = false)
     private String details;
-
-    @Column(name = "sequence_order", nullable = false)
-    private Integer sequenceOrder;
 
     // 교통 수단 정보 (schedule_type = 'TRANSPORT'인 경우 사용)
     @Column(name = "start_place_lat")
@@ -87,10 +85,9 @@ public class Schedule {
 
     @Builder
     public Schedule(Plan plan, ScheduleType scheduleType, String title,
-                    LocalDateTime startAt, Integer duration,
+                    LocalTime startAt, Integer duration,
                     String location, Double locationLat, Double locationLon,
                     Integer estimatedCost, String details,
-                    Integer sequenceOrder,
                     Double startPlaceLat, Double startPlaceLon,
                     Double endPlaceLat, Double endPlaceLon,
                     Integer distance, TransportType transportType) {
@@ -104,7 +101,6 @@ public class Schedule {
         this.locationLon = locationLon;
         this.estimatedCost = estimatedCost;
         this.details = details;
-        this.sequenceOrder = sequenceOrder;
         this.startPlaceLat = startPlaceLat;
         this.startPlaceLon = startPlaceLon;
         this.endPlaceLat = endPlaceLat;
@@ -114,10 +110,9 @@ public class Schedule {
     }
 
     public void update(ScheduleType scheduleType, String title,
-                      LocalDateTime startAt, Integer duration,
+                      LocalTime startAt, Integer duration,
                       String location, Double locationLat, Double locationLon,
                       Integer estimatedCost, String details,
-                      Integer sequenceOrder,
                       Double startPlaceLat, Double startPlaceLon,
                       Double endPlaceLat, Double endPlaceLon,
                       Integer distance, TransportType transportType) {
@@ -130,7 +125,6 @@ public class Schedule {
         this.locationLon = locationLon;
         this.estimatedCost = estimatedCost;
         this.details = details;
-        this.sequenceOrder = sequenceOrder;
         this.startPlaceLat = startPlaceLat;
         this.startPlaceLon = startPlaceLon;
         this.endPlaceLat = endPlaceLat;

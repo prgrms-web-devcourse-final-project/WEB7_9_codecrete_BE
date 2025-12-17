@@ -65,8 +65,8 @@ public class AuthController {
     @Operation(summary = "닉네임 중복 체크", description = "닉네임이 사용 가능한지 확인합니다.")
     @GetMapping("/nickname/check")
     public RsData<?> checkNickname(@RequestParam String nickname) {
-        boolean available = authService.isNicknameAvailable(nickname);
-        return RsData.success("닉네임 사용 가능 여부 확인", available);
+        authService.isNicknameAvailable(nickname);
+        return RsData.success("사용 가능한 닉네임입니다.");
     }
 
     @Operation(summary = "임시 비밀번호 재발급", description = "특정 이메일로 임시 비밀번호를 발송합니다.")
@@ -89,5 +89,19 @@ public class AuthController {
     public RsData<?> refresh() {
         String newAccessToken = tokenService.reissueAccessToken();
         return RsData.success("토큰 재발급 완료", newAccessToken);
+    }
+
+    @Operation(summary = "카카오 소셜 로그인", description = "카카오 OAuth 인가 코드를 이용해 로그인/회원가입을 진행합니다.")
+    @GetMapping("/login/kakao")
+    public RsData<?> kakaoLogin(@RequestParam String code) {
+        LoginResponse response = authService.kakaoLogin(code);
+        return RsData.success("카카오 로그인 성공", response);
+    }
+
+    @Operation(summary = "구글 소셜 로그인", description = "구글 OAuth 인가 코드를 이용해 로그인/회원가입을 진행합니다.")
+    @GetMapping("/login/google")
+    public RsData<?> googleLogin(@RequestParam String code) {
+        LoginResponse response = authService.googleLogin(code);
+        return RsData.success("구글 로그인 성공", response);
     }
 }

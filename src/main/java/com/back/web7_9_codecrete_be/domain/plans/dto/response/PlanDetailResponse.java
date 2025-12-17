@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 
@@ -38,14 +39,13 @@ public class PlanDetailResponse {
         private Long id;
         private Schedule.ScheduleType scheduleType;
         private String title;
-        private java.time.LocalDateTime startAt;
+        private LocalTime startAt;
         private Integer duration;
         private String location;
         private Double locationLat;
         private Double locationLon;
         private Integer estimatedCost;
         private String details;
-        private Integer sequenceOrder;
         private Double startPlaceLat;
         private Double startPlaceLon;
         private Double endPlaceLat;

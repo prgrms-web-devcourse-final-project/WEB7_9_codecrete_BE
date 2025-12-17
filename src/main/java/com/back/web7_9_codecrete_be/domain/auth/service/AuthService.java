@@ -1,9 +1,11 @@
 package com.back.web7_9_codecrete_be.domain.auth.service;
 
+import com.back.web7_9_codecrete_be.domain.auth.dto.kakao.KakaoUserInfo;
 import com.back.web7_9_codecrete_be.domain.auth.dto.request.LoginRequest;
 import com.back.web7_9_codecrete_be.domain.auth.dto.request.SignupRequest;
 import com.back.web7_9_codecrete_be.domain.auth.dto.response.LoginResponse;
 import com.back.web7_9_codecrete_be.domain.email.service.EmailService;
+import com.back.web7_9_codecrete_be.domain.users.entity.SocialType;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
 import com.back.web7_9_codecrete_be.global.error.code.AuthErrorCode;
@@ -25,6 +27,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final TokenService tokenService;
+    private final KakaoOAuthService kakaoOAuthService;
 
     // 회원가입
     public void signUp(SignupRequest req) {
@@ -50,6 +53,8 @@ public class AuthService {
                 .password(passwordEncoder.encode(req.getPassword()))
                 .birth(LocalDate.parse(req.getBirth()))
                 .profileImage(req.getProfileImage())
+                .socialType(SocialType.LOCAL)
+                .socialId(null)
                 .build();
 
         userRepository.save(user);
@@ -64,6 +69,10 @@ public class AuthService {
 
         if (user.getIsDeleted()) {
             throw new BusinessException(UserErrorCode.USER_DELETED);
+        }
+
+        if (user.getSocialType() != SocialType.LOCAL) {
+            throw new BusinessException(AuthErrorCode.SOCIAL_USER_CANNOT_LOGIN);
         }
 
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
@@ -85,8 +94,10 @@ public class AuthService {
     }
 
     // 닉네임 중복 체크
-    public boolean isNicknameAvailable(String nickname) {
-        return !userRepository.existsByNickname(nickname);
+    public void isNicknameAvailable(String nickname) {
+        if (userRepository.existsByNickname(nickname)) {
+            throw new BusinessException(UserErrorCode.NICKNAME_DUPLICATED);
+        }
     }
 
     // 임시 비밀번호 재발급
@@ -118,5 +129,62 @@ public class AuthService {
             sb.append(chars.charAt(random.nextInt(chars.length())));
         }
         return sb.toString();
+    }
+
+    @Transactional
+    public LoginResponse kakaoLogin(String code) {
+
+        // 1. 인가 코드 → 카카오 Access Token
+        String kakaoAccessToken = kakaoOAuthService.getAccessToken(code);
+
+        // 2. Access Token → 사용자 정보
+        KakaoUserInfo kakaoUserInfo = kakaoOAuthService.getUserInfo(kakaoAccessToken);
+
+        if (kakaoUserInfo.getEmail() == null) {
+            throw new BusinessException(AuthErrorCode.SOCIAL_EMAIL_NOT_PROVIDED);
+        }
+
+        // 3. 소셜 ID 기준 사용자 조회
+        User user = userRepository
+                .findBySocialTypeAndSocialId(
+                        SocialType.KAKAO,
+                        kakaoUserInfo.getSocialId()
+                )
+                .orElseGet(() -> registerKakaoUser(kakaoUserInfo));
+
+        // 4. 탈퇴 사용자 체크
+        if (user.getIsDeleted()) {
+            throw new BusinessException(UserErrorCode.USER_DELETED);
+        }
+
+        // 5. 토큰 발급
+        tokenService.issueTokens(user);
+
+        return new LoginResponse(user.getId(), user.getNickname());
+    }
+
+    private User registerKakaoUser(KakaoUserInfo info) {
+
+        String nickname = info.getNickname();
+        if (userRepository.existsByNickname(nickname)) {
+            nickname = nickname + "_" + System.currentTimeMillis();
+        }
+
+        User user = User.builder()
+                .email(info.getEmail())
+                .nickname(nickname)
+                .password(null)
+                .birth(null)
+                .profileImage(info.getProfileImageUrl())
+                .socialType(SocialType.KAKAO)
+                .socialId(info.getSocialId())
+                .build();
+
+        return userRepository.save(user);
+    }
+
+    public LoginResponse googleLogin(String code) {
+        // TODO: 구글 인가 코드 → 사용자 정보 → 로그인 처리
+        throw new UnsupportedOperationException("구글 로그인 미구현");
     }
 }

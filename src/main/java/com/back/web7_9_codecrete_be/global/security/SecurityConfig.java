@@ -52,6 +52,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",       // Swagger
                                 "/swagger-ui/**",         // Swagger UI
                                 "/h2-console/**",       // H2 Console
+                                "/api/v1/location/**",      //location 정보 조회 도메인(임시)
                                 "/api/v1/concerts/**",     // concert 정보 조회 도메인
                                 "/api/v1/artists/**"    // artist 정보 저장 도메인(임시)
                         ).permitAll()
@@ -83,7 +84,7 @@ public class SecurityConfig {
     public UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration =new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
+        configuration.setAllowedOrigins(List.of("http://localhost:3000","https://web-6-7-codecrete-fe.vercel.app", "https://www.naeconcertbutakhae.shop"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
         configuration.setAllowedHeaders(List.of("*"));

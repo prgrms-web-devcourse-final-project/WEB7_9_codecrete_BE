@@ -28,10 +28,12 @@ public class User {
     @Column(nullable = false, unique = true, length = 20)
     private String nickname;
 
-    @Column(nullable = false, length = 100)
+    // 소셜 로그인 사용자는 password가 없을 수 있으므로 nullable = true
+    @Column(length = 100)
     private String password;
 
-    @Column(nullable = false)
+    // 소셜 로그인 시 생년월일을 불러오지 못하므로 nullable = true
+    @Column(nullable = true)
     private LocalDate birth;
 
     @Column(name = "profile_image", length = 255)
@@ -59,18 +61,30 @@ public class User {
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted;
 
+    // 소셜 로그인용 컬럼 추가
+    @Enumerated(EnumType.STRING)
+    @Column(name = "social_type", nullable = false, length = 20)
+    private SocialType socialType;
+
+    @Column(name = "social_id", length = 100)
+    private String socialId;
+
     @Builder
     public User(String email,
                 String nickname,
                 String password,
                 LocalDate birth,
-                String profileImage) {
+                String profileImage,
+                SocialType socialType,
+                String socialId) {
 
         this.email = email;
         this.nickname = nickname;
         this.password = password;
         this.birth = birth;
         this.profileImage = profileImage;
+        this.socialType = socialType;
+        this.socialId = socialId;
 
         // 기본값 세팅
         this.role = Role.USER;
