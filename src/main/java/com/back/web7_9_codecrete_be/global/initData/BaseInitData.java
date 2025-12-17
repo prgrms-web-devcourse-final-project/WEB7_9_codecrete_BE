@@ -22,7 +22,6 @@ public class BaseInitData {
     @PostConstruct
     public void init() {
         createTestUser();
-        createEmailTestUser();
         createAdminUser();
     }
 
@@ -42,24 +41,6 @@ public class BaseInitData {
                 .build();
 
         userRepository.save(testUser);
-    }
-
-    private void createEmailTestUser() {
-        if (userRepository.existsByEmail("gnldbs1004@naver.com")) {
-            return;
-        }
-
-        User testEmailUser = User.builder()
-                .email("gnldbs1004@naver.com")
-                .nickname("이메일개발자")
-                .password(passwordEncoder.encode("test1234!"))
-                .birth(LocalDate.of(1999, 1, 1))
-                .profileImage("https://example.com/profile.jpg")
-                .socialType(SocialType.LOCAL)
-                .socialId(null)
-                .build();
-
-        userRepository.save(testEmailUser);
     }
 
     private void createAdminUser() {
