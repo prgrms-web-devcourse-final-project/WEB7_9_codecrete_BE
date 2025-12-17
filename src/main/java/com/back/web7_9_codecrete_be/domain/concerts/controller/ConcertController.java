@@ -47,17 +47,20 @@ public class ConcertController {
     @GetMapping("list/{sort}")
     public RsData<List<ConcertItem>> getList(
             @Schema(description = """
-                    <h3>리스트를 받아올 기준이 될 경로 변수입니다. 대문자로 예시에 있는 것만 사용해 주세요.</h3>
+                    <h3>리스트를 받아올 기준이 될 경로 변수입니다. <b>대문자</b>로 예시에 있는 것만 사용해 주세요.</h3>
                     <hr/>
-                    LIKE : 좋아요 순<br/>
-                    VIEW : 조회수 순<br/>
-                    TICKETING : 오늘을 기준으로 다가오는 티켓팅 날짜 순<br/>
-                    UPCOMING : 오늘을 기준으로 다가오는 공연 시작 날짜 순<br/>
-                    REGISTERED : 가장 최근에 API에 등록된 공연 순<br/>
+                    <b>LIKE :</b> 좋아요 순<br/>
+                    <b>VIEW :</b> 조회수 순<br/>
+                    <b>TICKETING :</b> 오늘을 기준으로 다가오는 티켓팅 날짜 순<br/>
+                    <b>UPCOMING :</b> 오늘을 기준으로 다가오는 공연 시작 날짜 순<br/>
+                    <b>REGISTERED :</b> 가장 최근에 API에 등록된 공연 순<br/>
                     <hr/>
                     """, examples = {"LIKE", "VIEW", "TICKETING", "UPCOMING", "REGISTERED"})
             @PathVariable ListSort sort,
-            @Schema(description = "페이징 처리 또는 무한 스크롤 구현에 쓸 Pageable 객체입니다.")
+            @Schema(description = """
+                    페이징 처리 또는 무한 스크롤 구현에 쓸 Pageable 객체입니다.<br/>
+                    sort 부분은 사용하지 않으니 지워주시고 <strong>"page", "size"</strong> 만 넘겨주시면 됩니다. <font color="red">*sort 부분이 남아있으면 오류가 발생합니다.</font>
+                    """)
             Pageable pageable
     ) {
         return RsData.success(concertService.getConcertsList(pageable, sort));
@@ -77,7 +80,12 @@ public class ConcertController {
     @GetMapping("concertDetail")
     public ConcertDetailResponse getConcertDetail(
             @RequestParam
-            @Schema(description = "조회 기준이 되는 concertId입니다. ?concertId={concertId} 로 값을 넘기시면 됩니다.")
+            @Schema(description = """
+                    <h3>조회 기준이 되는 concertId입니다.</h3>
+                    <hr/>
+                    DB에 저장되어 있는 공연의 ID 값을 기준으로 조회합니다. <br/>
+                    <strong>?concertId={concertId}</strong> 로 값을 넘기시면 됩니다.
+                    """)
             long concertId
     ) {
         return concertService.getConcertDetail(concertId);
@@ -87,7 +95,12 @@ public class ConcertController {
     @GetMapping("ticketOffices")
     public RsData<List<TicketOfficeElement>> getTicketOffices(
             @RequestParam
-            @Schema(description = "조회 기준이 되는 concertId입니다. ?concertId={concertId} 로 값을 넘기시면 됩니다.")
+            @Schema(description = """
+                    <h3>조회 기준이 되는 concertId입니다.</h3>
+                    <hr/>
+                    DB에 저장되어 있는 공연의 ID 값을 기준으로 조회합니다. <br/>
+                    <strong>?concertId={concertId}</strong> 로 값을 넘기시면 됩니다.
+                    """)
             long concertId
     ) {
         return RsData.success(concertService.getTicketOfficesList(concertId));
@@ -96,7 +109,14 @@ public class ConcertController {
     @Operation(summary = "공연 좋아요 기능", description = "사용자가 마음에 드는 공연에 대해 좋아요를 통해 저장할 수 있습니다.")
     @PostMapping("like/{concertId}")
     public RsData<Void> likeConcert(
-            @PathVariable long concertId
+            @PathVariable
+            @Schema(description = """
+                    <h3>좋아요를 누를 공연의 concertId입니다.</h3>
+                    <hr/>
+                    DB에 저장되어 있는 공연의 ID 값입니다. <br/>
+                    <strong>/like/{concertId}</strong> 형태로 요청하면 해당 공연에 좋아요가 등록됩니다.
+                    """)
+            long concertId
     ) {
         User user = rq.getUser();
         concertService.likeConcert(concertId, user);
@@ -106,7 +126,14 @@ public class ConcertController {
     @Operation(summary = "공연 좋아요 해제 기능", description = "좋아요를 해제할 수 있습니다.")
     @DeleteMapping("dislike/{concertId}")
     public RsData<Void> dislikeConcert(
-            @PathVariable long concertId
+            @PathVariable
+            @Schema(description = """
+                    <h3>좋아요를 해제할 공연의 concertId입니다.</h3>
+                    <hr/>
+                    DB에 저장되어 있는 공연의 ID 값입니다. <br/>
+                    <strong>/dislike/{concertId}</strong> 형태로 요청하면 좋아요가 해제됩니다.
+                    """)
+            long concertId
     ) {
         User user = rq.getUser();
         concertService.dislikeConcert(concertId, user);
@@ -116,7 +143,14 @@ public class ConcertController {
     @Operation(summary = "공연 좋아요 여부 확인", description = "좋아요 여부를 확인합니다.")
     @GetMapping("isLike/{concertId}")
     public RsData<ConcertLikeResponse> isLikeConcert(
-            @PathVariable long concertId
+            @PathVariable
+            @Schema(description = """
+                    <h3>좋아요 여부를 확인할 공연의 concertId입니다.</h3>
+                    <hr/>
+                    DB에 저장되어 있는 공연의 ID 값입니다. <br/>
+                    <strong>/isLike/{concertId}</strong> 형태로 요청하면 좋아요 여부를 확인할 수 있습니다.
+                    """)
+            long concertId
     ) {
         User user = rq.getUser();
         return RsData.success(concertService.isLikeConcert(concertId, user));
@@ -126,7 +160,12 @@ public class ConcertController {
     @Operation(summary = "공연 검색", description = "제목에 키워드를 포함하고 있는 공연 정보를 검색합니다.")
     @GetMapping("search")
     public RsData<List<ConcertItem>> searchConcert(
-            @Schema(description = "공연 정보 검색 키워드입니다.")
+            @Schema(description = """
+                    <h3>검색어가 되는 Keyword입니다.</h3>
+                    <hr/>
+                    <b>?keyword={keyword}</b> 로 값을 넘기시면 됩니다.<br/>
+                    DB에서 해당 문자열을 가지고 있는 모든 결과값을 반환합니다.
+                    """)
             @RequestParam String keyword,
             @Schema(description = "페이징 처리 또는 무한 스크롤 구현에 쓸 Pageable 객체입니다.")
             Pageable pageable
