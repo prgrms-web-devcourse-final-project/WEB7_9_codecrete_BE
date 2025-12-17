@@ -2,6 +2,7 @@ package com.back.web7_9_codecrete_be.domain.concerts.controller;
 
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concert.ConcertListResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceListResponse;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.result.SetResultResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertTicketTimeSetRequest;
@@ -29,9 +30,9 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
 
 
     @Operation(summary = "초기 공연 정보 저장", description = "25년 12월부터 앞으로 6개월 이후까지의 전체 공연의 정보를 가져와서 저장합니다. 대략 10~12분 정도 시간이 소요됩니다.")
-    @PostMapping("setConcertPlace")
-    public ConcertPlaceListResponse setConcertPlace() throws InterruptedException {
-        return kopisApiService.setConcertPlace();
+    @PostMapping("setConcertData")
+    public RsData<SetResultResponse> setConcert() throws InterruptedException {
+        return RsData.success(kopisApiService.setConcertsList());
     }
 
     @Operation(summary = "공연 정보 갱신",description = "공연 정보를 직접 갱신합니다.")
@@ -70,20 +71,19 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
         return RsData.success(concertService.setConcertTime(concertTicketTimeSetRequest));
     }
 
-    // todo: 내용 구현 필요
-    @Operation(summary = "개별 공연 API통한 갱신(구현 전)",description = "개별 공연에 대해서 공연 예술 통합망(Kopis)을 통해 데이터를 조회하고 해당 데이터를 갱신합니다.")
+    @Operation(summary = "개별 공연 API통한 갱신",description = "개별 공연에 대해서 공연 예술 통합망(Kopis)을 통해 데이터를 조회하고 해당 데이터를 갱신합니다.")
     @PatchMapping("updateConcertByKopisAPI/{concertId}")
     public RsData<ConcertDetailResponse> updateConcertByKopisAPI(
             @Schema(description = "갱신 대상이 될 공연의 ID 값입니다.")
-            @PathVariable Long ConcertId
+            @PathVariable Long concertId
     ){
-        return null;
+        kopisApiService.concertUpdateByKopisApi(concertId);
+        return RsData.success(concertService.getConcertDetail(concertId));
     }
 
-    // todo: 내용 구현 필요, 결과 DTO 따로 만들기.
-    @Operation(summary = "공연 목록 갱신(구현 전)", description = "전체 공연에 대해서 공연 예술 통합망(Kopis)을 통해 데이터를 조회하고, 바뀐 내용을 갱신하고 추가된 공연을 가져옵니다.")
-    @PostMapping("updateConcert")
-    public RsData<Void> updateConcert(){
-        return null;
+    @Operation(summary = "공연 목록 갱신", description = "전체 공연에 대해서 공연 예술 통합망(Kopis)을 통해 데이터를 조회하고, 바뀐 내용을 갱신하고 추가된 공연을 가져옵니다.")
+    @PostMapping("updateConcertData")
+    public RsData<SetResultResponse> updateConcert() throws InterruptedException {
+        return RsData.success(kopisApiService.updateConcertData());
     }
 }
