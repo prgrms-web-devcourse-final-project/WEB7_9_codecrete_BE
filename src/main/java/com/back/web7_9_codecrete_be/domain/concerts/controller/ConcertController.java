@@ -24,6 +24,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import javax.swing.*;
 import java.util.List;
 
 @RestController
@@ -52,6 +53,16 @@ public class ConcertController {
       return RsData.success(concertService.getUpcomingConcertsList(pageable));
     }
 
+    // todo: 내용 구현 필요
+    @Operation(summary = "공연 예매일 기준 조회(구현 전)", description = "현 시간을 기준으로 예매시간을 내림차순으로 출력하는 공연 목록을 조회합니다.")
+    @GetMapping("upComingTicketingList")
+    public RsData<List<ConcertItem>> getUpComingTicketingList (
+            @Schema(description = "페이징 처리 또는 무한 스크롤 구현에 사용할 Pageable 객체입니다.")
+            Pageable pageable
+    ){
+        return null;
+    }
+
     @Operation(summary = "좋아요 한 공연 조회", description = "좋아요를 누른 공연에 대한 목록을 조회합니다. 저장 날짜를 기준으로 내림차순 정렬로 표시합니다.(최신으로 추가된 목록순입니다.)")
     @GetMapping("likedConcertList")
     public RsData<List<ConcertItem>> getLikedConcertList (
@@ -71,8 +82,6 @@ public class ConcertController {
     ) {
         return concertService.getConcertDetail(concertId);
     }
-
-
 
     @Operation(summary = "공연 예매처 조회", description = "공연에 대한 예매처들을 조회합니다.")
     @GetMapping("ticketOffices")
@@ -112,6 +121,18 @@ public class ConcertController {
         User user = rq.getUser();
         return RsData.success(concertService.isLikeConcert(concertId, user));
     }
+
+    // todo : 내용 구현 필요
+    @Operation(summary = "공연 검색(구현 전)", description = "공연 정보를 검색합니다.")
+    @GetMapping("search")
+    public RsData<List<ConcertItem>> searchConcert(
+            @Schema(description = "공연 정보 검색 키워드입니다.")
+            @RequestParam String keyword
+    ){
+        return null;
+    }
+
+
 
 
 }
