@@ -160,6 +160,10 @@ public class ConcertService {
         concertRepository.deleteById(concertId);
     }
 
+    public List<Concert> findConcertsByArtistIds(List<Long> artistIds) {
+        return concertRepository.findDistinctByArtistIds(artistIds);
+    }
+  
     private Concert findConcertByConcertId(long concertId) {
         return concertRepository.findById(concertId).orElseThrow(
                 () -> new BusinessException(ConcertErrorCode.CONCERT_NOT_FOUND)
