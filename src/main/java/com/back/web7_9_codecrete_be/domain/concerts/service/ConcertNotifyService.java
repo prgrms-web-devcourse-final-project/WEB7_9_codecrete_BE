@@ -126,10 +126,11 @@ public class ConcertNotifyService {
 
         for (String targetEmail : emailMap.keySet()) {
 
-            StringBuilder sb = new StringBuilder();
+            StringBuilder htmlStringBuilder = new StringBuilder();
+            StringBuilder textStringBuilder = new StringBuilder();
 
-            // 전체 타이틀 부분
-            sb.append("""
+            // 전체 타이틀 부분(html)
+            htmlStringBuilder.append("""
             <!doctype html>
             <html lang="ko">
             <head>
@@ -157,6 +158,13 @@ public class ConcertNotifyService {
             
                 <div style="padding:32px;">
             """.formatted(today));
+            //전체 타이틀 부분(text);
+            textStringBuilder.append("""
+                    [NCB] 공연 예매 알림입니다.
+                    %s 오늘의 공연 예매 알림
+                    예매 시작 공연을 알려드립니다.
+                    ---------------------------------------------------------
+                    """.formatted(today));
 
             // 개별 공연 내용 작성
             for (Long concertId : emailMap.get(targetEmail)) {
@@ -172,7 +180,8 @@ public class ConcertNotifyService {
                 String day = concert.getTicketTime().format(DateTimeFormatter.ofPattern("dd"));
                 String month = concert.getTicketTime().format(DateTimeFormatter.ofPattern("MMM", java.util.Locale.ENGLISH)).toUpperCase();
 
-                sb.append("""
+                // 개별 공연 HTML 시작부
+                htmlStringBuilder.append("""
                     <!-- 공연 카드 시작 -->
                     <div style="border:1px solid #e8e8e8;border-radius:12px;
                         padding:24px;margin-bottom:20px;background:#ffffff;">
@@ -214,10 +223,17 @@ public class ConcertNotifyService {
                         concert.getTicketTime()
                                 .format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 HH시 mm분"))
                 ));
+                // 개별 공연 text 시작부
+                textStringBuilder.append("""
+                        공연명: %s
+                        티켓팅 시간: %s
+                        
+                        """.formatted(concert.getName(), concert.getTicketTime().format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 HH시 mm분"))));
 
                 // 공연 예매처 반복 처리
                 for (TicketOffice ticketOffice : ticketOfficesMap.get(concertId)) {
-                    sb.append("""
+                    // 개별 예매처 html
+                    htmlStringBuilder.append("""
                         <!-- 예매처 -->
                         <div style="background:#f8f8f8;padding:16px;border-radius:8px;margin-bottom:8px;">
                             <div style="display:flex;justify-content:space-between;
@@ -244,13 +260,21 @@ public class ConcertNotifyService {
                             ticketOffice.getTicketOfficeName(),
                             ticketOffice.getTicketOfficeUrl()
                     ));
+                    // 개별 예매처 text
+                    textStringBuilder.append("""
+                            예매처: %s
+                            예매링크: %s
+                            """.formatted(ticketOffice.getTicketOfficeName(), ticketOffice.getTicketOfficeUrl()));
                 }
 
-                sb.append("</div>"); // 공연 카드 종료
+                htmlStringBuilder.append("</div>"); // 공연 카드 종료
+                textStringBuilder.append("""
+                        ---------------------------------------------------------
+                        """); // text 자름
             }
 
             // 공연 마지막 바닥 부분 처리
-            sb.append("""
+            htmlStringBuilder.append("""
                     <!-- 유의사항 -->
                     <div style="background:#f8f8f8;padding:20px 24px;margin-top:24px;border-radius:8px;">
                         <div style="display:flex;align-items:center;gap:6px;
@@ -276,9 +300,14 @@ public class ConcertNotifyService {
             </body>
             </html>
             """);
+            textStringBuilder.append("""
+                    유의사항 : 공연 정보는 각 공연의 상황에 따라 변경될 수 있으니 예매 전 반드시 확인해주세요.
+                    """);
 
-            String contents = sb.toString();
-            emailService.sendNotifyEmail(targetEmail, contents);
+
+            String htmlContent = htmlStringBuilder.toString();
+            String textContent = textStringBuilder.toString();
+            emailService.sendNotifyEmail(targetEmail, htmlContent,textContent);
         }
         log.info("일일 공연 예매 오픈 알림 : " +  totalConcertsCount + "건의 공연을 " + totalEmailCount + "명의 사용자에게 전송했습니다.");
         return totalConcertsCount + "건의 공연을 " + totalEmailCount + "명의 사용자에게 전송했습니다.";
