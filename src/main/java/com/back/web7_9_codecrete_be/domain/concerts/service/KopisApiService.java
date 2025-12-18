@@ -20,6 +20,7 @@ import org.springframework.web.client.RestClient;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -64,6 +65,7 @@ public class KopisApiService {
     public SetResultResponse setConcertsList() throws InterruptedException {
         // 최초 시작 시간 저장
         LocalDateTime now = LocalDateTime.now();
+        Long startNs = System.currentTimeMillis();
 
         // 콘서트 목록 받아올 Response 객체 선언
         ConcertListResponse plr;
@@ -145,6 +147,9 @@ public class KopisApiService {
         ConcertUpdateTime concertUpdateTime = new ConcertUpdateTime(now);
         concertUpdateTimeRepository.save(concertUpdateTime);
         log.info(now + "시 기준 " + totalConcertsList.size() + "개의 공연 데이터 저장 완료!");
+        long endNs = System.currentTimeMillis();
+        long durationSec = ((endNs - startNs) / 1000);
+        log.info(durationSec/60 + "분, " + durationSec % 60 + "초 소요되었습니다." );
         return new SetResultResponse(addedConcerts,0,addedConcertPlaces,0,addedConcertImages,0,addedTicketOffices,0);
     }
 
