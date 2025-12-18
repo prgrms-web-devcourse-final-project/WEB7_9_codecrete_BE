@@ -48,8 +48,8 @@ public class PlaceDetailResponse {
     @Schema(description = "해당 공연장에 장애인 전용 경사로가 있는지 여부입니다.")
     private boolean hasBarrierFreeRamp;
 
-    @Schema(description = "해당 공연장에 엘레베이터가 있는지 여부입니다.")
-    private boolean hasElevator;
+    @Schema(description = "해당 공연장에 장애인 전용엘레베이터가 있는지 여부입니다.")
+    private boolean hasBarrierFreeElevator;
 
     @Schema(description = "해당 공연장에 주차장이 존재하는지 여부입니다.")
     private boolean hasParking;
@@ -69,7 +69,7 @@ public class PlaceDetailResponse {
         this.hasBarrierFreeParking = concertPlace.isHasBarrierFreeParking();
         this.hasBarrierFreeRestRoom = concertPlace.isHasBarrierFreeRamp();
         this.hasBarrierFreeRamp = concertPlace.isHasBarrierFreeRamp();
-        this.hasElevator = concertPlace.isHasElevator();
+        this.hasBarrierFreeElevator = concertPlace.isHasElevator();
         this.hasParking = concertPlace.isHasParking();
     }
 }
