@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -58,17 +59,26 @@ public class PlanService {
                 .build();
         
         plan.addParticipant(owner);
-        plan = planRepository.save(plan);
         
-        return PlanResponse.builder()
-                .id(plan.getPlanId())
-                .concertId(plan.getConcert().getConcertId())
-                .createdBy(plan.getUserId())
-                .title(plan.getTitle())
-                .planDate(plan.getPlanDate())
-                .createdDate(plan.getCreatedDate())
-                .modifiedDate(plan.getModifiedDate())
+        // 콘서트(메인 이벤트) 일정 자동 생성
+        Schedule mainEventSchedule = Schedule.builder()
+                .plan(plan)
+                .scheduleType(Schedule.ScheduleType.ACTIVITY)
+                .title(concert.getName())
+                .startAt(LocalTime.of(0, 0)) // 기본값: 00:00 (사용자가 수정 필요)
+                .duration(0) // 기본값: 0분 (사용자가 수정 필요)
+                .location(concert.getConcertPlace() != null ? concert.getConcertPlace().getPlaceName() : "공연 장소")
+                .locationLat(concert.getConcertPlace() != null ? concert.getConcertPlace().getLat() : null)
+                .locationLon(concert.getConcertPlace() != null ? concert.getConcertPlace().getLon() : null)
+                .estimatedCost(concert.getMinPrice())
+                .details("공연 관람")
+                .isMainEvent(true)
                 .build();
+        
+        plan.addSchedule(mainEventSchedule);
+        planRepository.save(plan);
+        
+        return toPlanResponse(plan);
     }
 
 
@@ -87,10 +97,7 @@ public class PlanService {
                 .map(plan -> {
                     // 일정 개수 및 총 소요 시간 계산
                     int scheduleCount = plan.getSchedules().size();
-                    int totalDuration = plan.getSchedules().stream()
-                            .filter(item -> item.getDuration() != null)
-                            .mapToInt(Schedule::getDuration)
-                            .sum();
+                    int totalDuration = calculateTotalDuration(plan.getSchedules());
                     
                     return PlanListResponse.builder()
                             .id(plan.getPlanId())
@@ -128,38 +135,45 @@ public class PlanService {
                         .build())
                 .collect(Collectors.toList());
         
-        // 타임라인 형태로 일정 정렬 (startAt 기준)
+        // 타임라인 형태로 일정 정렬 (startAt 기준) - 메인 이벤트와 일반 일정 모두 포함
+        // Concert 정보까지 포함하여 조회 (메인 이벤트의 Concert 정보 포함)
         List<Schedule> sortedSchedules = scheduleRepository
                 .findByPlan_PlanIdOrderByStartAtAsc(planId);
         
         List<PlanDetailResponse.ScheduleInfo> schedules = sortedSchedules.stream()
-                .map(item -> PlanDetailResponse.ScheduleInfo.builder()
-                        .id(item.getScheduleId())
-                        .scheduleType(item.getScheduleType())
-                        .title(item.getTitle())
-                        .startAt(item.getStartAt())
-                        .duration(item.getDuration())
-                        .location(item.getLocation())
-                        .locationLat(item.getLocationLat())
-                        .locationLon(item.getLocationLon())
-                        .estimatedCost(item.getEstimatedCost())
-                        .details(item.getDetails())
-                        .startPlaceLat(item.getStartPlaceLat())
-                        .startPlaceLon(item.getStartPlaceLon())
-                        .endPlaceLat(item.getEndPlaceLat())
-                        .endPlaceLon(item.getEndPlaceLon())
-                        .distance(item.getDistance())
-                        .transportType(item.getTransportType())
-                        .createdDate(item.getCreatedDate())
-                        .modifiedDate(item.getModifiedDate())
-                        .build())
+                .map(item -> {
+                    PlanDetailResponse.ScheduleInfo.ScheduleInfoBuilder builder = PlanDetailResponse.ScheduleInfo.builder()
+                            .id(item.getScheduleId())
+                            .scheduleType(item.getScheduleType())
+                            .title(item.getTitle())
+                            .startAt(item.getStartAt())
+                            .duration(item.getDuration())
+                            .location(item.getLocation())
+                            .locationLat(item.getLocationLat())
+                            .locationLon(item.getLocationLon())
+                            .estimatedCost(item.getEstimatedCost())
+                            .details(item.getDetails())
+                            .startPlaceLat(item.getStartPlaceLat())
+                            .startPlaceLon(item.getStartPlaceLon())
+                            .endPlaceLat(item.getEndPlaceLat())
+                            .endPlaceLon(item.getEndPlaceLon())
+                            .distance(item.getDistance())
+                            .transportType(item.getTransportType())
+                            .isMainEvent(item.getIsMainEvent())
+                            .createdDate(item.getCreatedDate())
+                            .modifiedDate(item.getModifiedDate());
+
+                    // 메인 이벤트인 경우 공연 정보 추가
+                    if (isMainEvent(item)) {
+                        addConcertInfoToScheduleInfoBuilder(builder, item);
+                    }
+
+                    return builder.build();
+                })
                 .collect(Collectors.toList());
         
         // 총 소요 시간 계산
-        Integer totalDuration = sortedSchedules.stream()
-                .filter(item -> item.getDuration() != null)
-                .mapToInt(Schedule::getDuration)
-                .sum();
+        Integer totalDuration = calculateTotalDuration(sortedSchedules);
         
         return PlanDetailResponse.builder()
                 .id(plan.getPlanId())
@@ -196,15 +210,7 @@ public class PlanService {
         // 엔티티의 로직을 통해 수정
         plan.update(title, planDate);
         
-        return PlanResponse.builder()
-                .id(plan.getPlanId())
-                .concertId(plan.getConcert().getConcertId())
-                .createdBy(plan.getUserId())
-                .title(plan.getTitle())
-                .planDate(plan.getPlanDate())
-                .createdDate(plan.getCreatedDate())
-                .modifiedDate(plan.getModifiedDate())
-                .build();
+        return toPlanResponse(plan);
     }
 
 
@@ -278,6 +284,7 @@ public class PlanService {
         // cascade 설정으로 인해 plan 저장 시 schedule도 함께 저장됨
         planRepository.save(plan);
 
+        // 저장 직후이므로 영속성 컨텍스트에 있는 schedule 사용 (재조회 불필요)
         return toScheduleResponse(schedule);
     }
 
@@ -292,6 +299,8 @@ public class PlanService {
         // 권한 체크 (참가자 여부 확인)
         findPlanWithParticipantCheck(planId, user);
 
+        // 타임라인 형태로 일정 정렬 (startAt 기준) - 메인 이벤트와 일반 일정 모두 포함
+        // Concert 정보까지 포함하여 조회 (메인 이벤트의 Concert 정보 포함)
         List<Schedule> schedules = scheduleRepository
                 .findByPlan_PlanIdOrderByStartAtAsc(planId);
 
@@ -300,10 +309,7 @@ public class PlanService {
                 .collect(Collectors.toList());
 
         // 총 소요 시간 계산
-        Integer totalDuration = schedules.stream()
-                .filter(item -> item.getDuration() != null)
-                .mapToInt(Schedule::getDuration)
-                .sum();
+        Integer totalDuration = calculateTotalDuration(schedules);
 
         return ScheduleListResponse.builder()
                 .planId(planId)
@@ -324,6 +330,7 @@ public class PlanService {
         // 권한 체크 (참가자 여부 확인)
         findPlanWithParticipantCheck(planId, user);
         
+        // 스케줄 조회 (Concert 정보 포함)
         Schedule schedule = scheduleRepository
                 .findByScheduleIdAndPlan_PlanId(scheduleId, planId)
                 .orElseThrow(() -> new BusinessException(PlanErrorCode.SCHEDULE_NOT_FOUND));
@@ -419,6 +426,7 @@ public class PlanService {
                 request.getTransportType() != null ? request.getTransportType() : schedule.getTransportType()
         );
 
+        // 수정 직후이므로 영속성 컨텍스트에 있는 schedule 사용 (재조회 불필요)
         return toScheduleResponse(schedule);
     }
 
@@ -439,6 +447,11 @@ public class PlanService {
         Schedule schedule = scheduleRepository
                 .findByScheduleIdAndPlan_PlanId(scheduleId, planId)
                 .orElseThrow(() -> new BusinessException(PlanErrorCode.SCHEDULE_NOT_FOUND));
+
+        // 메인 이벤트(콘서트) 일정은 삭제 불가
+        if (isMainEvent(schedule)) {
+            throw new BusinessException(PlanErrorCode.SCHEDULE_MAIN_EVENT_NOT_DELETABLE);
+        }
 
         scheduleRepository.delete(schedule);
         
@@ -513,8 +526,82 @@ public class PlanService {
         return plan;
     }
 
+
+    /**
+     * Plan을 PlanResponse로 변환
+     */
+    private PlanResponse toPlanResponse(Plan plan) {
+        return PlanResponse.builder()
+                .id(plan.getPlanId())
+                .concertId(plan.getConcert().getConcertId())
+                .createdBy(plan.getUserId())
+                .title(plan.getTitle())
+                .planDate(plan.getPlanDate())
+                .createdDate(plan.getCreatedDate())
+                .modifiedDate(plan.getModifiedDate())
+                .build();
+    }
+
+    /**
+     * 메인 이벤트 여부 확인
+     */
+    private boolean isMainEvent(Schedule schedule) {
+        return schedule != null && schedule.getIsMainEvent() != null && schedule.getIsMainEvent();
+    }
+
+    /**
+     * 총 소요 시간 계산
+     */
+    private Integer calculateTotalDuration(List<Schedule> schedules) {
+        return schedules.stream()
+                .filter(item -> item.getDuration() != null)
+                .mapToInt(Schedule::getDuration)
+                .sum();
+    }
+
+    /**
+     * Concert 정보를 추출하여 반환
+     */
+    private Concert getConcertFromSchedule(Schedule schedule) {
+        if (schedule != null && schedule.getPlan() != null) {
+            return schedule.getPlan().getConcert();
+        }
+        return null;
+    }
+
+    /**
+     * ScheduleInfo.Builder에 공연 정보 추가
+     */
+    private void addConcertInfoToScheduleInfoBuilder(
+            PlanDetailResponse.ScheduleInfo.ScheduleInfoBuilder builder, Schedule schedule) {
+        Concert concert = getConcertFromSchedule(schedule);
+        if (concert != null) {
+            builder.concertId(concert.getConcertId())
+                    .concertName(concert.getName())
+                    .concertPosterUrl(concert.getPosterUrl())
+                    .concertPlaceName(concert.getConcertPlace() != null ? concert.getConcertPlace().getPlaceName() : null)
+                    .concertMinPrice(concert.getMinPrice())
+                    .concertMaxPrice(concert.getMaxPrice());
+        }
+    }
+
+    /**
+     * ScheduleResponse.Builder에 공연 정보 추가
+     */
+    private void addConcertInfoToBuilder(ScheduleResponse.ScheduleResponseBuilder builder, Schedule schedule) {
+        Concert concert = getConcertFromSchedule(schedule);
+        if (concert != null) {
+            builder.concertId(concert.getConcertId())
+                    .concertName(concert.getName())
+                    .concertPosterUrl(concert.getPosterUrl())
+                    .concertPlaceName(concert.getConcertPlace() != null ? concert.getConcertPlace().getPlaceName() : null)
+                    .concertMinPrice(concert.getMinPrice())
+                    .concertMaxPrice(concert.getMaxPrice());
+        }
+    }
+
     private ScheduleResponse toScheduleResponse(Schedule schedule) {
-        return ScheduleResponse.builder()
+        ScheduleResponse.ScheduleResponseBuilder builder = ScheduleResponse.builder()
                 .id(schedule.getScheduleId())
                 .scheduleType(schedule.getScheduleType())
                 .title(schedule.getTitle())
@@ -531,9 +618,16 @@ public class PlanService {
                 .endPlaceLon(schedule.getEndPlaceLon())
                 .distance(schedule.getDistance())
                 .transportType(schedule.getTransportType())
+                .isMainEvent(schedule.getIsMainEvent())
                 .createdDate(schedule.getCreatedDate())
-                .modifiedDate(schedule.getModifiedDate())
-                .build();
+                .modifiedDate(schedule.getModifiedDate());
+
+        // 메인 이벤트인 경우 공연 정보 추가
+        if (isMainEvent(schedule)) {
+            addConcertInfoToBuilder(builder, schedule);
+        }
+
+        return builder.build();
     }
 
 

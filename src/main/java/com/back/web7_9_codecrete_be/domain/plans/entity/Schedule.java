@@ -82,6 +82,10 @@ public class Schedule {
     @Column(name = "modified_date", nullable = false)
     private LocalDateTime modifiedDate;
 
+    // 메인 이벤트(콘서트) 여부 - true인 경우 삭제 불가
+    @Column(name = "is_main_event", nullable = false)
+    private Boolean isMainEvent = false;
+
 
     @Builder
     public Schedule(Plan plan, ScheduleType scheduleType, String title,
@@ -90,7 +94,8 @@ public class Schedule {
                     Integer estimatedCost, String details,
                     Double startPlaceLat, Double startPlaceLon,
                     Double endPlaceLat, Double endPlaceLon,
-                    Integer distance, TransportType transportType) {
+                    Integer distance, TransportType transportType,
+                    Boolean isMainEvent) {
         this.plan = plan;
         this.scheduleType = scheduleType;
         this.title = title;
@@ -107,6 +112,7 @@ public class Schedule {
         this.endPlaceLon = endPlaceLon;
         this.distance = distance;
         this.transportType = transportType;
+        this.isMainEvent = isMainEvent != null ? isMainEvent : false;
     }
 
     public void update(ScheduleType scheduleType, String title,
