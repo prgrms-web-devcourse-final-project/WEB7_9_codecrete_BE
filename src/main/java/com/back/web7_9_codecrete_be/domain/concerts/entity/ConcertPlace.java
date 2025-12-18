@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.concerts.entity;
 
+import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceDetailElement;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,10 @@ public class ConcertPlace {
     @Column(nullable = false)
     private String address;
 
+    private String telephone;
+
+    private String placeUrl;
+
     @Column(nullable = false)
     private double lat;
 
@@ -28,6 +33,26 @@ public class ConcertPlace {
 
     @Column(nullable = false)
     private int seats;
+
+    private boolean hasRestaurant;
+
+    private boolean hasCafe;
+
+    private boolean hasStore;
+
+    private boolean hasPlayroom;
+
+    private boolean hasNursingRoom;
+
+    private boolean hasBarrierFreeParking;
+
+    private boolean hasBarrierFreeRestRoom;
+
+    private boolean hasBarrierFreeRamp;
+
+    private boolean hasElevator;
+
+    private boolean hasParking;
 
     @Column(name = "api_concert_place_id")
     private String apiConcertPlaceId;
@@ -39,6 +64,27 @@ public class ConcertPlace {
         this.lon = lon;
         this.seats = seats;
         this.apiConcertPlaceId = apiConcertPlaceId;
+    }
+
+    public ConcertPlace(ConcertPlaceDetailElement concertPlaceDetailElement) {
+        this.placeName = concertPlaceDetailElement.getConcertPlaceName();
+        this.address = concertPlaceDetailElement.getConcertPlaceAddress();
+        this.telephone = concertPlaceDetailElement.getTelephone();
+        this.placeUrl = concertPlaceDetailElement.getConcertPlaceUrl();
+        this.lat = Double.parseDouble(concertPlaceDetailElement.getLat());
+        this.lon = Double.parseDouble(concertPlaceDetailElement.getLon());
+        this.seats = Integer.parseInt(concertPlaceDetailElement.getSeatScale());
+        this.apiConcertPlaceId = concertPlaceDetailElement.getConcertPlaceApiId();
+        this.hasRestaurant = concertPlaceDetailElement.getRestaurant().equals("Y");
+        this.hasCafe = concertPlaceDetailElement.getCafe().equals("Y");
+        this.hasStore = concertPlaceDetailElement.getStore().equals("Y");
+        this.hasPlayroom = concertPlaceDetailElement.getPlayGround().equals("Y");
+        this.hasNursingRoom = concertPlaceDetailElement.getSuyu().equals("Y");
+        this.hasBarrierFreeParking = concertPlaceDetailElement.getParkBarrier().equals("Y");
+        this.hasBarrierFreeRestRoom = concertPlaceDetailElement.getRestBarrier().equals("Y");
+        this.hasBarrierFreeRamp = concertPlaceDetailElement.getRunwBarrier().equals("Y");
+        this.hasElevator = concertPlaceDetailElement.getElevBarrier().equals("Y");
+        this.hasParking = concertPlaceDetailElement.getParkingLot().equals("Y");
     }
 
     @Override

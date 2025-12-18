@@ -1,11 +1,13 @@
 package com.back.web7_9_codecrete_be.domain.concerts.controller;
 
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concert.ConcertListResponse;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceListResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertLikeResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ListSort;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concertPlace.PlaceDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOfficeElement;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.TicketOffice;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
@@ -172,6 +174,21 @@ public class ConcertController {
 
     ) {
         return RsData.success(concertService.getConcertListByKeyword(keyword, pageable));
+    }
+
+    @Operation(summary = "공연의 공연장소 상세 조회", description = "해당 공연의 공연장의 상세 정보를 표시합니다.")
+    @GetMapping("placeDetail")
+    public RsData<PlaceDetailResponse> placeDetail(
+            @RequestParam
+            @Schema(description = """
+                    <h3>조회 기준이 되는 concertId입니다.</h3>
+                    <hr/>
+                    DB에 저장되어 있는 공연의 ID 값을 기준으로 해당 공연의 공연장 상세 정보를조회합니다. <br/>
+                    <strong>?concertId={concertId}</strong> 로 값을 넘기시면 됩니다.
+                    """)
+            long concertId
+    ){
+        return RsData.success(concertService.getConcertPlaceDetail(concertId));
     }
 
 }
