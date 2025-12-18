@@ -19,13 +19,16 @@ public interface ConcertLikeRepository extends JpaRepository<ConcertLike, Long> 
 
     List<ConcertLike> getConcertLikesByConcert(Concert concert);
 
+    // Fetch 사용해서 N+1 문제 해결
     @Query("""
                 SELECT 
                 cl
                 FROM
                 ConcertLike cl
+                JOIN FETCH 
+                    cl.user u
                 JOIN 
-                cl.concert c
+                    cl.concert c
                 WHERE
                 c.ticketTime 
                     BETWEEN 

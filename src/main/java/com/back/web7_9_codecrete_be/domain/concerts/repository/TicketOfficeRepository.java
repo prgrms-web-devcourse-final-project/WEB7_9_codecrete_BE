@@ -28,5 +28,8 @@ public interface TicketOfficeRepository  extends JpaRepository<TicketOffice, Lon
             @Param("concertId")
             Long concertId);
 
+    @Query("SELECT t FROM TicketOffice t JOIN t.concert c WHERE c IN :concerts")
+    List<TicketOffice> findAllByConcerts(@Param("concerts") List<Concert> concerts);
+
     List<TicketOffice> getTicketOfficesByConcert_ConcertId(Long concertConcertId);
 }
