@@ -89,6 +89,9 @@ public class AuthService {
 
     // 이메일 인증코드 전송
     public void sendVerificationCode(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new BusinessException(AuthErrorCode.EMAIL_DUPLICATED);
+        }
         emailService.createAndSendVerificationCode(email);
     }
 
