@@ -69,7 +69,7 @@ public class PlaceDetailResponse {
         this.hasBarrierFreeParking = concertPlace.isHasBarrierFreeParking();
         this.hasBarrierFreeRestRoom = concertPlace.isHasBarrierFreeRamp();
         this.hasBarrierFreeRamp = concertPlace.isHasBarrierFreeRamp();
-        this.hasBarrierFreeElevator = concertPlace.isHasElevator();
+        this.hasBarrierFreeElevator = concertPlace.isHasBarrierFreeElevator();
         this.hasParking = concertPlace.isHasParking();
     }
 }
