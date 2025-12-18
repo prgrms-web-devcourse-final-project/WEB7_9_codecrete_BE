@@ -50,7 +50,7 @@ public class ConcertPlace {
 
     private boolean hasBarrierFreeRamp;
 
-    private boolean hasElevator;
+    private boolean hasBarrierFreeElevator;
 
     private boolean hasParking;
 
@@ -83,7 +83,7 @@ public class ConcertPlace {
         this.hasBarrierFreeParking = concertPlaceDetailElement.getParkBarrier().equals("Y");
         this.hasBarrierFreeRestRoom = concertPlaceDetailElement.getRestBarrier().equals("Y");
         this.hasBarrierFreeRamp = concertPlaceDetailElement.getRunwBarrier().equals("Y");
-        this.hasElevator = concertPlaceDetailElement.getElevBarrier().equals("Y");
+        this.hasBarrierFreeElevator = concertPlaceDetailElement.getElevBarrier().equals("Y");
         this.hasParking = concertPlaceDetailElement.getParkingLot().equals("Y");
     }
 
