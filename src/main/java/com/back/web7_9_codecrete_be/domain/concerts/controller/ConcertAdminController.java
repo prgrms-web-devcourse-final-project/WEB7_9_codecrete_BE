@@ -7,6 +7,7 @@ import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailRes
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertTicketTimeSetRequest;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertUpdateRequest;
+import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertNotifyService;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
 import com.back.web7_9_codecrete_be.domain.concerts.service.KopisApiService;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
@@ -27,6 +28,7 @@ import java.util.List;
 public class ConcertAdminController { // todo : 인증 권한 추가하기
     private final ConcertService concertService;
     private final KopisApiService kopisApiService;
+    private final ConcertNotifyService concertNotifyService;
 
 
     @Operation(summary = "초기 공연 정보 저장", description = "25년 12월부터 앞으로 6개월 이후까지의 전체 공연의 정보를 가져와서 저장합니다. 대략 10~12분 정도 시간이 소요됩니다.")
@@ -118,4 +120,12 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
     public RsData<SetResultResponse> updateConcert() throws InterruptedException {
         return RsData.success(kopisApiService.updateConcertData());
     }
+
+    @Operation(summary = "알림 이메일 전송", description = "예매일이 오늘인 공연에 대해 알림 이메일을 전송합니다.")
+    @PostMapping("sendTicketingEmail")
+    public RsData<String> sendTicketingEmail(){
+        String resultMessage = concertNotifyService.sendTodayTicketingConcertsNotifyingEmail();
+        return RsData.success(resultMessage,null);
+    }
+
 }
