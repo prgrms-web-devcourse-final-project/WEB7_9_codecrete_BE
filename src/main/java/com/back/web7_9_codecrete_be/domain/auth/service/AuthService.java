@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.auth.service;
 
+import com.back.web7_9_codecrete_be.domain.auth.dto.google.GoogleUserInfo;
 import com.back.web7_9_codecrete_be.domain.auth.dto.kakao.KakaoUserInfo;
 import com.back.web7_9_codecrete_be.domain.auth.dto.request.LoginRequest;
 import com.back.web7_9_codecrete_be.domain.auth.dto.request.SignupRequest;
@@ -8,6 +9,7 @@ import com.back.web7_9_codecrete_be.domain.email.service.EmailService;
 import com.back.web7_9_codecrete_be.domain.users.entity.SocialType;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
+import com.back.web7_9_codecrete_be.domain.users.util.NicknameGenerator;
 import com.back.web7_9_codecrete_be.global.error.code.AuthErrorCode;
 import com.back.web7_9_codecrete_be.global.error.code.UserErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
@@ -28,6 +30,8 @@ public class AuthService {
     private final EmailService emailService;
     private final TokenService tokenService;
     private final KakaoOAuthService kakaoOAuthService;
+    private final GoogleOAuthService googleOAuthService;
+    private final NicknameGenerator nicknameGenerator;
 
     // 회원가입
     public void signUp(SignupRequest req) {
@@ -85,6 +89,9 @@ public class AuthService {
 
     // 이메일 인증코드 전송
     public void sendVerificationCode(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new BusinessException(AuthErrorCode.EMAIL_DUPLICATED);
+        }
         emailService.createAndSendVerificationCode(email);
     }
 
@@ -165,10 +172,7 @@ public class AuthService {
 
     private User registerKakaoUser(KakaoUserInfo info) {
 
-        String nickname = info.getNickname();
-        if (userRepository.existsByNickname(nickname)) {
-            nickname = nickname + "_" + System.currentTimeMillis();
-        }
+        String nickname = nicknameGenerator.generate();
 
         User user = User.builder()
                 .email(info.getEmail())
@@ -183,8 +187,52 @@ public class AuthService {
         return userRepository.save(user);
     }
 
+    @Transactional
     public LoginResponse googleLogin(String code) {
-        // TODO: 구글 인가 코드 → 사용자 정보 → 로그인 처리
-        throw new UnsupportedOperationException("구글 로그인 미구현");
+
+        // 1. 인가 코드 → 구글 Access Token
+        String googleAccessToken = googleOAuthService.getAccessToken(code);
+
+        // 2. Access Token → 사용자 정보
+        GoogleUserInfo googleUserInfo = googleOAuthService.getUserInfo(googleAccessToken);
+
+        if (googleUserInfo.getEmail() == null) {
+            throw new BusinessException(AuthErrorCode.SOCIAL_EMAIL_NOT_PROVIDED);
+        }
+
+        // 3. 소셜 ID 기준 사용자 조회
+        User user = userRepository
+                .findBySocialTypeAndSocialId(
+                        SocialType.GOOGLE,
+                        googleUserInfo.getSocialId()
+                )
+                .orElseGet(() -> registerGoogleUser(googleUserInfo));
+
+        // 4. 탈퇴 사용자 체크
+        if (user.getIsDeleted()) {
+            throw new BusinessException(UserErrorCode.USER_DELETED);
+        }
+
+        // 5. 토큰 발급
+        tokenService.issueTokens(user);
+
+        return new LoginResponse(user.getId(), user.getNickname());
+    }
+
+    private User registerGoogleUser(GoogleUserInfo info) {
+
+        String nickname = nicknameGenerator.generate();
+
+        User user = User.builder()
+                .email(info.getEmail())
+                .nickname(nickname)
+                .password(null)
+                .birth(null)
+                .profileImage(info.getProfileImageUrl())
+                .socialType(SocialType.GOOGLE)
+                .socialId(info.getSocialId())
+                .build();
+
+        return userRepository.save(user);
     }
 }

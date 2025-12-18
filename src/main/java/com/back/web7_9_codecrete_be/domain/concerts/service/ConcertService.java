@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,12 +32,26 @@ public class ConcertService {
     private final ConcertImageRepository concertImageRepository;
 
 
-    public List<ConcertItem> getConcertsList(Pageable pageable) {
-        return concertRepository.getConcertItems(pageable);
-    }
+    public List<ConcertItem> getConcertsList(Pageable pageable, ListSort sort) {
+        switch (sort) {
+            case LIKE -> {
+                return concertRepository.getConcertItemsOrderByLikeCountDesc(pageable);
+            }
+            case VIEW -> {
+                return concertRepository.getConcertItemsOrderByViewCountDesc(pageable);
+            }
+            case TICKETING -> {
+                return concertRepository.getUpComingTicketingConcertItemsFromDateASC(pageable, LocalDateTime.of(LocalDate.now(), LocalTime.MIN));
+            }
+            case UPCOMING -> {
+                return concertRepository.getUpComingConcertItemsFromDateASC(pageable,LocalDate.now());
+            }
+            case REGISTERED -> {
+                return concertRepository.getConcertItemsOrderByApiId(pageable);
+            }
+        }
 
-    public List<ConcertItem> getUpcomingConcertsList(Pageable pageable) {
-        return concertRepository.getUpComingConcertItems(pageable, LocalDate.now());
+        return concertRepository.getConcertItems(pageable);
     }
 
     public List<ConcertItem> getLikedConcertsList(Pageable pageable,User user) {
@@ -48,9 +64,8 @@ public class ConcertService {
 
     public List<ConcertItem> getConcertListByKeyword(String keyword, Pageable pageable) {
         if(keyword == null || keyword.isEmpty()){
-
+            throw new BusinessException(ConcertErrorCode.KEYWORD_IS_NULL);
         }
-
         return concertRepository.getConcertItemsByKeyword(keyword, pageable);
     }
 
@@ -81,8 +96,7 @@ public class ConcertService {
     */
 
     public List<TicketOfficeElement> getTicketOfficesList(long concertId) {
-        Concert concert = new Concert(concertId);
-        List<TicketOffice> ticketOffices = ticketOfficeRepository.getTicketOfficesByConcert(concert);
+        List<TicketOffice> ticketOffices = ticketOfficeRepository.getTicketOfficesByConcert_ConcertId(concertId);
         List<TicketOfficeElement> ticketOfficeList = new ArrayList<>();
         for (TicketOffice ticketOffice : ticketOffices) {
             ticketOfficeList.add(new TicketOfficeElement(ticketOffice));
@@ -92,7 +106,7 @@ public class ConcertService {
     }
 
     public ConcertLikeResponse isLikeConcert(Long concertId, User user) {
-        Concert concert = concertRepository.getConcertByConcertId(concertId);
+        Concert concert = findConcertByConcertId(concertId);
         ConcertLikeResponse concertLikeResponse;
         if(concertLikeRepository.existsConcertLikeByConcertAndUser(concert,user)){
             concertLikeResponse = new ConcertLikeResponse(concert,true);
@@ -105,7 +119,8 @@ public class ConcertService {
 
     @Transactional
     public void likeConcert(long concertId, User user) {
-        Concert concert = concertRepository.findById(concertId).orElseThrow();
+        Concert concert = findConcertByConcertId(concertId);
+
         if(concertLikeRepository.existsConcertLikeByConcertAndUser(concert,user)){
             throw new BusinessException(ConcertErrorCode.LIKE_CONFLICT);
         }
@@ -116,7 +131,8 @@ public class ConcertService {
 
     @Transactional
     public void dislikeConcert(long concertId, User user) {
-        Concert concert = concertRepository.findById(concertId).orElseThrow();
+        Concert concert = findConcertByConcertId(concertId);
+
         ConcertLike concertLike = concertLikeRepository.findConcertLikeByConcertAndUser(concert, user);
         if(concertLike == null){
             throw new BusinessException(ConcertErrorCode.NOT_FOUND_CONCERTLIKE);
@@ -126,7 +142,7 @@ public class ConcertService {
     }
 
     public ConcertItem updateConcert(long concertId, ConcertUpdateRequest concertUpdateRequest) {
-        Concert concert = concertRepository.findById(concertId).orElseThrow();
+        Concert concert = findConcertByConcertId(concertId);
         ConcertPlace concertPlace = concertPlaceRepository.findById(concertUpdateRequest.getPlaceId()).orElseThrow();
         concert.update(concertUpdateRequest, concertPlace);
         Concert updatedConcert = concertRepository.save(concert);
@@ -134,19 +150,24 @@ public class ConcertService {
     }
 
     public ConcertDetailResponse setConcertTime(ConcertTicketTimeSetRequest concertTicketTimeSetRequest) {
-        Concert concert = concertRepository.findById(concertTicketTimeSetRequest.getConcertId()).orElseThrow();
+        Concert concert = findConcertByConcertId(concertTicketTimeSetRequest.getConcertId());
         concert.ticketTimeSet(concertTicketTimeSetRequest.getTicketTime());
         Concert savedConcert = concertRepository.save(concert);
         return concertRepository.getConcertDetailById(savedConcert.getConcertId());
     }
 
     public void deleteConcert(long concertId) {
-        Concert concert = concertRepository.findById(concertId).orElseThrow();
         concertRepository.deleteById(concertId);
     }
 
     public List<Concert> findConcertsByArtistIds(List<Long> artistIds) {
         return concertRepository.findDistinctByArtistIds(artistIds);
+    }
+  
+    private Concert findConcertByConcertId(long concertId) {
+        return concertRepository.findById(concertId).orElseThrow(
+                () -> new BusinessException(ConcertErrorCode.CONCERT_NOT_FOUND)
+        );
     }
 
 }
