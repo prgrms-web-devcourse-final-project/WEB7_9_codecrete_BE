@@ -148,8 +148,8 @@ public class Schedule {
     }
 
     public enum TransportType {
-        도보,
-        대중교통,
-        차
+        WALK,              // 도보
+        PUBLIC_TRANSPORT,  // 대중교통
+        CAR                // 차
     }
 }
