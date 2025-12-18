@@ -75,6 +75,10 @@ dependencies {
    
     // Spotify
     implementation("se.michaelthelin.spotify:spotify-web-api-java:8.4.1")
+
+    // AWS S3
+    implementation("software.amazon.awssdk:s3")
+    implementation("io.awspring.cloud:spring-cloud-aws-s3:3.0.2")
 }
 
 tasks.withType<Test> {
