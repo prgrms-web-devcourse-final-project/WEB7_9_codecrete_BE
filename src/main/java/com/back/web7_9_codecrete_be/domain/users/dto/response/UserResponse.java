@@ -13,6 +13,7 @@ public class UserResponse {
     private String email;
     private String nickname;
     private LocalDate birthdate;
+    private String profileImageUrl;
     private String status;
 
     public static UserResponse from(User user) {
@@ -21,6 +22,7 @@ public class UserResponse {
                 .email(user.getEmail())
                 .nickname(user.getNickname())
                 .birthdate(user.getBirth())
+                .profileImageUrl(user.getProfileImage())
                 .status(user.getStatus().name())
                 .build();
     }
