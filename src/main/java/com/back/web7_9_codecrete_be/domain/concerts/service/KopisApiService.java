@@ -119,7 +119,8 @@ public class KopisApiService {
 
             //콘서트 최고 금액, 최저 금액 처리.
             TicketPrice ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
-
+            log.info("표 가격 raw : " + concertDetail.getConcertPrice());
+            log.info("최고가 : " + ticketPrice.maxPrice  + ", 최저가 : " + ticketPrice.minPrice);
             // 콘서트 저장
             Concert concert = new Concert(
                     concertPlace,
@@ -476,8 +477,8 @@ public class KopisApiService {
         // 문자열 가격 정보를 받아서 변환 후 저장.
         public TicketPrice(String price) {
             String[] bits = price.split(" ");
-            int maxPrice = 0;
-            int minPrice = Integer.MAX_VALUE;
+            maxPrice = 0;
+            minPrice = Integer.MAX_VALUE;
             if (bits.length == 1) {
                 minPrice = 0;
             } else {
