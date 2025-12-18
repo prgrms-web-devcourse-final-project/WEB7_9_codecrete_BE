@@ -1,0 +1,47 @@
+server:
+  tomcat:
+    max-threads: 30
+    accept-count: 100
+
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST}
+      port: ${SPRING_REDIS_PORT}
+
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 4
+      connection-timeout: 30000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+
+logging:
+  level:
+    org.hibernate.SQL: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+
+  observations:
+    key-values:
+      env: prod
