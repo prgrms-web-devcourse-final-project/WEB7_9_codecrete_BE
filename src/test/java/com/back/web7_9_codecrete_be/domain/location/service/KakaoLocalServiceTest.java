@@ -97,6 +97,8 @@ class KakaoLocalServiceTest {
         assertThat(req.getPath()).contains("sort=distance");
     }
 
+//  이제부터 밑에있는 테스트는 위에 있는 테스트와 비슷하므로 따로 추가 설명은 안썼습니다
+    
     @Test
     void searchNearbyCafesTest() throws Exception {
         server.enqueue(new MockResponse()
