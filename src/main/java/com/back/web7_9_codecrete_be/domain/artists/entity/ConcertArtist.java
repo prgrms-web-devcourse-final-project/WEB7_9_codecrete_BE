@@ -1,10 +1,14 @@
 package com.back.web7_9_codecrete_be.domain.artists.entity;
 
+import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "concert_artist")
 public class ConcertArtist {
     @Id
@@ -13,11 +17,15 @@ public class ConcertArtist {
     private long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "artist_id", nullable = false)
     private Artist artist;
 
-    // TODO : 추후 concert entity 보고 확인 예정 우선 주석 처리
-    /*
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "concert_id", nullable = false)
     private Concert concert;
-     */
+
+    public ConcertArtist(Artist artist, Concert concert) {
+        this.artist = artist;
+        this.concert = concert;
+    }
 }

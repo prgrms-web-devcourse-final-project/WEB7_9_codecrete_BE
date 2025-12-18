@@ -4,16 +4,17 @@ import com.back.web7_9_codecrete_be.domain.artists.dto.request.UpdateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistListResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.SearchResponse;
-import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
-import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistLike;
-import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
-import com.back.web7_9_codecrete_be.domain.artists.entity.Genre;
+import com.back.web7_9_codecrete_be.domain.artists.entity.*;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistLikeRepository;
+import com.back.web7_9_codecrete_be.domain.artists.repository.ConcertArtistRepository;
+import com.back.web7_9_codecrete_be.domain.artists.dto.response.ConcertListByArtistResponse;
+import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
+import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRepository;
+import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.ArtistErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
-import com.back.web7_9_codecrete_be.global.rq.Rq;
 import lombok.AccessLevel;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,9 @@ public class ArtistService {
     private final ArtistRepository artistRepository;
     private final GenreService genreService;
     private final ArtistLikeRepository artistLikeRepository;
+    private final ConcertArtistRepository concertArtistRepository;
+    private final ConcertRepository concertRepository;
+    private final ConcertService concertService;
 
     @Transactional(readOnly = true)
     public Artist findArtist(Long artistId) {
@@ -152,5 +156,30 @@ public class ArtistService {
         artistLikeRepository.delete(likes);
         artist.decreaseLikeCount();
     }
+
+    @Transactional
+    public void linkArtistConcert(Long artistId, Long concertId) {
+        Artist artist = findArtist(artistId);
+        // TODO: 멘토링 질문 남겨놓은 기능이라, 멘토링 후 구현 방향 확정되면 함수 선언 후 Service 사용 예정. 현재는 임시로 Repository 사용
+        Concert concert = concertRepository.findById(concertId)
+                .orElseThrow();
+        concertArtistRepository.save(new ConcertArtist(artist, concert));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConcertListByArtistResponse> getConcertList(Long userId) {
+        List<Long> artistIds =
+                artistLikeRepository.findArtistIdsByUserId(userId);
+
+        // 찜한 아티스트가 없는 경우 빈 배열 반환 -> 예외 처리(Error 던지기) 안 함
+        if (artistIds.isEmpty()) {
+            return List.of();
+        }
+        List<Concert> concerts = concertService.findConcertsByArtistIds(artistIds);
+        return concerts.stream()
+                .map(ConcertListByArtistResponse::from)
+                .toList();
+    }
+
 
 }

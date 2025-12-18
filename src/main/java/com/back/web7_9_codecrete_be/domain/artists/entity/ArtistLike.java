@@ -2,6 +2,7 @@ package com.back.web7_9_codecrete_be.domain.artists.entity;
 
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -12,7 +13,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Getter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "artist_like")
 public class ArtistLike {
