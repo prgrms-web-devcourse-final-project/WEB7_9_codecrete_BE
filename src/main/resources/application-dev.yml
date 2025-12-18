@@ -14,3 +14,7 @@ oauth:
     client-id: ${KAKAO_REST_API_KEY}   # 카카오 REST API 키
     client-secret: ${KAKAO_CLIENT_SECRET} # 카카오 Client Secret
     redirect-uri: http://localhost:3000/oauth/kakao  # 카카오 로그인 Redirect URI
+  google:
+    client-id: ${GOOGLE_CLIENT_ID}   # 구글 클라이언트 아이디
+    client-secret: ${GOOGLE_CLIENT_SECRET} # 구글 클라이언트 시크릿
+    redirect-uri: http://localhost:3000/oauth/google # 구글 로그인 Redirect URI
