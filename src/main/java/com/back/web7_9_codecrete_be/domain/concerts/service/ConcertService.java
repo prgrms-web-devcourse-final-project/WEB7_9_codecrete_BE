@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,12 +32,26 @@ public class ConcertService {
     private final ConcertImageRepository concertImageRepository;
 
 
-    public List<ConcertItem> getConcertsList(Pageable pageable) {
-        return concertRepository.getConcertItems(pageable);
-    }
+    public List<ConcertItem> getConcertsList(Pageable pageable, ListSort sort) {
+        switch (sort) {
+            case LIKE -> {
+                return concertRepository.getConcertItemsOrderByLikeCountDesc(pageable);
+            }
+            case VIEW -> {
+                return concertRepository.getConcertItemsOrderByViewCountDesc(pageable);
+            }
+            case TICKETING -> {
+                return concertRepository.getUpComingTicketingConcertItemsFromDateASC(pageable, LocalDateTime.of(LocalDate.now(), LocalTime.MIN));
+            }
+            case UPCOMING -> {
+                return concertRepository.getUpComingConcertItemsFromDateASC(pageable,LocalDate.now());
+            }
+            case REGISTERED -> {
+                return concertRepository.getConcertItemsOrderByApiId(pageable);
+            }
+        }
 
-    public List<ConcertItem> getUpcomingConcertsList(Pageable pageable) {
-        return concertRepository.getUpComingConcertItems(pageable, LocalDate.now());
+        return concertRepository.getConcertItems(pageable);
     }
 
     public List<ConcertItem> getLikedConcertsList(Pageable pageable,User user) {
