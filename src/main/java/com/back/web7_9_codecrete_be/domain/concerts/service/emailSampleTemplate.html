@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>공연 예매 알림</title>
+    <style>
+        @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family:
+                    "Pretendard Variable",
+                    Pretendard,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    system-ui,
+                    Roboto,
+                    "Helvetica Neue",
+                    "Segoe UI",
+                    "Apple SD Gothic Neo",
+                    "Noto Sans KR",
+                    "Malgun Gothic",
+                    "Apple Color Emoji",
+                    "Segoe UI Emoji",
+                    "Segoe UI Symbol",
+                    sans-serif;
+            background-color: #fafafa;
+            padding: 40px 20px;
+            line-height: 1.5;
+        }
+        .container {
+            max-width: 680px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        .header {
+            padding: 32px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: white;
+        }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        .header-icon {
+            width: 24px;
+            height: 24px;
+            vertical-align: middle;
+            margin-right: 8px;
+            color: white;
+        }
+        .header .subtitle {
+            font-size: 15px;
+            opacity: 0.85;
+            font-weight: 400;
+        }
+        .content {
+            padding: 32px;
+        }
+        .event-card {
+            border: 1px solid #e8e8e8;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            transition: all 0.2s ease;
+            background-color: #ffffff;
+        }
+        .event-card:hover {
+            border-color: #d0d0d0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        }
+        .event-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .event-date {
+            width: 64px;
+            height: 100%;
+            text-align: center;
+            padding: 12px 0;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+        }
+        .event-date .day {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a1a;
+            line-height: 1;
+        }
+        .event-date .month {
+            font-size: 13px;
+            color: #666;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        .event-info {
+            flex: 1;
+        }
+        .event-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+        .event-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: #666;
+        }
+        .meta-icon {
+            width: 12px;
+            height: 12px;
+            flex-shrink: 0;
+            color: #666;
+        }
+        .event-image {
+            display: block;
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .event-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #f0f0f0;
+        }
+        .event-venue {
+            font-size: 12px;
+            color: #888;
+        }
+        .booking-btn {
+            display: inline-block;
+            padding: 8px 24px;
+            background-color: #1a1a1a;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .booking-btn:hover {
+            background-color: #000000;
+            transform: translateY(-1px);
+        }
+        .notice {
+            background-color: #f8f8f8;
+            padding: 20px 24px;
+            margin-top: 24px;
+            border-radius: 8px;
+        }
+        .notice-title {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+        .notice-icon {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            color: #1a1a1a;
+        }
+        .notice-text {
+            font-size: 12px;
+            color: #666;
+        }
+        .footer {
+            text-align: center;
+            padding: 32px;
+            background-color: #fafafa;
+            color: #999;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        @media (max-width: 600px) {
+            .content {
+                padding: 24px 20px;
+            }
+            .event-card {
+                padding: 20px;
+            }
+            .header {
+                padding: 24px;
+            }
+            .header h1 {
+                font-size: 24px;
+            }
+            .event-footer {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>
+            <svg
+                    class="header-icon"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+            >
+                <path
+                        d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"
+                ></path>
+                <path d="M13 5v2"></path>
+                <path d="M13 17v2"></path>
+                <path d="M13 11v2"></path>
+            </svg>
+            오늘의 공연 예매
+        </h1>
+        <div class="subtitle">2025년 12월 17일 · 08:00 예매 시작</div>
+    </div>
+
+    <div class="content">
+        <!-- 공연 1 -->
+        <div class="event-card">
+            <img
+                    src="https://cdn.pixabay.com/photo/2025/11/18/15/41/15-41-22-232_1280.jpg"
+                    alt="공연 포스터"
+                    class="event-image"
+            />
+            <div class="event-header">
+                <div class="event-date">
+                    <div class="day">17</div>
+                    <div class="month">DEC</div>
+                </div>
+                <div class="event-info">
+                    <div class="event-title">영찬시민과 함께하는 아무 송년음악회 [정원]</div>
+                    <div class="event-meta">
+                        <div class="meta-item">
+                            <svg
+                                    class="meta-icon"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                            >
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            <span>2025년 12월 17일 08:00</span>
+                        </div>
+                        <div class="meta-item">
+                            <svg
+                                    class="meta-icon"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                            >
+                                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <span>영찬시민회관</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="event-footer">
+                <div class="event-venue">예매처명 : 예매처 이름</div>
+                <a
+                        href="https://ycac.yc.go.kr:448/play/play_03_view.html?pfmIng=1&p_idx=1278"
+                        class="booking-btn"
+                        target="_blank"
+                >예매하기</a
+                >
+            </div>
+        </div>
+
+        <!-- 안내사항 -->
+        <div class="notice">
+            <div class="notice-title">
+                <svg
+                        class="notice-icon"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                >
+                    <path d="M12 16v-4"></path>
+                    <path d="M12 8h.01"></path>
+                    <circle cx="12" cy="12" r="10"></circle></svg
+                >유의사항
+            </div>
+            <div class="notice-text">
+                공연 정보는 각 공연의 상황에 따라 변경될 수 있으니 예매 전 반드시 확인해주세요.
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        이 메일은 자동으로 발송되었습니다.<br />
+        © 2025 Concert Notification Service
+    </div>
+</div>
+</body>
+</html>
