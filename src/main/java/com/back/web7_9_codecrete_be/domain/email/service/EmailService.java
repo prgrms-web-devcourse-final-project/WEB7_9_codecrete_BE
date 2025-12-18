@@ -15,6 +15,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.security.SecureRandom;
+import java.time.LocalDate;
 
 @Slf4j
 @Service
@@ -44,6 +45,31 @@ public class EmailService {
             form.add("to", toEmail);
             form.add("subject", subject);
             form.add("text", content);
+
+            String response = mailgunClient.post()
+                    .uri("/messages")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(BodyInserters.fromFormData(form))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            log.info("메일 전송 완료: {} | 응답={}", toEmail, response);
+
+        } catch (Exception e) {
+            log.error("메일 전송 실패: {}", e.getMessage());
+            throw new BusinessException(MailErrorCode.MAIL_SEND_FAILURE);
+        }
+    }
+
+    // 메일 HTML 전송 공통 메서드
+    private void sendHtmlEmail(String toEmail, String subject, String content) {
+        try {
+            LinkedMultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+            form.add("from", fromEmail);
+            form.add("to", toEmail);
+            form.add("subject", subject);
+            form.add("html", content);
 
             String response = mailgunClient.post()
                     .uri("/messages")
@@ -148,6 +174,12 @@ public class EmailService {
                 """.formatted(link);
 
         sendEmail(email, "[NCB] 계정 복구 안내", content);
+    }
+
+    public void sendNotifyEmail(String email, String content){
+        String subject = LocalDate.now().toString() + " 오늘의 예매 알림입니다.";
+//        sendEmail(email, subject, content);
+        sendHtmlEmail(email, subject, content);
     }
 
     @Transactional

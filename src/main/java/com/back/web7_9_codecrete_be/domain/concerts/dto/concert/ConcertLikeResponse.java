@@ -1,7 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.concerts.dto.concert;
 
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
-import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertLike;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
