@@ -12,6 +12,8 @@ import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -48,6 +50,7 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
                     """)
             Long concertId,
             @RequestBody
+            @Valid
             @Schema(description = """
                     <h3>공연 갱신 요청 정보입니다.</h3>
                     <hr/>
@@ -88,6 +91,7 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
     @PatchMapping("ticketTimeSet")
     public RsData<ConcertDetailResponse> ticketTimeSet(
             @RequestBody
+            @Valid
             @Schema(description = """
                     <h3>공연 예매 시간 설정 정보입니다.</h3>
                     <hr/>
@@ -102,6 +106,7 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
     @PatchMapping("updateConcertByKopisAPI/{concertId}")
     public RsData<ConcertDetailResponse> updateConcertByKopisAPI(
             @PathVariable
+            @NotNull(message = "공연 ID는 필수입니다.")
             @Schema(description = """
                     <h3>갱신 대상이 될 공연의 concertId입니다.</h3>
                     <hr/>

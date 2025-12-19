@@ -171,7 +171,6 @@ public class ConcertController {
             @RequestParam String keyword,
             @Schema(description = "페이징 처리 또는 무한 스크롤 구현에 쓸 Pageable 객체입니다.")
             Pageable pageable
-
     ) {
         return RsData.success(concertService.getConcertListByKeyword(keyword, pageable));
     }
