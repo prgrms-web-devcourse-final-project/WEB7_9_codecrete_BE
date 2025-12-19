@@ -1,7 +1,6 @@
 package com.back.web7_9_codecrete_be.global.security;
 
 import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
-import com.back.web7_9_codecrete_be.global.error.code.AuthErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -33,42 +32,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        String accessToken  = resolveToken(request);
+        String accessToken = resolveToken(request);
 
-        // Access Token이 있는 경우 우선 검증 시도
+        log.info("[JwtFilter] URI = {}", request.getRequestURI());
+        log.info("[JwtFilter] ACCESS_TOKEN = {}", accessToken);
+
         if (StringUtils.hasText(accessToken)) {
             try {
+                log.info("[JwtFilter] validating token");
+
                 if (jwtTokenProvider.validateToken(accessToken)) {
+                    log.info("[JwtFilter] token valid");
+
                     Authentication auth =
                             jwtTokenProvider.getAuthentication(accessToken);
+
+                    log.info("[JwtFilter] auth = {}", auth);
+
                     SecurityContextHolder.getContext().setAuthentication(auth);
-                    filterChain.doFilter(request, response);
-                    return;
                 }
             } catch (BusinessException e) {
-                // Access Token 만료가 아닌 경우 재발급 안 함
-                if (e.getErrorCode() != AuthErrorCode.TOKEN_EXPIRED) {
-                    log.debug("Invalid access token: {}", e.getErrorCode());
-                    filterChain.doFilter(request, response);
-                    return;
-                }
-                // TOKEN_EXPIRED 인 경우만 아래 재발급 로직으로 내려감
+                log.info("[JwtFilter] token invalid: {}", e.getErrorCode());
+                SecurityContextHolder.clearContext();
             }
         }
 
-        // Access Token이 없거나 / 만료된 경우 Refresh 기반 재발급 시도
-        try {
-            String newAccess = tokenService.reissueAccessToken();
-
-            Authentication auth =
-                    jwtTokenProvider.getAuthentication(newAccess);
-            SecurityContextHolder.getContext().setAuthentication(auth);
-
-        } catch (BusinessException ex) {
-            // 재발급 실패 시 SecurityContext 비우기
-            SecurityContextHolder.clearContext();
-            log.debug("Access Token 재발급 실패: {}", ex.getErrorCode());
-        }
+        log.info("[JwtFilter] SecurityContext = {}",
+                SecurityContextHolder.getContext().getAuthentication());
 
         filterChain.doFilter(request, response);
     }
