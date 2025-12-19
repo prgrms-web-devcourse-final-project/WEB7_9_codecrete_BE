@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,8 +31,9 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
 
     @Operation(summary = "초기 공연 정보 저장", description = "25년 12월부터 앞으로 6개월 이후까지의 전체 공연의 정보를 가져와서 저장합니다. 대략 10~12분 정도 시간이 소요됩니다.")
     @PostMapping("setConcertData")
-    public RsData<SetResultResponse> setConcert() throws InterruptedException {
-        return RsData.success(kopisApiService.setConcertsList());
+    public RsData<Void> setConcert() throws InterruptedException {
+        kopisApiService.setConcertsList();
+        return RsData.success(HttpStatus.ACCEPTED,"저장 요청을 보냈습니다",null);
     }
 
     @Operation(summary = "공연 정보 갱신", description = "공연 정보를 직접 갱신합니다.")
