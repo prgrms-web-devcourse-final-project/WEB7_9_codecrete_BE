@@ -7,6 +7,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -61,19 +62,21 @@ public class WebClientConfig {
         return restTemplate;
     }
 
-    @Bean
-    public WebClient kakaoWebClient() {
 
-        return WebClient.builder()
+    @Bean
+    public RestClient kakaoRestClient(){
+
+        return RestClient.builder()
                 .baseUrl(kakaoBaseUrl)
                 .defaultHeader("Authorization", kakaomapApiKey)
                 .build();
+
     }
 
 
     @Bean
-    public WebClient TmapClient(){
-        return WebClient.builder()
+    public RestClient TmapRestClient(){
+        return RestClient.builder()
                 .baseUrl(tmapBaseUrl)
                 .defaultHeader("appKey", tmapApiKey)
                 .build();
