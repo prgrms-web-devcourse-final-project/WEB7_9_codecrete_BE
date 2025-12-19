@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+</head>
+<body style="margin:0;padding:0;background-color:#fafafa;
+                font-family:-apple-system,BlinkMacSystemFont,system-ui,Roboto,
+                Helvetica Neue,Segoe UI,Apple SD Gothic Neo,Noto Sans KR,Malgun Gothic,sans-serif;">
+
+<div style="max-width:520px;margin:40px auto;background-color:#ffffff;
+                border-radius:12px;overflow:hidden;
+                box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+    <!-- Header -->
+    <div style="padding:28px;background-color:#1a1a1a;color:#ffffff;">
+        <div style="font-size:22px;font-weight:700;">
+            🔐 계정 복구 안내
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div style="padding:28px;color:#1a1a1a;line-height:1.6;">
+
+        <p style="margin:0 0 12px 0;">
+            안녕하세요. <strong>NCB</strong>입니다.
+        </p>
+
+        <p style="margin:0 0 16px 0;">
+            아래 버튼을 클릭하시면 <strong>계정 복구가 완료</strong>됩니다.<br/>
+            <span style="font-size:13px;color:#666;">
+                                (해당 링크는 <strong>15분간</strong> 유효합니다.)
+                            </span>
+        </p>
+
+        <!-- Button -->
+        <div style="text-align:center;margin:24px 0;">
+            <a href="%s"
+               target="_blank"
+               style="display:inline-block;padding:12px 28px;
+                               background-color:#1a1a1a;color:#ffffff;
+                               text-decoration:none;border-radius:6px;
+                               font-size:15px;font-weight:600;">
+                계정 복구하기
+            </a>
+        </div>
+
+        <!-- Fallback Link -->
+        <p style="font-size:12px;color:#666;word-break:break-all;">
+            버튼이 정상적으로 동작하지 않는 경우,<br/>
+            아래 링크를 복사하여 브라우저에 붙여넣어 주세요.
+        </p>
+
+        <p style="font-size:12px;">
+            <a href="%s" target="_blank" style="color:#1a1a1a;">
+                %s
+            </a>
+        </p>
+
+        <p style="margin-top:24px;font-size:12px;color:#999;">
+            본 메일은 자동으로 발송된 메일입니다.
+        </p>
+    </div>
+
+</div>
+
+</body>
+</html>
