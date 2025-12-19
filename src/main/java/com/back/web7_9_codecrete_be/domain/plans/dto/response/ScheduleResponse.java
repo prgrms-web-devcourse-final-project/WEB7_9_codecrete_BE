@@ -27,6 +27,14 @@ public class ScheduleResponse {
     private Double endPlaceLon;
     private Integer distance;
     private Schedule.TransportType transportType;
+    private Boolean isMainEvent;
+    // 공연 정보 (isMainEvent가 true인 경우)
+    private Long concertId;
+    private String concertName;
+    private String concertPosterUrl;
+    private String concertPlaceName;
+    private Integer concertMinPrice;
+    private Integer concertMaxPrice;
     private LocalDateTime createdDate;
     private LocalDateTime modifiedDate;
 }

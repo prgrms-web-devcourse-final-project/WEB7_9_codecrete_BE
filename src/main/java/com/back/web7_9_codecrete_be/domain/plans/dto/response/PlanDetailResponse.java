@@ -86,6 +86,21 @@ public class PlanDetailResponse {
         private Integer distance;
         @Schema(description = "교통 수단 타입 (TRANSPORT 타입일 때)", example = "SUBWAY")
         private Schedule.TransportType transportType;
+        @Schema(description = "메인 이벤트(콘서트) 여부", example = "true")
+        private Boolean isMainEvent;
+        // 아래 공연 정보들은 isMainEvent가 true인 경우 필요
+        @Schema(description = "공연 ID", example = "1")
+        private Long concertId;
+        @Schema(description = "공연 이름", example = "2024 봄 콘서트")
+        private String concertName;
+        @Schema(description = "공연 포스터 URL", example = "https://example.com/poster.jpg")
+        private String concertPosterUrl;
+        @Schema(description = "공연 장소 이름", example = "올림픽공원 올림픽홀")
+        private String concertPlaceName;
+        @Schema(description = "공연 최저가", example = "50000")
+        private Integer concertMinPrice;
+        @Schema(description = "공연 최고가", example = "150000")
+        private Integer concertMaxPrice;
         @Schema(description = "생성 일시", example = "2024-12-01T10:00:00")
         private LocalDateTime createdDate;
         @Schema(description = "수정 일시", example = "2024-12-01T10:00:00")
