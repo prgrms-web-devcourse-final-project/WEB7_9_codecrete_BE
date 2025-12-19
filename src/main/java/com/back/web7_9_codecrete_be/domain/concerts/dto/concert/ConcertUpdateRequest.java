@@ -2,6 +2,7 @@ package com.back.web7_9_codecrete_be.domain.concerts.dto.concert;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 
 import java.time.LocalDate;
@@ -25,11 +26,11 @@ public class ConcertUpdateRequest {
     private Long placeId;
 
     @Schema(description = "공연 시작 날짜입니다.")
-    @NotEmpty
+    @NotNull(message = "공연 시작 날짜 입력은 필수입니다.")
     private LocalDate StartDate;
 
     @Schema(description = "공연 종료 날짜입니다.")
-    @NotEmpty
+    @NotNull(message = "공연 종료 날짜 입력은 필수입니다.")
     private LocalDate EndDate;
 
     @Schema(description = "공연 포스터 URL 입니다.")
