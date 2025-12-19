@@ -83,10 +83,11 @@ public class SecurityConfig {
 	public UrlBasedCorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
 
-		configuration.setAllowedOrigins(List.of("http://localhost:3000", "https://*.naeconcertbutakhae.shop"));
+		configuration.setAllowedOrigins(List.of("http://localhost:3000", "https://www.naeconcertbutakhae.shop"));
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
 		configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("Set-Cookie"));
 
 		//쿠키 자동으로 넘어가게 설정
 		configuration.setAllowCredentials(true);
