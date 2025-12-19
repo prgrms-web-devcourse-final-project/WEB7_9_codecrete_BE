@@ -61,6 +61,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("com.squareup.okhttp3:mockwebserver:3.14.9")     //외부 api 서버 테스트용
 
     // 스프링 문서화
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13")
