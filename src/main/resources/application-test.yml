@@ -3,3 +3,11 @@ spring:
     redis:
       host: localhost
       port: 6379
+
+cloud:
+  aws:
+    s3:
+      bucket: test-bucket
+    Credentials:
+      accessKey: test
+      secretKey: test

@@ -3,6 +3,12 @@ spring:
     import: optional:file:.env[.properties]
   profiles:
     active: dev
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
   output:
     ansi:
       enabled: always
@@ -58,3 +64,13 @@ oauth:
     client-id: ${GOOGLE_CLIENT_ID}   # 구글 클라이언트 아이디
     client-secret: ${GOOGLE_CLIENT_SECRET} # 구글 클라이언트 시크릿
     redirect-uri: ${GOOGLE_REDIRECT_URI} # 구글 로그인 Redirect URI
+
+cloud:
+  aws:
+    s3:
+      bucket: ${AWS_S3_BUCKET_NAME}
+    credentials:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}
+    region:
+      static: ap-northeast-2

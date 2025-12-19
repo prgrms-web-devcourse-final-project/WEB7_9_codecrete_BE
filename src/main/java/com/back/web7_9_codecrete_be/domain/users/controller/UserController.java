@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,10 +43,10 @@ public class UserController {
         return RsData.success("사용자 닉네임 변경 완료", response);
     }
 
-    @Operation(summary = "내 프로필 이미지 수정", description = "프로필 이미지를 수정합니다.")
-    @PatchMapping("/profile-image")
+    @Operation(summary = "내 프로필 이미지 수정", description = "프로필 이미지를 multipart/form-data 형식으로 업로드하여 수정합니다.")
+    @PatchMapping(value = "/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public RsData<?> updateProfileImage(
-            @RequestPart MultipartFile file
+            @RequestPart("file") MultipartFile file
     ) {
         User user = rq.getUser();
         String imageUrl = userService.updateProfileImage(user, file);
@@ -61,7 +62,6 @@ public class UserController {
         userService.updatePassword(user, req);
         return RsData.success("비밀번호가 변경되었습니다.");
     }
-
 
     @Operation(summary = "회원 탈퇴", description = "현재 로그인된 사용자를 탈퇴 처리합니다.")
     @DeleteMapping("/me")

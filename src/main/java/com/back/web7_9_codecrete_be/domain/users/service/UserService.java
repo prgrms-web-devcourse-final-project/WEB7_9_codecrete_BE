@@ -13,6 +13,7 @@ import com.back.web7_9_codecrete_be.global.error.code.UserErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import com.back.web7_9_codecrete_be.global.storage.FileStorageService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -31,6 +33,8 @@ public class UserService {
     private final TokenService tokenService;
     private final UserRestoreTokenRedisRepository userRestoreTokenRedisRepository;
     private final EmailService emailService;
+
+    private static final long MAX_PROFILE_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
     // 내 정보 조회
     @Transactional(readOnly = true)
@@ -75,13 +79,38 @@ public class UserService {
             throw new BusinessException(UserErrorCode.INVALID_PROFILE_IMAGE);
         }
 
-        String imageUrl = fileStorageService.upload(file);
+        if (file.getSize() > MAX_PROFILE_IMAGE_SIZE) {
+            throw new BusinessException(UserErrorCode.PROFILE_IMAGE_SIZE_EXCEEDED);
+        }
 
-        user.updateProfileImage(imageUrl);
+        // 기존 이미지 URL 보관
+        String oldImageUrl = user.getProfileImage();
+
+        // 새 이미지 업로드
+        String newImageUrl = fileStorageService.upload(file, "users/profile");
+
+        // DB 업데이트
+        user.updateProfileImage(newImageUrl);
         userRepository.save(user);
 
-        return imageUrl;
+        // 기존 이미지 즉시 삭제
+        // TODO: 추후 지연 삭제 스케줄러로 리팩토링
+        if (oldImageUrl != null) {
+            try {
+                fileStorageService.delete(oldImageUrl);
+            } catch (Exception e) {
+                log.warn(
+                        "기존 프로필 이미지 삭제 실패 userId={}, url={}",
+                        user.getId(),
+                        oldImageUrl,
+                        e
+                );
+            }
+        }
+
+        return newImageUrl;
     }
+
 
     // 활성 사용자 검증
     private void validateActiveUser(User user) {
