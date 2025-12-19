@@ -44,6 +44,8 @@ public class KopisApiService {
 
     private final ConcertUpdateTimeRepository concertUpdateTimeRepository;
 
+    private final ConcertRedisRepository concertRedisRepository;
+
     @Value("${kopis.api-key}")
     private String serviceKey;
     private LocalDate sdate = LocalDate.of(2025, 12, 1);
@@ -51,12 +53,13 @@ public class KopisApiService {
 
     private final RestClient restClient;
 
-    public KopisApiService(ConcertRepository concertRepository, ConcertPlaceRepository placeRepository, TicketOfficeRepository ticketOfficeRepository, ConcertImageRepository imageRepository, ConcertUpdateTimeRepository concertUpdateTimeRepository) {
+    public KopisApiService(ConcertRepository concertRepository, ConcertPlaceRepository placeRepository, TicketOfficeRepository ticketOfficeRepository, ConcertImageRepository imageRepository, ConcertUpdateTimeRepository concertUpdateTimeRepository,ConcertRedisRepository concertRedisRepository) {
         this.concertRepository = concertRepository;
         this.placeRepository = placeRepository;
         this.ticketOfficeRepository = ticketOfficeRepository;
         this.imageRepository = imageRepository;
         this.concertUpdateTimeRepository = concertUpdateTimeRepository;
+        this.concertRedisRepository = concertRedisRepository;
         this.restClient = RestClient.builder()
                 .baseUrl("https://kopis.or.kr/openApi/restful")
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML_VALUE)
@@ -67,10 +70,20 @@ public class KopisApiService {
     @Transactional
     public void setConcertsList() throws InterruptedException {
         // 최초 시작 시간 저장
-        if(concertRepository.count() != 0) {
+        if(concertUpdateTimeRepository.count() != 0) {
             log.error("이미 최초 저장이 되었습니다!. UpdateConcert를 통해 데이터를 갱신해주십시오!");
             return;
         }
+        String key = "init";
+
+        String value = concertRedisRepository.lockGet(key);
+        if(value != null) {
+            log.error("이미 실행중인 스레드입니다.");
+            return;
+        } else {
+            concertRedisRepository.lockSave(key,"running...");
+        }
+
         LocalDateTime now = LocalDateTime.now();
         Long startNs = System.currentTimeMillis();
 
@@ -167,6 +180,7 @@ public class KopisApiService {
         long endNs = System.currentTimeMillis();
         long durationSec = ((endNs - startNs) / 1000);
         log.info(durationSec/60 + "분, " + durationSec % 60 + "초 소요되었습니다." );
+        concertRedisRepository.unlockSave(key);
     }
 
 
