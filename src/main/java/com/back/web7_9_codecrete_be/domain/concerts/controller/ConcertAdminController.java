@@ -1,7 +1,5 @@
 package com.back.web7_9_codecrete_be.domain.concerts.controller;
 
-import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concert.ConcertListResponse;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceListResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.result.SetResultResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
@@ -16,7 +14,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -96,7 +93,7 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
                     """)
             ConcertTicketTimeSetRequest concertTicketTimeSetRequest
     ) {
-        return RsData.success(concertService.setConcertTime(concertTicketTimeSetRequest));
+        return RsData.success(concertService.setConcertTicketingTime(concertTicketTimeSetRequest));
     }
 
     @Operation(summary = "개별 공연 API통한 갱신", description = "개별 공연에 대해서 공연 예술 통합망(Kopis)을 통해 데이터를 조회하고 해당 데이터를 갱신합니다.")

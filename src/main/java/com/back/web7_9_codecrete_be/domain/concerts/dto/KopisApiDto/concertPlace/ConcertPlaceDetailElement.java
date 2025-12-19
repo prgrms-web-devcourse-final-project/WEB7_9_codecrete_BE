@@ -80,13 +80,6 @@ public class ConcertPlaceDetailElement {
     private List<ConcertHallResponse> halls;
 
     public ConcertPlace getConcertPlace() {
-        return new ConcertPlace(
-                this.concertPlaceName,
-                this.concertPlaceAddress,
-                Double.parseDouble(lat),
-                Double.parseDouble(lon),
-                Integer.parseInt(seatScale),
-                concertPlaceApiId
-                );
+        return new ConcertPlace(this);
     }
 }

@@ -256,6 +256,7 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     c.name as name,
     c.content as description,
     c.concertPlace.placeName as placeName,
+    c.concertPlace.address as placeAddress,
     c.ticketTime as ticketTime,
     c.startDate as startDate,
     c.endDate as endDate,

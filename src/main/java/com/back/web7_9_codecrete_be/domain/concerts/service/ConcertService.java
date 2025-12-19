@@ -1,6 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.concerts.service;
 
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.*;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concertPlace.PlaceDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOfficeElement;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.*;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.*;
@@ -32,6 +33,7 @@ public class ConcertService {
     private final ConcertImageRepository concertImageRepository;
 
 
+    // 공연 목록 조회
     public List<ConcertItem> getConcertsList(Pageable pageable, ListSort sort) {
         switch (sort) {
             case LIKE -> {
@@ -54,14 +56,17 @@ public class ConcertService {
         return concertRepository.getConcertItems(pageable);
     }
 
+    // 사용자가 좋아요 한 공연 목록 조회
     public List<ConcertItem> getLikedConcertsList(Pageable pageable,User user) {
         return concertRepository.getLikedConcertsList(pageable, user.getId());
     }
 
+    // 티켓팅 시간이 없는 공연 목록 조회
     public List<ConcertItem> getNoTicketTimeConcertsList(Pageable pageable) {
         return concertRepository.getNoTicketTimeConcertList(pageable);
     }
 
+    // 키워드 통한 공연 제목 검색
     public List<ConcertItem> getConcertListByKeyword(String keyword, Pageable pageable) {
         if(keyword == null || keyword.isEmpty()){
             throw new BusinessException(ConcertErrorCode.KEYWORD_IS_NULL);
@@ -69,6 +74,7 @@ public class ConcertService {
         return concertRepository.getConcertItemsByKeyword(keyword, pageable);
     }
 
+    // 공연 상세 조회 조회시 조회수 1 증가
     @Transactional
     public ConcertDetailResponse getConcertDetail(long concertId) {
         ConcertDetailResponse concertDetailResponse = concertRepository.getConcertDetailById(concertId);
@@ -95,6 +101,7 @@ public class ConcertService {
     }
     */
 
+    // 공연 예매처 조회
     public List<TicketOfficeElement> getTicketOfficesList(long concertId) {
         List<TicketOffice> ticketOffices = ticketOfficeRepository.getTicketOfficesByConcert_ConcertId(concertId);
         List<TicketOfficeElement> ticketOfficeList = new ArrayList<>();
@@ -105,6 +112,7 @@ public class ConcertService {
         return ticketOfficeList;
     }
 
+    // 공연 좋아요 여부 확인
     public ConcertLikeResponse isLikeConcert(Long concertId, User user) {
         Concert concert = findConcertByConcertId(concertId);
         ConcertLikeResponse concertLikeResponse;
@@ -117,6 +125,7 @@ public class ConcertService {
         return concertLikeResponse;
     }
 
+    // 사용자가 해당 공연에 좋아요
     @Transactional
     public void likeConcert(long concertId, User user) {
         Concert concert = findConcertByConcertId(concertId);
@@ -129,6 +138,7 @@ public class ConcertService {
         concertRepository.concertLikeCountUp(concertId);
     }
 
+    // 사용자가 해당 공연에 좋아요 해제
     @Transactional
     public void dislikeConcert(long concertId, User user) {
         Concert concert = findConcertByConcertId(concertId);
@@ -141,6 +151,7 @@ public class ConcertService {
         concertRepository.concertLikeCountDown(concertId);
     }
 
+    // 공연 내용 갱신
     public ConcertItem updateConcert(long concertId, ConcertUpdateRequest concertUpdateRequest) {
         Concert concert = findConcertByConcertId(concertId);
         ConcertPlace concertPlace = concertPlaceRepository.findById(concertUpdateRequest.getPlaceId()).orElseThrow();
@@ -149,21 +160,30 @@ public class ConcertService {
         return new ConcertItem(updatedConcert);
     }
 
-    public ConcertDetailResponse setConcertTime(ConcertTicketTimeSetRequest concertTicketTimeSetRequest) {
+    // 공연 시간 설정
+    public ConcertDetailResponse setConcertTicketingTime(ConcertTicketTimeSetRequest concertTicketTimeSetRequest) {
         Concert concert = findConcertByConcertId(concertTicketTimeSetRequest.getConcertId());
         concert.ticketTimeSet(concertTicketTimeSetRequest.getTicketTime());
         Concert savedConcert = concertRepository.save(concert);
         return concertRepository.getConcertDetailById(savedConcert.getConcertId());
     }
 
+    // 공연 삭제
     public void deleteConcert(long concertId) {
         concertRepository.deleteById(concertId);
     }
 
+    // 아티스트 Id 리스트로 해당 아티스트들의 공연 목록 조회
     public List<Concert> findConcertsByArtistIds(List<Long> artistIds) {
         return concertRepository.findDistinctByArtistIds(artistIds);
     }
-  
+
+    // 공연 시설 조회
+    public PlaceDetailResponse getConcertPlaceDetail(long concertId) {
+        ConcertPlace concertPlace = concertPlaceRepository.getConcertPlaceByConcertId(concertId);
+        return new PlaceDetailResponse(concertPlace);
+    }
+
     private Concert findConcertByConcertId(long concertId) {
         return concertRepository.findById(concertId).orElseThrow(
                 () -> new BusinessException(ConcertErrorCode.CONCERT_NOT_FOUND)

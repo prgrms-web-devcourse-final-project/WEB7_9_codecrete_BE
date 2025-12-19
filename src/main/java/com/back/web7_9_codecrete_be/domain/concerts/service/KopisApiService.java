@@ -20,7 +20,6 @@ import org.springframework.web.client.RestClient;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -99,7 +98,6 @@ public class KopisApiService {
         for (ConcertListElement performanceListElement : totalConcertsList) {
             ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(serviceKey, performanceListElement.getApiConcertId());
             ConcertDetailElement concertDetail = concertDetailResponse.getConcertDetail();
-            log.info("concert detail: " + concertDetailResponse.getConcertDetail());
 
             // 콘서트 위치 저장
             // 콘서트 상세에서 저장할 콘서트 위치의 API ID 값 가져오기
@@ -114,13 +112,11 @@ public class KopisApiService {
                 ConcertPlace savedConcertPlace = placeRepository.save(concertPlace);
                 concertPlaceMap.put(concertPlaceAPiKey, savedConcertPlace);
                 addedConcertPlaces++;
-                log.info("concert place saved: " + savedConcertPlace);
             }
 
             //콘서트 최고 금액, 최저 금액 처리.
             TicketPrice ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
-            log.info("표 가격 raw : " + concertDetail.getConcertPrice());
-            log.info("최고가 : " + ticketPrice.maxPrice  + ", 최저가 : " + ticketPrice.minPrice);
+
             // 콘서트 저장
             Concert concert = new Concert(
                     concertPlace,
@@ -141,7 +137,6 @@ public class KopisApiService {
             addedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
             addedConcertImages += saveConcertImages(concertDetail, savedConcert);
 
-            log.info("Concert saved: " + savedConcert);
             Thread.sleep(300);
         }
 

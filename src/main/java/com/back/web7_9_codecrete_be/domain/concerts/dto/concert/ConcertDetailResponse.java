@@ -26,6 +26,9 @@ public class ConcertDetailResponse {
     @Schema(description = "콘서트 장소 이름입니다.")
     private String placeName;
 
+    @Schema(description = "콘서트 장 주소입니다.")
+    private String placeAddress;
+
     @Schema(description = "콘서트 예매 시작 날짜입니다.")
     private LocalDateTime ticketTime;
 
