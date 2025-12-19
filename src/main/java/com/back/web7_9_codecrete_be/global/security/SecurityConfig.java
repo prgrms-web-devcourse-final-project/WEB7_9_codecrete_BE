@@ -57,8 +57,8 @@ public class SecurityConfig {
 					"/h2-console/**",       // H2 Console
 					"/api/v1/location/**",      //location 정보 조회 도메인(임시)
 					"/api/v1/concerts/**",     // concert 정보 조회 도메인
-					"/api/v1/artists/**"    // artist 정보 저장 도메인(임시)
-          "/api/v1/users/**"
+					"/api/v1/artists/**",    // artist 정보 저장 도메인(임시)
+          			"/api/v1/users/**"
 				).permitAll()
 
 				// ADMIN 전용
