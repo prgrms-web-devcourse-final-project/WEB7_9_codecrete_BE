@@ -1,7 +1,7 @@
 package com.back.web7_9_codecrete_be.global.security;
 
-import java.util.List;
-
+import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -14,9 +14,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
-
-import lombok.RequiredArgsConstructor;
+import java.util.List;
 
 @Configuration
 @RequiredArgsConstructor
@@ -85,16 +83,17 @@ public class SecurityConfig {
 	public UrlBasedCorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
 
-		configuration.setAllowedOrigins(List.of("http://localhost:3000", "https://web-6-7-codecrete-fe.vercel.app", "https://www.naeconcertbutakhae.shop"));
+		configuration.setAllowedOrigins(List.of("http://localhost:3000", "https://www.naeconcertbutakhae.shop"));
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
 		configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("Set-Cookie"));
 
 		//쿠키 자동으로 넘어가게 설정
 		configuration.setAllowCredentials(true);
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		source.registerCorsConfiguration("/api/**", configuration);
+		source.registerCorsConfiguration("/**", configuration);
 
 		return source;
 	}

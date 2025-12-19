@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.auth.service;
 
+import com.back.web7_9_codecrete_be.domain.auth.dto.response.TokenResponse;
 import com.back.web7_9_codecrete_be.domain.auth.entity.RefreshToken;
 import com.back.web7_9_codecrete_be.domain.auth.repository.RefreshTokenRedisRepository;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
@@ -28,8 +29,8 @@ public class TokenService {
         String access = jwtTokenProvider.generateAccessToken(user.getEmail());
         String refresh = jwtTokenProvider.generateRefreshToken(user.getEmail());
 
-        rq.setCookie("ACCESS_TOKEN", access, (int) jwtProperties.getAccessTokenExpiration());
-        rq.setCookie("REFRESH_TOKEN", refresh, (int) jwtProperties.getRefreshTokenExpiration());
+        rq.setCookie("ACCESS_TOKEN", access, jwtProperties.getAccessTokenExpiration());
+        rq.setCookie("REFRESH_TOKEN", refresh, jwtProperties.getRefreshTokenExpiration());
 
         refreshTokenRedisRepository.save(
                 new RefreshToken(
@@ -47,18 +48,15 @@ public class TokenService {
         refreshTokenRedisRepository.deleteByUserId(user.getId());
     }
 
-    public String reissueAccessToken() {
+    public TokenResponse reissueAccessToken() {
 
-        // Refresh Token 쿠키 찾기
         String refresh = rq.getCookieValue("REFRESH_TOKEN");
         if (refresh == null) {
             throw new BusinessException(AuthErrorCode.TOKEN_MISSING);
         }
 
-        // RefreshToken 검증
         jwtTokenProvider.validateToken(refresh);
 
-        // RefreshToken에서 email(Subject) 추출
         String email = jwtTokenProvider.getEmailFromToken(refresh);
 
         User user = userRepository.findByEmail(email)
@@ -69,17 +67,14 @@ public class TokenService {
         }
 
         String savedRefresh = refreshTokenRedisRepository.findByUserId(user.getId());
-
         if (savedRefresh == null || !savedRefresh.equals(refresh)) {
             throw new BusinessException(AuthErrorCode.INVALID_TOKEN);
         }
 
-        // AccessToken 재발급
         String newAccess = jwtTokenProvider.generateAccessToken(email);
 
-        // AccessToken 쿠키에 다시 저장
-        rq.setCookie("ACCESS_TOKEN", newAccess, (int) jwtProperties.getAccessTokenExpiration());
+        rq.setCookie("ACCESS_TOKEN", newAccess, jwtProperties.getAccessTokenExpiration());
 
-        return newAccess;
+        return new TokenResponse(newAccess);
     }
 }

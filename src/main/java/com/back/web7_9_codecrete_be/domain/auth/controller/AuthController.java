@@ -5,6 +5,7 @@ import com.back.web7_9_codecrete_be.domain.auth.dto.request.EmailVerifyRequest;
 import com.back.web7_9_codecrete_be.domain.auth.dto.request.LoginRequest;
 import com.back.web7_9_codecrete_be.domain.auth.dto.request.SignupRequest;
 import com.back.web7_9_codecrete_be.domain.auth.dto.response.LoginResponse;
+import com.back.web7_9_codecrete_be.domain.auth.dto.response.TokenResponse;
 import com.back.web7_9_codecrete_be.domain.auth.service.AuthService;
 import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
 import com.back.web7_9_codecrete_be.domain.users.dto.response.UserResponse;
@@ -87,8 +88,8 @@ public class AuthController {
     @Operation(summary = "액세스 토큰 재발급", description = "리프레시 토큰을 이용하여 새로운 액세스 토큰을 발급합니다.")
     @PostMapping("/refresh")
     public RsData<?> refresh() {
-        String newAccessToken = tokenService.reissueAccessToken();
-        return RsData.success("토큰 재발급 완료", newAccessToken);
+        TokenResponse response = tokenService.reissueAccessToken();
+        return RsData.success("토큰 재발급 완료", response);
     }
 
     @Operation(summary = "카카오 소셜 로그인", description = "카카오 OAuth 인가 코드를 이용해 로그인/회원가입을 진행합니다.")

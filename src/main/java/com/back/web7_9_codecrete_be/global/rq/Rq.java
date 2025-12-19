@@ -7,6 +7,8 @@ import com.back.web7_9_codecrete_be.global.security.CustomUserDetail;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -16,10 +18,15 @@ public class Rq {
 
     private final HttpServletRequest request;
     private final HttpServletResponse response;
+    private final boolean isProd;
 
-    public Rq(HttpServletRequest request, HttpServletResponse response) {
+    public Rq(HttpServletRequest request,
+              HttpServletResponse response,
+              @Value("${spring.profiles.active:local}") String activeProfile)
+    {
         this.request = request;
         this.response = response;
+        this.isProd = activeProfile.equals("prod");
     }
 
     // 현재 인증된 사용자 정보 가져오기
@@ -39,27 +46,47 @@ public class Rq {
     }
 
     // 쿠키 설정
-    public void setCookie(String name, String value, int maxAge) {
+    public void setCookie(String name, String value, long maxAge) {
         String safeValue = value != null ? value : "";
 
-        Cookie cookie = new Cookie(name, safeValue);
-        cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        cookie.setMaxAge(maxAge);
-        cookie.setSecure(true); // https 환경 권장 옵션
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, safeValue)
+                .path("/")
+                .httpOnly(true)
+                .maxAge(maxAge);
 
-        response.addCookie(cookie);
+        if (isProd) {
+            builder
+                    .secure(true)
+                    .sameSite("None")
+                    .domain(".naeconcertbutakhae.shop");
+        } else {
+            builder
+                    .secure(false)
+                    .sameSite("Lax");
+        }
+
+        response.addHeader("Set-Cookie", builder.build().toString());
     }
 
     // 쿠키 제거
     public void removeCookie(String name) {
-        Cookie cookie = new Cookie(name, null);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, "")
+                .path("/")
+                .httpOnly(true)
+                .maxAge(0);
 
-        response.addCookie(cookie);
+        if (isProd) {
+            builder
+                    .secure(true)
+                    .sameSite("None")
+                    .domain(".naeconcertbutakhae.shop");
+        } else {
+            builder
+                    .secure(false)
+                    .sameSite("Lax");
+        }
+
+        response.addHeader("Set-Cookie", builder.build().toString());
     }
 
     public String getCookieValue(String name) {

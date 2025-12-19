@@ -30,7 +30,7 @@ public class ArtistsController {
     private final Rq rq;
 
     @Operation(summary = "아티스트 저장", description = "임의의 가수(or 팀)을 DB에 저장합니다.")
-    @GetMapping("/saved")
+    @PostMapping("/saved")
     public RsData<Integer> saveArtist() {
         int saved = artistService.setArtist();
         return RsData.success("아티스트 저장에 성공하였습니다.", saved);
