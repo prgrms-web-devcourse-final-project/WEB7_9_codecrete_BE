@@ -1,5 +1,3 @@
-import org.gradle.kotlin.dsl.implementation
-
 plugins {
     java
     id("org.springframework.boot") version "3.5.8"
@@ -75,6 +73,8 @@ dependencies {
    
     // Spotify
     implementation("se.michaelthelin.spotify:spotify-web-api-java:8.4.1")
+
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
 }
 
 tasks.withType<Test> {
