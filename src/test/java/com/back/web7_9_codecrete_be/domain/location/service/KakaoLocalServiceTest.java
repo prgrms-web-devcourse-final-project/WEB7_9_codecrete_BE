@@ -1,6 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.location.service;
 
-import com.back.web7_9_codecrete_be.domain.location.dto.KakaoLocalResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoLocalResponse;
 import com.back.web7_9_codecrete_be.global.config.WebClientConfig;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import okhttp3.mockwebserver.MockResponse;

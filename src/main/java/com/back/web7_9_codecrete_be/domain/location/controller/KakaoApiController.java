@@ -1,6 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.location.controller;
 
-import com.back.web7_9_codecrete_be.domain.location.dto.KakaoLocalResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoLocalResponse;
 import com.back.web7_9_codecrete_be.domain.location.service.KakaoLocalService;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
