@@ -89,6 +89,9 @@ public class SpotifyService {
                         String artistTypeStr = inferArtistType(spotifyArtist);
                         ArtistType artistType = ArtistType.valueOf(artistTypeStr);
 
+                        // Spotify에서 이미지 URL 가져오기
+                        String imageUrl = pickImageUrl(spotifyArtist.getImages());
+
                         Artist artistEntity = new Artist(
                                 spotifyId,
                                 name.trim(),
@@ -96,6 +99,7 @@ public class SpotifyService {
                                 artistType,
                                 genre
                         );
+                        artistEntity.setImageUrl(imageUrl);
 
                         artistRepository.save(artistEntity);
                         totalSaved++;
