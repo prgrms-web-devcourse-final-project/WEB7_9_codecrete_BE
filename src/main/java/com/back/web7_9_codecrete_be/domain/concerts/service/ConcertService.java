@@ -36,25 +36,21 @@ public class ConcertService {
 
     // 공연 목록 조회
     public List<ConcertItem> getConcertsList(Pageable pageable, ListSort sort) {
+        List<ConcertItem> concertItems;
+        concertItems = concertRedisRepository.getConcertsList(pageable, sort);
+
+        if(concertItems != null && !concertItems.isEmpty()) return concertItems;
+
         switch (sort) {
-            case LIKE -> {
-                return concertRepository.getConcertItemsOrderByLikeCountDesc(pageable);
-            }
-            case VIEW -> {
-                return concertRepository.getConcertItemsOrderByViewCountDesc(pageable);
-            }
-            case TICKETING -> {
-                return concertRepository.getUpComingTicketingConcertItemsFromDateASC(pageable, LocalDateTime.of(LocalDate.now(), LocalTime.MIN));
-            }
-            case UPCOMING -> {
-                return concertRepository.getUpComingConcertItemsFromDateASC(pageable,LocalDate.now());
-            }
-            case REGISTERED -> {
-                return concertRepository.getConcertItemsOrderByApiId(pageable);
-            }
+            case LIKE -> concertItems = concertRepository.getConcertItemsOrderByLikeCountDesc(pageable);
+            case VIEW -> concertItems = concertRepository.getConcertItemsOrderByViewCountDesc(pageable);
+            case TICKETING -> concertItems = concertRepository.getUpComingTicketingConcertItemsFromDateASC(pageable, LocalDateTime.of(LocalDate.now(), LocalTime.MIN));
+            case UPCOMING -> concertItems = concertRepository.getUpComingConcertItemsFromDateASC(pageable,LocalDate.now());
+            case REGISTERED -> concertItems = concertRepository.getConcertItemsOrderByApiId(pageable);
         }
 
-        return concertRepository.getConcertItems(pageable);
+        concertRedisRepository.listSave(sort,pageable,concertItems);
+        return concertItems;
     }
 
     // 사용자가 좋아요 한 공연 목록 조회
@@ -93,6 +89,11 @@ public class ConcertService {
             concertRedisRepository.detailSave(concertId, concertDetailResponse);
         }
         return concertDetailResponse;
+    }
+
+    @Transactional
+    public void viewCountUpdate(){
+
     }
 
 
