@@ -1,5 +1,11 @@
 package com.back.web7_9_codecrete_be.domain.concerts.dto.concert;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -29,12 +35,18 @@ public class ConcertDetailResponse {
     @Schema(description = "콘서트 장 주소입니다.")
     private String placeAddress;
 
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     @Schema(description = "콘서트 예매 시작 날짜입니다.")
     private LocalDateTime ticketTime;
 
+    @JsonSerialize(using = LocalDateSerializer.class)
+    @JsonDeserialize(using = LocalDateDeserializer.class)
     @Schema(description = "콘서트 시작 날짜입니다.",format = "yyyy-MM-dd")
     private LocalDate startDate;
 
+    @JsonSerialize(using = LocalDateSerializer.class)
+    @JsonDeserialize(using = LocalDateDeserializer.class)
     @Schema(description = "콘서트 종료 날짜입니다.",format = "yyyy-MM-dd")
     private LocalDate endDate;
 
@@ -55,4 +67,6 @@ public class ConcertDetailResponse {
 
     @Schema(description = "콘서트 이미지 목록입니다.")
     private List<String> concertImageUrls;
+
+
 }

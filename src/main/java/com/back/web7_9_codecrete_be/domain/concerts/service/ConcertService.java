@@ -32,6 +32,7 @@ public class ConcertService {
 
     private final ConcertImageRepository concertImageRepository;
 
+    private final ConcertRedisRepository concertRedisRepository;
 
     // 공연 목록 조회
     public List<ConcertItem> getConcertsList(Pageable pageable, ListSort sort) {
@@ -74,20 +75,27 @@ public class ConcertService {
         return concertRepository.getConcertItemsByKeyword(keyword, pageable);
     }
 
-    // 공연 상세 조회 조회시 조회수 1 증가
+    // 공연 상세 조회 조회시 조회수 1 증가 -> 캐싱에 따른 조회수 불일치 해소를 어떻게 할 것인가?
     @Transactional
     public ConcertDetailResponse getConcertDetail(long concertId) {
-        ConcertDetailResponse concertDetailResponse = concertRepository.getConcertDetailById(concertId);
-        List<ConcertImage>  concertImages = concertImageRepository.getConcertImagesByConcert_ConcertId(concertId);
-        List<String> concertImageUrls = new ArrayList<>();
-        for(ConcertImage concertImage : concertImages){
-            concertImageUrls.add(concertImage.getImageUrl());
+        ConcertDetailResponse concertDetailResponse = concertRedisRepository.getDetail(concertId);
+        if(concertDetailResponse == null){
+            concertDetailResponse = concertRepository.getConcertDetailById(concertId);
+            List<ConcertImage>  concertImages = concertImageRepository.getConcertImagesByConcert_ConcertId(concertId);
+            List<String> concertImageUrls = new ArrayList<>();
+            for(ConcertImage concertImage : concertImages){
+                concertImageUrls.add(concertImage.getImageUrl());
+            }
+
+            concertRepository.concertViewCountUp(concertId);
+            concertDetailResponse.setConcertImageUrls(concertImageUrls);
+            concertDetailResponse.setViewCount(concertDetailResponse.getViewCount() + 1);
+            concertRedisRepository.detailSave(concertId, concertDetailResponse);
         }
-        concertRepository.concertViewCountUp(concertId);
-        concertDetailResponse.setConcertImageUrls(concertImageUrls);
-        concertDetailResponse.setViewCount(concertDetailResponse.getViewCount() + 1);
         return concertDetailResponse;
     }
+
+
 
     // N+1 문제 발생해서 버림
     /*

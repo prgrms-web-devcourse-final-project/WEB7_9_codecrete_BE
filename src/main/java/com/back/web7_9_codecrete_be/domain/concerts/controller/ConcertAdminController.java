@@ -1,10 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.concerts.controller;
 
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.result.SetResultResponse;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertTicketTimeSetRequest;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertUpdateRequest;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.*;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertNotifyService;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
 import com.back.web7_9_codecrete_be.domain.concerts.service.KopisApiService;
