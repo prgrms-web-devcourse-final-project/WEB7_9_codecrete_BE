@@ -4,14 +4,19 @@ import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailRes
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ListSort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class ConcertRedisRepository {
@@ -23,6 +28,8 @@ public class ConcertRedisRepository {
     private static final String CONCERT_DETAIL_PREFIX = "concertDetail: ";
 
     private static final String CONCERT_LIST_PREFIX = "concertList: ";
+
+    private static final String VIEW_COUNT_MAP = "viewCountMap";
 
     private static final int HOUR = 3600;
 
@@ -70,7 +77,10 @@ public class ConcertRedisRepository {
     // todo : 객체 일부의 값만 바뀌는거니 해당 값만 바꿔서 저장하거나 Redis 내부의 값만 갱신할 수 있는 방법 찾기
     public ConcertDetailResponse getDetail(long concertId) {
         ConcertDetailResponse concertDetailResponse = (ConcertDetailResponse) objectRedisTemplate.opsForValue().get(CONCERT_DETAIL_PREFIX + concertId);
-        concertDetailResponse.setViewCount(concertDetailResponse.getViewCount() + 1);
+        if( concertDetailResponse == null)  return null;
+        int viewCount = concertDetailResponse.getViewCount();
+        viewCountSet(concertId, viewCount +1);
+        concertDetailResponse.setViewCount(viewCount + 1);
         detailSave(concertId, concertDetailResponse);
         return concertDetailResponse;
     }
@@ -78,5 +88,37 @@ public class ConcertRedisRepository {
     public void deleteDetail(String concertId) {
         redisTemplate.delete(CONCERT_DETAIL_PREFIX + concertId);
     }
+
+    // 조회수 처리 -> 좀 지저분한데 개선 여지 찾아보기
+    public int viewCountSet(long concertId,int viewCount) {
+        Map<String, Integer> rawMap = (Map<String, Integer>) objectRedisTemplate.opsForValue().get(VIEW_COUNT_MAP);
+        if( rawMap == null ){
+            Map<Long,Integer> viewCountMap = new HashMap<>();
+            viewCountMap.put(concertId, viewCount);
+            objectRedisTemplate.opsForValue().set(VIEW_COUNT_MAP, viewCountMap);
+        } else{
+            Map<Long, Integer> viewCountMap = convertViewCountMap(rawMap);
+            viewCountMap.put(concertId, viewCount);
+            objectRedisTemplate.opsForValue().set(VIEW_COUNT_MAP, viewCountMap);
+        }
+        return viewCount;
+    }
+
+    public Map<Long, Integer> getViewCountMap() {
+        Map<String, Integer> rawMap = (Map<String, Integer>)  objectRedisTemplate.opsForValue().get(VIEW_COUNT_MAP);
+        if( rawMap == null) return null;
+        objectRedisTemplate.delete(VIEW_COUNT_MAP);
+        return convertViewCountMap(rawMap);
+    }
+
+    private Map<Long, Integer> convertViewCountMap(Map<String,Integer> rawMap) {
+        Map<Long, Integer> viewCountMap = new HashMap<>();
+        for (Map.Entry<String, Integer> stringIntegerEntry : rawMap.entrySet()) {
+            viewCountMap.put(Long.parseLong(stringIntegerEntry.getKey()), stringIntegerEntry.getValue());
+        }
+        return viewCountMap;
+    }
+
+
 
 }

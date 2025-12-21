@@ -9,7 +9,10 @@ import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.ConcertErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,9 +21,12 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
+@EnableScheduling
 public class ConcertService {
     private final ConcertRepository concertRepository;
 
@@ -71,7 +77,7 @@ public class ConcertService {
         return concertRepository.getConcertItemsByKeyword(keyword, pageable);
     }
 
-    // 공연 상세 조회 조회시 조회수 1 증가 -> 캐싱에 따른 조회수 불일치 해소를 어떻게 할 것인가?
+    // 공연 상세 조회 조회시 조회수 1 증가 -> 캐싱에 따른 조회수 불일치 해소를 어떻게 할 것인가? V -> 이제 캐싱된거 날리고 새로운 수치 반영 어케할 것인지 + 여러번 조회수 올릴 시 처리 어떻게 할지
     @Transactional
     public ConcertDetailResponse getConcertDetail(long concertId) {
         ConcertDetailResponse concertDetailResponse = concertRedisRepository.getDetail(concertId);
@@ -91,9 +97,21 @@ public class ConcertService {
         return concertDetailResponse;
     }
 
+    // 조회수 갱신
+    // todo : 조회수 갱신시 '조회수 기준' 목록 캐싱 초기화하기
     @Transactional
+    @Scheduled(cron = "0 0 * * * *")
     public void viewCountUpdate(){
-
+        Map<Long,Integer> viewCountMap = concertRedisRepository.getViewCountMap();
+        if(viewCountMap == null || viewCountMap.isEmpty()) {
+            log.info("viewCountMap is empty");
+        } else{
+            for (Long concertId : viewCountMap.keySet()) {
+                int viewCount = viewCountMap.get(concertId);
+                concertRepository.concertViewCountSet(concertId, viewCount);
+            }
+            log.info("viewCount updated");
+        }
     }
 
 
