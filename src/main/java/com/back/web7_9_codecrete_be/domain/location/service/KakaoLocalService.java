@@ -2,10 +2,12 @@ package com.back.web7_9_codecrete_be.domain.location.service;
 
 import com.back.web7_9_codecrete_be.domain.location.dto.KakaoCoordinateResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoLocalResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoMobilityResponse;
 import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
@@ -14,14 +16,16 @@ import java.util.List;
 @RequiredArgsConstructor
 public class KakaoLocalService {
 
-    private final WebClient kakaoWebClient;
+    private final RestClient kakaoRestClient;
+    private final RestClient kakaoMobilityClient;
 
     public List<KakaoLocalResponse.Document> searchNearbyRestaurants(double lat, double lng) {
 
-        return kakaoWebClient.get()
+        return kakaoRestClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/v2/local/search/keyword.json")
                         .queryParam("query", "음식점")
+                        .queryParam("category_group_code", "FD6")
                         .queryParam("y", lat)
                         .queryParam("x", lng)
                         .queryParam("radius", 1000)  // 반경 1km
@@ -29,13 +33,12 @@ public class KakaoLocalService {
                         .build()
                 )
                 .retrieve()
-                .bodyToMono(KakaoLocalResponse.class)
-                .block() // 동기 호출 (필요하면 비동기로 변경 가능)
+                .body(KakaoLocalResponse.class)
                 .getDocuments();
     }
     public List<KakaoLocalResponse.Document> searchNearbyCafes(double lat, double lng) {
 
-        return kakaoWebClient.get()
+        return kakaoRestClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/v2/local/search/keyword.json")
                         .queryParam("query", "카페")
@@ -47,14 +50,13 @@ public class KakaoLocalService {
                         .build()
                 )
                 .retrieve()
-                .bodyToMono(KakaoLocalResponse.class)
-                .block() // 동기 호출 (필요하면 비동기로 변경 가능)
+                .body(KakaoLocalResponse.class)
                 .getDocuments();
     }
 
     public String coordinateToAddressName(double lat, double lng) {
 
-        KakaoCoordinateResponse response = kakaoWebClient.get()
+        KakaoCoordinateResponse response = kakaoRestClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/v2/local/geo/coord2address.json")
                         .queryParam("x", lng)
@@ -62,8 +64,7 @@ public class KakaoLocalService {
                         .build()
                 )
                 .retrieve()
-                .bodyToMono(KakaoCoordinateResponse.class)
-                .block();
+                .body(KakaoCoordinateResponse.class);
 
         if (response == null || response.getDocuments() == null || response.getDocuments().isEmpty()) {
             throw new BusinessException(LocationErrorCode.ADDRESS_NOT_FOUND);
@@ -85,4 +86,25 @@ public class KakaoLocalService {
         return addressName;
     }
 
+    public KakaoMobilityResponse NaviSearch(double startX, double startY, double endX, double endY) {
+
+        KakaoMobilityResponse response = kakaoMobilityClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v1/directions")
+                        .queryParam("origin", startX + "," + startY)
+                        .queryParam("destination", endX + "," + endY)
+                        .queryParam("priority", "TIME")
+                        .queryParam("summary", "false")
+                        .build()
+                )
+                .retrieve()
+                .body(KakaoMobilityResponse.class);
+
+
+        if (response == null || response.getRoutes().isEmpty()) {
+            throw new BusinessException(LocationErrorCode.ROUTE_NOT_FOUND);
+        }
+
+        return response;
+    }
 }

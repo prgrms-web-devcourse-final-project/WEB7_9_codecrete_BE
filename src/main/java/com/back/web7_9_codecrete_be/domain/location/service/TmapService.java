@@ -2,30 +2,33 @@ package com.back.web7_9_codecrete_be.domain.location.service;
 
 import com.back.web7_9_codecrete_be.domain.location.dto.response.TmapResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
 @RequiredArgsConstructor
 public class TmapService {
 
-    private final WebClient TmapClient;
+    private final RestClient TmapRestClient;
 
     public String getRoute(double startX, double startY, double endX, double endY) {
 
-        TmapResponse request = new TmapResponse();
-        request.setStartX(String.valueOf(startX));
-        request.setStartY(String.valueOf(startY));
-        request.setEndX(String.valueOf(endX));
-        request.setEndY(String.valueOf(endY));
-        request.setFormat("json");
-        request.setCount(5);
+        TmapResponse req = new TmapResponse();
+        req.setStartX(String.valueOf(startX));
+        req.setStartY(String.valueOf(startY));
+        req.setEndX(String.valueOf(endX));
+        req.setEndY(String.valueOf(endY));
+        req.setCount(5);
+        req.setFormat("json");
 
-        return TmapClient.post()
+        return TmapRestClient.post()
                 .uri("/transit/routes")
-                .bodyValue(request)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(req)
                 .retrieve()
-                .bodyToMono(String.class)
-                .block();
+                .body(String.class);
     }
 }

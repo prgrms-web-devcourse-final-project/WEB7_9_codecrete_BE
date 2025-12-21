@@ -1,6 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.location.controller;
 
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoLocalResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoMobilityResponse;
 import com.back.web7_9_codecrete_be.domain.location.service.KakaoLocalService;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,7 +33,7 @@ public class KakaoApiController {
     public List<KakaoLocalResponse.Document> KakaoRestaurants(
             @RequestParam double lat,
             @RequestParam double lon
-    ){
+    ) {
         return kakaoLocalService.searchNearbyRestaurants(lat, lon);
     }
 
@@ -46,7 +47,7 @@ public class KakaoApiController {
     public List<KakaoLocalResponse.Document> KakaoCafes(
             @RequestParam double lat,
             @RequestParam double lon
-    ){
+    ) {
         return kakaoLocalService.searchNearbyCafes(lat, lon);
     }
 
@@ -68,4 +69,30 @@ public class KakaoApiController {
         String addressName = kakaoLocalService.coordinateToAddressName(lat, lon);
         return RsData.success("좌표를 주소로 변환했습니다.", addressName);
     }
+
+
+    @GetMapping("/navigate/guides")
+    public List<KakaoMobilityResponse.Guide> navigateGuides(
+            @RequestParam double startX,
+            @RequestParam double startY,
+            @RequestParam double endX,
+            @RequestParam double endY
+    ) {
+        KakaoMobilityResponse res = kakaoLocalService.NaviSearch(startX, startY, endX, endY);
+
+        if (res == null || res.getRoutes() == null || res.getRoutes().isEmpty()) {
+            return List.of();
+        }
+
+        KakaoMobilityResponse.Route route0 = res.getRoutes().get(0);
+        if (route0.getSections() == null || route0.getSections().isEmpty()) {
+            return List.of();
+        }
+
+        return route0.getSections().stream()
+                .filter(section -> section.getGuides() != null && !section.getGuides().isEmpty())
+                .flatMap(section -> section.getGuides().stream())
+                .toList();
+    }
 }
+
