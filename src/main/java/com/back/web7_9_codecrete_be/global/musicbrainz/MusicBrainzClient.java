@@ -28,61 +28,133 @@ public class MusicBrainzClient {
 
     // 아티스트 이름으로 MusicBrainz에서 아티스트 정보 검색
     public Optional<ArtistInfo> searchArtist(String artistName) {
-        try {
-            String encodedName = URLEncoder.encode(artistName, StandardCharsets.UTF_8);
-            String url = String.format(
-                    "%s/artist/?query=artist:\"%s\"&fmt=json&limit=5&inc=aliases+artist-rels",
-                    MUSICBRAINZ_API_BASE, encodedName
-            );
+        // 여러 쿼리 형식 시도
+        String[] queryFormats = {
+                artistName,  // 단순 검색어
+                "artist:" + artistName,  // artist 필드 지정
+                "\"" + artistName + "\"",  // 따옴표 포함
+                "alias:" + artistName  // alias 필드 검색
+        };
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("User-Agent", USER_AGENT);
-            headers.set("Accept", "application/json");
-            HttpEntity<String> entity = new HttpEntity<>(headers);
+        String normalizedArtistName = normalizeName(artistName);
 
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        for (String query : queryFormats) {
+            try {
+                String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
+                String url = String.format(
+                        "%s/artist/?query=%s&fmt=json&limit=5&inc=aliases+artist-rels",
+                        MUSICBRAINZ_API_BASE, encodedQuery
+                );
 
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                int statusCode = response.getStatusCode().value();
-                // 503 Service Unavailable은 서버가 일시적으로 사용 불가능한 경우
-                if (statusCode == 503) {
-                    log.debug("MusicBrainz 서버 일시적 사용 불가: name={}, status=503 (나중에 다시 시도 필요)", artistName);
-                } else {
-                    log.debug("MusicBrainz 검색 API 응답 실패: name={}, status={}", artistName, statusCode);
+                HttpHeaders headers = new HttpHeaders();
+                headers.set("User-Agent", USER_AGENT);
+                headers.set("Accept", "application/json");
+                HttpEntity<String> entity = new HttpEntity<>(headers);
+
+                ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+                if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                    int statusCode = response.getStatusCode().value();
+                    if (statusCode == 503) {
+                        log.debug("MusicBrainz 서버 일시적 사용 불가: name={}, 쿼리={}, status=503", artistName, query);
+                    } else {
+                        log.debug("MusicBrainz 검색 API 응답 실패: name={}, 쿼리={}, status={}", artistName, query, statusCode);
+                    }
+                    continue;
                 }
-                return Optional.empty();
+
+                JsonNode root = objectMapper.readTree(response.getBody());
+                JsonNode artists = root.path("artists");
+
+                if (!artists.isArray() || artists.isEmpty()) {
+                    log.debug("MusicBrainz 검색 결과 없음: 검색어={}, 쿼리={}", artistName, query);
+                    continue;
+                }
+
+                // 정규화된 이름으로 일치하는 결과 찾기 (대소문자 무시, 하이픈 제거 비교 포함)
+                String normalizedArtistNameForComparison = normalizeNameForComparison(artistName);
+                
+                for (JsonNode artist : artists) {
+                    String mbName = artist.path("name").asText();
+                    
+                    if (mbName == null || mbName.isBlank()) {
+                        continue;
+                    }
+                    
+                    String normalizedMbName = normalizeName(mbName);
+                    String normalizedMbNameForComparison = normalizeNameForComparison(mbName);
+                    
+                    // 1순위: name 필드가 정규화된 비교로 완전 일치하는 경우 (대소문자 무시)
+                    if (normalizedMbName.equals(normalizedArtistName)) {
+                        log.debug("MusicBrainz name 완전 일치 발견: 검색어={}, 일치한 name={}, 쿼리={}", 
+                                artistName, mbName, query);
+                        return parseArtistInfo(artist);
+                    }
+                    
+                    // 2순위: 하이픈 제거 후 비교 (예: "GDRAGON"과 "G-DRAGON" 매칭)
+                    if (normalizedMbNameForComparison.equals(normalizedArtistNameForComparison)) {
+                        log.debug("MusicBrainz name 하이픈 제거 후 일치 발견: 검색어={}, 일치한 name={}, 쿼리={}", 
+                                artistName, mbName, query);
+                        return parseArtistInfo(artist);
+                    }
+                    
+                    // 3순위: name 필드가 정규화된 검색어로 시작하는 경우 (예: "rosé"와 "rosé (blackpink)")
+                    if (normalizedMbName.startsWith(normalizedArtistName + " ") || 
+                        normalizedMbName.startsWith(normalizedArtistName + "(")) {
+                        log.debug("MusicBrainz name 시작 일치 발견: 검색어={}, 일치한 name={}, 쿼리={}", 
+                                artistName, mbName, query);
+                        return parseArtistInfo(artist);
+                    }
+                    
+                    // 4순위: aliases에 정규화된 검색어가 일치하는 경우
+                    if (checkAliasesMatch(artist, normalizedArtistName)) {
+                        log.debug("MusicBrainz aliases 일치 발견: 검색어={}, name={}, 쿼리={}", 
+                                artistName, mbName, query);
+                        return parseArtistInfo(artist);
+                    }
+                }
+
+                // 일치하는 것이 없으면 정규화된 비교로 가장 유사한 결과 찾기
+                JsonNode bestMatch = null;
+                String bestMatchName = null;
+                for (JsonNode artist : artists) {
+                    String mbName = artist.path("name").asText();
+                    if (mbName != null) {
+                        // 정규화된 이름이 완전히 일치하지 않더라도, 첫 번째 결과를 사용
+                        // (이미 정규화된 비교를 시도했으므로, 첫 번째가 가장 관련성 높은 결과)
+                        if (bestMatch == null) {
+                            bestMatch = artist;
+                            bestMatchName = mbName;
+                        }
+                    }
+                }
+                
+                if (bestMatch != null) {
+                    log.debug("MusicBrainz name/aliases 정확 일치 없음, 첫 번째 결과 사용: 검색어={}, 선택된 name={}, 정규화된 검색어={}, 정규화된 선택된 name={}, 쿼리={}", 
+                            artistName, bestMatchName, normalizedArtistName, normalizeName(bestMatchName), query);
+                    return parseArtistInfo(bestMatch);
+                }
+
+            } catch (org.springframework.web.client.HttpServerErrorException e) {
+                int statusCode = e.getStatusCode().value();
+                if (statusCode == 503) {
+                    log.debug("MusicBrainz 서버 일시적 사용 불가: name={}, 쿼리={}, status=503", artistName, query);
+                } else {
+                    log.debug("MusicBrainz 검색 서버 에러: name={}, 쿼리={}, status={}", artistName, query, statusCode);
+                }
+                continue;
+            } catch (org.springframework.web.client.ResourceAccessException e) {
+                log.debug("MusicBrainz 네트워크 에러: name={}, 쿼리={}, error={}", 
+                        artistName, query, e.getMessage());
+                continue;
+            } catch (Exception e) {
+                log.debug("MusicBrainz 검색 실패: name={}, 쿼리={}, error={}", artistName, query, e.getMessage());
+                continue;
             }
-
-            JsonNode root = objectMapper.readTree(response.getBody());
-            JsonNode artists = root.path("artists");
-
-            if (!artists.isArray() || artists.isEmpty()) {
-                log.debug("MusicBrainz 검색 결과 없음: {}", artistName);
-                return Optional.empty();
-            }
-
-            // 첫 번째 결과 사용 (가장 관련성 높은 결과)
-            JsonNode firstArtist = artists.get(0);
-            return parseArtistInfo(firstArtist);
-
-        } catch (org.springframework.web.client.HttpServerErrorException e) {
-            // 503 Service Unavailable 등 서버 에러 명시적 처리
-            int statusCode = e.getStatusCode().value();
-            if (statusCode == 503) {
-                log.debug("MusicBrainz 서버 일시적 사용 불가: name={}, status=503 (나중에 다시 시도 필요)", artistName);
-            } else {
-                log.warn("MusicBrainz 검색 서버 에러: name={}, status={}", artistName, statusCode);
-            }
-            return Optional.empty();
-        } catch (org.springframework.web.client.ResourceAccessException e) {
-            // Connection reset, timeout 등 네트워크 에러 처리
-            log.debug("MusicBrainz 네트워크 에러 (Connection reset/timeout): name={}, error={}", 
-                    artistName, e.getMessage());
-            return Optional.empty();
-        } catch (Exception e) {
-            log.warn("MusicBrainz 검색 실패: name={}", artistName, e);
-            return Optional.empty();
         }
+
+        log.warn("MusicBrainz 모든 쿼리 형식 시도 후 검색 결과 없음: 검색어={}", artistName);
+        return Optional.empty();
     }
 
     // MusicBrainz MBID로 상세 아티스트 정보 조회
@@ -126,13 +198,76 @@ public class MusicBrainzClient {
         }
     }
 
+    // Spotify URL로 MusicBrainz ID 찾기
+    public Optional<String> searchMbidBySpotifyUrl(String spotifyId) {
+        try {
+            String spotifyUrl = String.format("https://open.spotify.com/artist/%s", spotifyId);
+            String encodedUrl = URLEncoder.encode(spotifyUrl, StandardCharsets.UTF_8);
+            String query = String.format("url:\"%s\"", spotifyUrl);
+            String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
+            
+            String url = String.format(
+                    "%s/artist/?query=%s&fmt=json&limit=1",
+                    MUSICBRAINZ_API_BASE, encodedQuery
+            );
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", USER_AGENT);
+            headers.set("Accept", "application/json");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.debug("MusicBrainz Spotify URL 검색 API 응답 실패: spotifyId={}, status={}", 
+                        spotifyId, response.getStatusCode());
+                return Optional.empty();
+            }
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode artists = root.path("artists");
+
+            if (!artists.isArray() || artists.isEmpty()) {
+                log.debug("MusicBrainz Spotify URL 검색 결과 없음: spotifyId={}", spotifyId);
+                return Optional.empty();
+            }
+
+            JsonNode firstArtist = artists.get(0);
+            String mbid = firstArtist.path("id").asText();
+            
+            if (mbid != null && !mbid.isBlank()) {
+                log.debug("Spotify URL로 MusicBrainz ID 찾음: spotifyId={}, mbid={}", spotifyId, mbid);
+                return Optional.of(mbid);
+            }
+
+            return Optional.empty();
+
+        } catch (org.springframework.web.client.HttpServerErrorException e) {
+            int statusCode = e.getStatusCode().value();
+            if (statusCode == 503) {
+                log.debug("MusicBrainz 서버 일시적 사용 불가: spotifyId={}, status=503", spotifyId);
+            } else {
+                log.warn("MusicBrainz Spotify URL 검색 서버 에러: spotifyId={}, status={}", spotifyId, statusCode);
+            }
+            return Optional.empty();
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            log.debug("MusicBrainz 네트워크 에러: spotifyId={}, error={}", spotifyId, e.getMessage());
+            return Optional.empty();
+        } catch (Exception e) {
+            log.warn("MusicBrainz Spotify URL 검색 실패: spotifyId={}", spotifyId, e);
+            return Optional.empty();
+        }
+    }
+
     private Optional<ArtistInfo> parseArtistInfo(JsonNode artist) {
         try {
+            String mbid = artist.path("id").asText();
+            String name = artist.path("name").asText();
             String nameKo = extractKoreanName(artist);
             String artistGroup = extractGroupName(artist);
             String artistType = extractArtistType(artist);
 
-            return Optional.of(new ArtistInfo(nameKo, artistGroup, artistType));
+            return Optional.of(new ArtistInfo(mbid, name, nameKo, artistGroup, artistType));
 
         } catch (Exception e) {
             log.warn("MusicBrainz 아티스트 정보 파싱 실패", e);
@@ -159,23 +294,37 @@ public class MusicBrainzClient {
         return null;
     }
 
-    // 소속 그룹 이름 추출 (relations에서 type="member of band"인 것)
+    // 소속 그룹 이름 추출 (relations에서 type="member of band" AND artist.type="Group"만 사용)
     private String extractGroupName(JsonNode artist) {
         JsonNode relations = artist.path("relations");
-        if (relations.isArray()) {
-            for (JsonNode relation : relations) {
-                String type = relation.path("type").asText();
-                if ("member of band".equals(type) || "member of".equals(type)) {
-                    JsonNode group = relation.path("artist");
-                    if (!group.isMissingNode()) {
-                        String groupName = group.path("name").asText();
-                        if (groupName != null && !groupName.isBlank()) {
-                            return groupName;
-                        }
+        if (!relations.isArray() || relations.isEmpty()) {
+            return null;
+        }
+        
+        // "member of band" 타입이면서 relation.artist.type == "Group"인 경우만 사용
+        for (JsonNode relation : relations) {
+            String type = relation.path("type").asText();
+            
+            if ("member of band".equals(type)) {
+                JsonNode group = relation.path("artist");
+                if (!group.isMissingNode()) {
+                    // relation.artist.type == "Group" 체크
+                    String groupType = group.path("type").asText();
+                    if (!"Group".equals(groupType)) {
+                        log.debug("relation.artist.type이 Group이 아니어서 제외: type={}", groupType);
+                        continue;
+                    }
+                    
+                    String groupName = group.path("name").asText();
+                    if (groupName != null && !groupName.isBlank()) {
+                        log.debug("소속 그룹 추출 성공: groupName={}, relation.type={}, artist.type={}", 
+                                groupName, type, groupType);
+                        return groupName;
                     }
                 }
             }
         }
+        
         return null;
     }
 
@@ -191,15 +340,83 @@ public class MusicBrainzClient {
         return null;
     }
 
+    // aliases에서 검색어와 일치하는 것이 있는지 확인 (정규화된 비교, 대소문자 무시, 하이픈 제거 비교 포함)
+    private boolean checkAliasesMatch(JsonNode artist, String normalizedSearchName) {
+        try {
+            JsonNode aliases = artist.path("aliases");
+            if (aliases.isArray()) {
+                String normalizedSearchNameForComparison = normalizeNameForComparison(normalizedSearchName);
+                
+                for (JsonNode alias : aliases) {
+                    String aliasName = alias.path("name").asText();
+                    if (aliasName != null) {
+                        String normalizedAliasName = normalizeName(aliasName);
+                        String normalizedAliasNameForComparison = normalizeNameForComparison(aliasName);
+                        
+                        // 하이픈 포함 비교
+                        if (normalizedAliasName.equals(normalizedSearchName)) {
+                            return true;
+                        }
+                        
+                        // 하이픈 제거 후 비교
+                        if (normalizedAliasNameForComparison.equals(normalizedSearchNameForComparison)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            log.debug("Aliases 확인 실패", e);
+            return false;
+        }
+    }
+
+    // 이름 정규화: 대소문자 통일, 앞뒤 공백 제거, 하이픈/대시 문자 정규화 (괄호는 보존)
+    private String normalizeName(String name) {
+        if (name == null) {
+            return "";
+        }
+        return name.trim()
+                .toLowerCase()
+                // 다양한 하이픈/대시 문자를 일반 하이픈(-)으로 통일
+                .replaceAll("[‐‑‒–—―−]", "-")
+                // 연속된 공백을 하나로 통일
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    // 이름 비교용 정규화: 하이픈도 제거하여 비교 (예: "GDRAGON"과 "G-DRAGON" 매칭)
+    private String normalizeNameForComparison(String name) {
+        if (name == null) {
+            return "";
+        }
+        return normalizeName(name)
+                // 하이픈 제거 (예: "g-dragon" → "gdragon")
+                .replaceAll("-", "");
+    }
+
     public static class ArtistInfo {
+        private final String mbid;
+        private final String name;
         private final String nameKo;
         private final String artistGroup;
         private final String artistType;
 
-        public ArtistInfo(String nameKo, String artistGroup, String artistType) {
+        public ArtistInfo(String mbid, String name, String nameKo, String artistGroup, String artistType) {
+            this.mbid = mbid;
+            this.name = name;
             this.nameKo = nameKo;
             this.artistGroup = artistGroup;
             this.artistType = artistType;
+        }
+
+        public String getMbid() {
+            return mbid;
+        }
+
+        public String getName() {
+            return name;
         }
 
         public String getNameKo() {
@@ -215,4 +432,3 @@ public class MusicBrainzClient {
         }
     }
 }
-

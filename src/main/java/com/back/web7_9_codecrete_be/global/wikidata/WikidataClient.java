@@ -30,14 +30,13 @@ public class WikidataClient {
     private static final String WIKIDATA_ENTITY_API = "https://www.wikidata.org/wiki/Special:EntityData/";
     private static final String WIKIPEDIA_KO_API = "https://ko.wikipedia.org/api/rest_v1/page/summary/";
 
-    // Spotify Artist ID(P345)로 QID 찾기
+    // Spotify Artist ID(P1902)로 QID 찾기 (후보 리스트 → 점수화 → 검증 → 1개 채택)
     public Optional<String> searchWikidataIdBySpotifyId(String spotifyId) {
         try {
-            // P345 = Spotify artist ID
-            // P1902 = Spotify album ID (잘못된 속성)
+            // P1902 = Spotify artist ID
             String escapedSpotifyId = spotifyId.replace("\\", "\\\\").replace("\"", "\\\"");
             String sparqlQuery = String.format(
-                    "SELECT ?item WHERE { ?item wdt:P345 \"%s\" } LIMIT 1",
+                    "SELECT ?item WHERE { ?item wdt:P1902 \"%s\" . ?item wdt:P31 ?inst . FILTER(?inst IN (wd:Q5, wd:Q215380)) } LIMIT 10",
                     escapedSpotifyId
             );
 
@@ -67,19 +66,197 @@ public class WikidataClient {
                 return Optional.empty();
             }
 
-            String itemUri = bindings.get(0).path("item").path("value").asText();
-            if (itemUri == null || itemUri.isBlank()) {
+            // 후보 리스트 수집
+            List<String> candidateQids = new java.util.ArrayList<>();
+            for (JsonNode binding : bindings) {
+                String itemUri = binding.path("item").path("value").asText();
+                if (itemUri != null && !itemUri.isBlank()) {
+                    String qid = itemUri.substring(itemUri.lastIndexOf("/") + 1);
+                    candidateQids.add(qid);
+                }
+            }
+
+            if (candidateQids.isEmpty()) {
                 log.warn("Wikidata URI가 비어있음: spotifyId={}", spotifyId);
                 return Optional.empty();
             }
 
-            String qid = itemUri.substring(itemUri.lastIndexOf("/") + 1);
-            log.info("Spotify ID로 Wikidata ID 찾음: {} -> {}", spotifyId, qid);
+            log.debug("Spotify ID로 Wikidata 후보 {}개 발견: {}", candidateQids.size(), candidateQids);
+            // 검증은 호출하는 쪽에서 수행 (artistName, nameKo 필요)
+            // 여기서는 첫 번째 후보 반환 (검증은 ArtistEnrichService에서)
+            String qid = candidateQids.get(0);
+            log.info("Spotify ID로 Wikidata ID 찾음: {} -> {} (후보 {}개 중 첫 번째)", spotifyId, qid, candidateQids.size());
             return Optional.of(qid);
 
         } catch (Exception e) {
             log.error("Spotify ID로 Wikidata 검색 중 예외 발생: spotifyId={}", spotifyId, e);
             return Optional.empty();
+        }
+    }
+
+    // Spotify Artist ID로 QID 후보 리스트 찾기 (검증용)
+    public List<String> searchWikidataIdCandidatesBySpotifyId(String spotifyId) {
+        try {
+            String escapedSpotifyId = spotifyId.replace("\\", "\\\\").replace("\"", "\\\"");
+            String sparqlQuery = String.format(
+                    "SELECT ?item WHERE { ?item wdt:P1902 \"%s\" . ?item wdt:P31 ?inst . FILTER(?inst IN (wd:Q5, wd:Q215380)) } LIMIT 10",
+                    escapedSpotifyId
+            );
+
+            String url = "https://query.wikidata.org/sparql";
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            headers.set("User-Agent", "CodecreteBE/1.0 (Educational Project; +https://github.com/your-repo)");
+            
+            String requestBody = "query=" + URLEncoder.encode(sparqlQuery, StandardCharsets.UTF_8) + "&format=json";
+            
+            HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                return new java.util.ArrayList<>();
+            }
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode bindings = root.path("results").path("bindings");
+
+            if (!bindings.isArray() || bindings.isEmpty()) {
+                return new java.util.ArrayList<>();
+            }
+
+            List<String> candidateQids = new java.util.ArrayList<>();
+            for (JsonNode binding : bindings) {
+                String itemUri = binding.path("item").path("value").asText();
+                if (itemUri != null && !itemUri.isBlank()) {
+                    String qid = itemUri.substring(itemUri.lastIndexOf("/") + 1);
+                    candidateQids.add(qid);
+                }
+            }
+
+            return candidateQids;
+
+        } catch (Exception e) {
+            log.error("Spotify ID로 Wikidata 후보 검색 중 예외 발생: spotifyId={}", spotifyId, e);
+            return new java.util.ArrayList<>();
+        }
+    }
+
+    // MusicBrainz ID(P434)로 QID 찾기
+    public Optional<String> searchWikidataIdByMusicBrainzId(String musicBrainzId) {
+        try {
+            // P434 = MusicBrainz artist ID
+            String escapedMbid = musicBrainzId.replace("\\", "\\\\").replace("\"", "\\\"");
+            String sparqlQuery = String.format(
+                    "SELECT ?item WHERE { ?item wdt:P434 \"%s\" } LIMIT 1",
+                    escapedMbid
+            );
+
+            String url = "https://query.wikidata.org/sparql";
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            headers.set("User-Agent", "CodecreteBE/1.0 (Educational Project; +https://github.com/your-repo)");
+            
+            String requestBody = "query=" + URLEncoder.encode(sparqlQuery, StandardCharsets.UTF_8) + "&format=json";
+            
+            HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+
+            log.debug("Wikidata SPARQL 쿼리 실행: {}", sparqlQuery);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.warn("Wikidata SPARQL API 응답 실패: status={}", response.getStatusCode());
+                return Optional.empty();
+            }
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode bindings = root.path("results").path("bindings");
+
+            if (!bindings.isArray() || bindings.isEmpty()) {
+                log.debug("MusicBrainz ID로 Wikidata 결과 없음: {}", musicBrainzId);
+                return Optional.empty();
+            }
+
+            String itemUri = bindings.get(0).path("item").path("value").asText();
+            if (itemUri == null || itemUri.isBlank()) {
+                log.warn("Wikidata URI가 비어있음: musicBrainzId={}", musicBrainzId);
+                return Optional.empty();
+            }
+
+            String qid = itemUri.substring(itemUri.lastIndexOf("/") + 1);
+            log.info("MusicBrainz ID로 Wikidata ID 찾음: {} -> {}", musicBrainzId, qid);
+            return Optional.of(qid);
+
+        } catch (Exception e) {
+            log.error("MusicBrainz ID로 Wikidata 검색 중 예외 발생: musicBrainzId={}", musicBrainzId, e);
+            return Optional.empty();
+        }
+    }
+
+    // Spotify ID로 소속 그룹 찾기 (SPARQL)
+    public List<String> searchGroupBySpotifyId(String spotifyId) {
+        try {
+            String escapedSpotifyId = spotifyId.replace("\\", "\\\\").replace("\"", "\\\"");
+            String sparqlQuery = String.format(
+                    "SELECT ?group ?groupLabel WHERE { " +
+                    "?artist wdt:P1902 \"%s\" . " +
+                    "?artist wdt:P463 ?group . " +
+                    "?group wdt:P31 wd:Q215380 . " +
+                    "SERVICE wikibase:label { bd:serviceParam wikibase:language \"ko,en\". } " +
+                    "} LIMIT 10",
+                    escapedSpotifyId
+            );
+
+            String url = "https://query.wikidata.org/sparql";
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            headers.set("User-Agent", "CodecreteBE/1.0 (Educational Project; +https://github.com/your-repo)");
+            
+            String requestBody = "query=" + URLEncoder.encode(sparqlQuery, StandardCharsets.UTF_8) + "&format=json";
+            
+            HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+
+            log.debug("Wikidata 소속 그룹 SPARQL 쿼리 실행: {}", sparqlQuery);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.warn("Wikidata SPARQL API 응답 실패: status={}", response.getStatusCode());
+                return new java.util.ArrayList<>();
+            }
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode bindings = root.path("results").path("bindings");
+
+            if (!bindings.isArray() || bindings.isEmpty()) {
+                log.debug("Spotify ID로 소속 그룹 결과 없음: {}", spotifyId);
+                return new java.util.ArrayList<>();
+            }
+
+            List<String> groupNames = new java.util.ArrayList<>();
+            for (JsonNode binding : bindings) {
+                // groupLabel이 있으면 우선 사용, 없으면 group URI에서 QID 추출
+                JsonNode groupLabelNode = binding.path("groupLabel");
+                if (!groupLabelNode.isMissingNode()) {
+                    JsonNode valueNode = groupLabelNode.path("value");
+                    if (!valueNode.isMissingNode()) {
+                        String groupName = valueNode.asText();
+                        if (groupName != null && !groupName.isBlank()) {
+                            groupNames.add(groupName);
+                        }
+                    }
+                }
+            }
+
+            log.debug("Spotify ID로 소속 그룹 {}개 발견: spotifyId={}, groups={}", 
+                    groupNames.size(), spotifyId, groupNames);
+            return groupNames;
+
+        } catch (Exception e) {
+            log.error("Spotify ID로 소속 그룹 검색 중 예외 발생: spotifyId={}", spotifyId, e);
+            return new java.util.ArrayList<>();
         }
     }
 
