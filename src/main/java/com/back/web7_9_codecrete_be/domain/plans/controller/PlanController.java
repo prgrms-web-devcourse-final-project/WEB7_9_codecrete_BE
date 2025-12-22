@@ -244,13 +244,13 @@ public class PlanController {
     }
 
     /**
-     * 공유 링크 생성 (UUID)
+     * 공유 링크 생성 (UUID 기반 13자)
      *
      * @param planId 계획 ID
      * @return 공유 링크 정보 (200 OK)
      */
     @PostMapping("/{planId}/share/link")
-    @Operation(summary = "공유 링크 생성", description = "플랜 공유를 위한 UUID 링크를 생성합니다. 계획의 소유자 또는 편집 권한이 있는 사용자만 링크를 생성할 수 있습니다.")
+    @Operation(summary = "공유 링크 생성", description = "플랜 공유를 위한 UUID 기반 13자 토큰 링크를 생성합니다. 계획의 소유자 또는 편집 권한이 있는 사용자만 링크를 생성할 수 있습니다.")
     public RsData<PlanShareLinkResponse> generateShareLink(@PathVariable Long planId) {
         User user = rq.getUser();
         PlanShareLinkResponse response = planService.generateShareLink(planId, user);
@@ -260,7 +260,7 @@ public class PlanController {
     /**
      * 공유 링크로 플랜 참가
      *
-     * @param shareToken 공유 토큰 (UUID)
+     * @param shareToken 공유 토큰 (UUID 기반 13자)
      * @return 플랜 상세 정보 (200 OK)
      */
     @PostMapping("/share/{shareToken}")

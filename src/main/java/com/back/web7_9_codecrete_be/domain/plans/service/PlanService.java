@@ -691,7 +691,7 @@ public class PlanService {
     }
 
     /**
-     * 공유 링크 생성 (UUID)
+     * 공유 링크 생성 (UUID 기반 13자)
      *
      * @param planId 계획 ID
      * @param user 현재 로그인한 사용자 (권한 체크용)
@@ -719,7 +719,7 @@ public class PlanService {
     /**
      * 공유 링크로 플랜 참가
      *
-     * @param shareToken 공유 토큰 (UUID)
+     * @param shareToken 공유 토큰 (UUID 기반 13자)
      * @param user 현재 로그인한 사용자
      * @return 플랜 상세 정보
      * @throws BusinessException 공유 링크가 유효하지 않은 경우, 이미 참가자인 경우

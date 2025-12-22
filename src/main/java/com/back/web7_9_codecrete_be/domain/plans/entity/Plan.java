@@ -51,7 +51,7 @@ public class Plan {
     @Column(name = "modified_date", nullable = false)
     private LocalDateTime modifiedDate;
 
-    @Column(name = "share_token", unique = true, length = 36)
+    @Column(name = "share_token", unique = true, length = 13)
     private String shareToken;
 
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -90,7 +90,7 @@ public class Plan {
     }
 
     public void generateShareToken() {
-        this.shareToken = UUID.randomUUID().toString();
+        this.shareToken = UUID.randomUUID().toString().substring(0, 13);
     }
 
     public void clearShareToken() {
