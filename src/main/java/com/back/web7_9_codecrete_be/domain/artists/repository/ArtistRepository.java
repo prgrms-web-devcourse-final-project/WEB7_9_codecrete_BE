@@ -15,6 +15,9 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     @Query("SELECT a FROM Artist a WHERE a.nameKo IS NULL ORDER BY a.id ASC")
     List<Artist> findByNameKoIsNullOrderByIdAsc(Pageable pageable);
 
+    @Query("SELECT a FROM Artist a WHERE a.musicBrainzId IS NULL ORDER BY a.id ASC")
+    List<Artist> findByMusicBrainzIdIsNullOrderByIdAsc(Pageable pageable);
+
     boolean existsByArtistName(String artistName);
     boolean existsByNameKo(String nameKo);
 
