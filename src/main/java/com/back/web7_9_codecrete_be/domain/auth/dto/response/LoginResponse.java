@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.auth.dto.response;
 
+import com.back.web7_9_codecrete_be.domain.users.entity.Role;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -8,4 +9,5 @@ import lombok.Getter;
 public class LoginResponse {
     private Long userId;
     private String nickname;
+    private Role role;
 }
