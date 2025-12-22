@@ -7,6 +7,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -14,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 
 @Entity
@@ -49,11 +51,14 @@ public class Plan {
     @Column(name = "modified_date", nullable = false)
     private LocalDateTime modifiedDate;
 
+    @Column(name = "share_token", unique = true, length = 36)
+    private String shareToken;
 
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanParticipant> participants = new ArrayList<>();
 
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 20)
     private List<Schedule> schedules = new ArrayList<>();
 
     @Builder
@@ -82,5 +87,13 @@ public class Plan {
     public void addSchedule(Schedule schedule) {
         this.schedules.add(schedule);
         schedule.setPlan(this);
+    }
+
+    public void generateShareToken() {
+        this.shareToken = UUID.randomUUID().toString();
+    }
+
+    public void clearShareToken() {
+        this.shareToken = null;
     }
 }

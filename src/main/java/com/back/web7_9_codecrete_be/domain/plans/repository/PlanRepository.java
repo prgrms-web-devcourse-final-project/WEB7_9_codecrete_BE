@@ -26,9 +26,10 @@ public interface PlanRepository extends JpaRepository<Plan, Long> {
     /**
      * - 특정 사용자가 참가자로 포함된 모든 Plan 조회
      * @param userId 참가자로 포함된 사용자 ID
-     * @return 해당 사용자가 참가자인 모든 Plan 목록 (concert, participants, schedules 포함)
+     * @return 해당 사용자가 참가자인 모든 Plan 목록 (concert, participants 포함)
+     * schedules는 @BatchSize로 배치 로드됨 (MultipleBagFetchException 방지)
      */
-    @EntityGraph(attributePaths = {"concert", "participants", "schedules"})
+    @EntityGraph(attributePaths = {"concert", "participants"})
     List<Plan> findDistinctByParticipants_User_Id(Long userId);
 
     /**
@@ -38,4 +39,12 @@ public interface PlanRepository extends JpaRepository<Plan, Long> {
      */
     @EntityGraph(attributePaths = {"schedules"})
     List<Plan> findByUser_Id(Long userId);
+
+    /**
+     * - shareToken으로 Plan 조회
+     * @param shareToken 공유 토큰
+     * @return 해당 토큰을 가진 Plan 엔티티
+     */
+    @EntityGraph(attributePaths = {"concert", "participants", "schedules"})
+    Optional<Plan> findByShareToken(String shareToken);
 }
