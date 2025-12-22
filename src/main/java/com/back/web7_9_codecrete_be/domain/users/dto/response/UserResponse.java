@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Builder
@@ -13,6 +14,7 @@ public class UserResponse {
     private String email;
     private String nickname;
     private LocalDate birthdate;
+    private LocalDateTime createdDate;
     private String profileImageUrl;
     private String status;
 
@@ -22,6 +24,7 @@ public class UserResponse {
                 .email(user.getEmail())
                 .nickname(user.getNickname())
                 .birthdate(user.getBirth())
+                .createdDate(user.getCreatedDate())
                 .profileImageUrl(user.getProfileImage())
                 .status(user.getStatus().name())
                 .build();
