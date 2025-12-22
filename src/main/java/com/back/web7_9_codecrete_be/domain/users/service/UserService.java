@@ -1,12 +1,17 @@
 package com.back.web7_9_codecrete_be.domain.users.service;
 
 
+import com.back.web7_9_codecrete_be.domain.auth.dto.request.SignupRequest;
 import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
 import com.back.web7_9_codecrete_be.domain.email.service.EmailService;
+import com.back.web7_9_codecrete_be.domain.users.dto.request.UserSettingUpdateRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdateNicknameRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdatePasswordRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.response.UserResponse;
+import com.back.web7_9_codecrete_be.domain.users.dto.response.UserSettingResponse;
+import com.back.web7_9_codecrete_be.domain.users.entity.SocialType;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
+import com.back.web7_9_codecrete_be.domain.users.entity.UserSetting;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRestoreTokenRedisRepository;
 import com.back.web7_9_codecrete_be.global.error.code.UserErrorCode;
@@ -20,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -42,6 +48,52 @@ public class UserService {
     public UserResponse getMyInfo(User user) {
         validateActiveUser(user);
         return UserResponse.from(user);
+    }
+
+    // 회원 가입(로컬)
+    public User createLocalUser(SignupRequest req, String encodedPassword) {
+
+        User user = User.builder()
+                .email(req.getEmail())
+                .nickname(req.getNickname())
+                .password(encodedPassword)
+                .birth(LocalDate.parse(req.getBirth()))
+                .profileImage(req.getProfileImage())
+                .socialType(SocialType.LOCAL)
+                .socialId(null)
+                .build();
+
+        user.initSetting();
+
+        userRepository.save(user);
+
+        return user;
+    }
+
+    // 회원 가입(소셜)
+    public User createSocialUser(
+            String email,
+            String nickname,
+            String profileImage,
+            SocialType socialType,
+            String socialId
+    ) {
+
+        User user = User.builder()
+                .email(email)
+                .nickname(nickname)
+                .password(null)
+                .birth(null)
+                .profileImage(profileImage)
+                .socialType(socialType)
+                .socialId(socialId)
+                .build();
+
+        user.initSetting();
+
+        userRepository.save(user);
+
+        return user;
     }
 
     // 닉네임 수정
@@ -170,4 +222,29 @@ public class UserService {
         userRestoreTokenRedisRepository.delete(token);
     }
 
+    @Transactional(readOnly = true)
+    public UserSettingResponse getMySettings(User user) {
+        validateActiveUser(user);
+
+        User managedUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+        return UserSettingResponse.from(managedUser.getUserSetting());
+    }
+
+    public void updateMySettings(User user, UserSettingUpdateRequest req) {
+        validateActiveUser(user);
+
+        User managedUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+        UserSetting setting = managedUser.getUserSetting();
+
+        if (req.getEmailNotifications() != null) {
+            setting.changeEmailNotifications(req.getEmailNotifications());
+        }
+        if (req.getDarkMode() != null) {
+            setting.changeDarkMode(req.getDarkMode());
+        }
+    }
 }

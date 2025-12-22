@@ -69,6 +69,9 @@ public class User {
     @Column(name = "social_id", length = 100)
     private String socialId;
 
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private UserSetting userSetting;
+
     @Builder
     public User(String email,
                 String nickname,
@@ -119,5 +122,9 @@ public class User {
         this.isDeleted = false;
         this.status = UserStatus.ACTIVE;
         this.deletedDate = null;
+    }
+
+    public void initSetting() {
+        this.userSetting = new UserSetting(this);
     }
 }

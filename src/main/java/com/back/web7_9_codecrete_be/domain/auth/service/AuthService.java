@@ -9,6 +9,7 @@ import com.back.web7_9_codecrete_be.domain.email.service.EmailService;
 import com.back.web7_9_codecrete_be.domain.users.entity.SocialType;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
+import com.back.web7_9_codecrete_be.domain.users.service.UserService;
 import com.back.web7_9_codecrete_be.domain.users.util.NicknameGenerator;
 import com.back.web7_9_codecrete_be.global.error.code.AuthErrorCode;
 import com.back.web7_9_codecrete_be.global.error.code.UserErrorCode;
@@ -19,13 +20,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class AuthService {
     private final UserRepository userRepository;
+    private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final TokenService tokenService;
@@ -51,17 +52,7 @@ public class AuthService {
             throw new BusinessException(UserErrorCode.NICKNAME_DUPLICATED);
         }
 
-        User user = User.builder()
-                .email(req.getEmail())
-                .nickname(req.getNickname())
-                .password(passwordEncoder.encode(req.getPassword()))
-                .birth(LocalDate.parse(req.getBirth()))
-                .profileImage(req.getProfileImage())
-                .socialType(SocialType.LOCAL)
-                .socialId(null)
-                .build();
-
-        userRepository.save(user);
+        userService.createLocalUser(req, passwordEncoder.encode(req.getPassword()));
 
         emailService.clearVerifiedEmail(req.getEmail());
     }
@@ -174,17 +165,13 @@ public class AuthService {
 
         String nickname = nicknameGenerator.generate();
 
-        User user = User.builder()
-                .email(info.getEmail())
-                .nickname(nickname)
-                .password(null)
-                .birth(null)
-                .profileImage(info.getProfileImageUrl())
-                .socialType(SocialType.KAKAO)
-                .socialId(info.getSocialId())
-                .build();
-
-        return userRepository.save(user);
+        return userService.createSocialUser(
+                info.getEmail(),
+                nickname,
+                info.getProfileImageUrl(),
+                SocialType.KAKAO,
+                info.getSocialId()
+        );
     }
 
     @Transactional
@@ -223,16 +210,12 @@ public class AuthService {
 
         String nickname = nicknameGenerator.generate();
 
-        User user = User.builder()
-                .email(info.getEmail())
-                .nickname(nickname)
-                .password(null)
-                .birth(null)
-                .profileImage(info.getProfileImageUrl())
-                .socialType(SocialType.GOOGLE)
-                .socialId(info.getSocialId())
-                .build();
-
-        return userRepository.save(user);
+        return userService.createSocialUser(
+                info.getEmail(),
+                nickname,
+                info.getProfileImageUrl(),
+                SocialType.GOOGLE,
+                info.getSocialId()
+        );
     }
 }
