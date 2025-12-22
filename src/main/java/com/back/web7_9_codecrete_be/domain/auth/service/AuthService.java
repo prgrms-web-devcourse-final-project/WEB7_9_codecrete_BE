@@ -143,11 +143,7 @@ public class AuthService {
         }
 
         // 3. 소셜 ID 기준 사용자 조회
-        User user = userRepository
-                .findBySocialTypeAndSocialId(
-                        SocialType.KAKAO,
-                        kakaoUserInfo.getSocialId()
-                )
+        User user = userRepository.findByEmail(kakaoUserInfo.getEmail())
                 .orElseGet(() -> registerKakaoUser(kakaoUserInfo));
 
         // 4. 탈퇴 사용자 체크
@@ -188,11 +184,7 @@ public class AuthService {
         }
 
         // 3. 소셜 ID 기준 사용자 조회
-        User user = userRepository
-                .findBySocialTypeAndSocialId(
-                        SocialType.GOOGLE,
-                        googleUserInfo.getSocialId()
-                )
+        User user = userRepository.findByEmail(googleUserInfo.getEmail())
                 .orElseGet(() -> registerGoogleUser(googleUserInfo));
 
         // 4. 탈퇴 사용자 체크
