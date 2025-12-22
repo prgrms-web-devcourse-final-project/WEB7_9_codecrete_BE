@@ -68,7 +68,8 @@ public class ArtistsController {
     @Operation(summary = "아티스트 목록 조회", description = "아티스트 전체 목록을 조회합니다.")
     @GetMapping()
     public RsData<Slice<ArtistListResponse>> list(Pageable pageable) {
-        return RsData.success("아티스트 전체 목록을 조회했습니다.", artistService.listArtist(pageable));
+        User user = rq.getUserOrNull(); // 로그인하지 않은 경우 null
+        return RsData.success("아티스트 전체 목록을 조회했습니다.", artistService.listArtist(pageable, user));
     }
 
     @Operation(summary = "아티스트 상세 조회", description = "아티스트의 상세 정보를 조회합니다.")

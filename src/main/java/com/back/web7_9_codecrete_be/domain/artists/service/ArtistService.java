@@ -22,7 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
@@ -59,9 +61,21 @@ public class ArtistService {
     }
 
     @Transactional(readOnly = true)
-    public Slice<ArtistListResponse> listArtist(Pageable pageable) {
+    public Slice<ArtistListResponse> listArtist(Pageable pageable, User user) {
+        // 로그인한 유저가 좋아요한 아티스트 ID 목록 조회
+        Set<Long> likedArtistIds = new HashSet<>();
+        if (user != null) {
+            List<Long> artistIds = artistLikeRepository.findArtistIdsByUserId(user.getId());
+            likedArtistIds.addAll(artistIds);
+        }
+
+        final Set<Long> finalLikedArtistIds = likedArtistIds;
+
         return artistRepository.findAllBy(pageable)
-                .map(ArtistListResponse::from);
+                .map(artist -> {
+                    boolean isLiked = finalLikedArtistIds.contains(artist.getId());
+                    return ArtistListResponse.from(artist, isLiked);
+                });
     }
 
     @Transactional(readOnly = true)
