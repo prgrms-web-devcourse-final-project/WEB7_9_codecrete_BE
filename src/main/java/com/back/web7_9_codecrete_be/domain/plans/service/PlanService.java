@@ -125,7 +125,16 @@ public class PlanService {
      */
     public PlanDetailResponse getPlanDetail(Long planId, User user) {
         Plan plan = findPlanWithParticipantCheck(planId, user);
+        return buildPlanDetailResponse(plan);
+    }
 
+    /**
+     * Plan 엔티티를 PlanDetailResponse로 변환 (공통 메서드)
+     * 
+     * @param plan Plan 엔티티
+     * @return 계획 상세 정보
+     */
+    private PlanDetailResponse buildPlanDetailResponse(Plan plan) {
         List<PlanDetailResponse.ParticipantInfo> participants = plan.getParticipants().stream()
                 .map(participant -> PlanDetailResponse.ParticipantInfo.builder()
                         .id(participant.getParticipantId())
@@ -138,7 +147,7 @@ public class PlanService {
         // 타임라인 형태로 일정 정렬 (startAt 기준) - 메인 이벤트와 일반 일정 모두 포함
         // Concert 정보까지 포함하여 조회 (메인 이벤트의 Concert 정보 포함)
         List<Schedule> sortedSchedules = scheduleRepository
-                .findByPlan_PlanIdOrderByStartAtAsc(planId);
+                .findByPlan_PlanIdOrderByStartAtAsc(plan.getPlanId());
         
         List<PlanDetailResponse.ScheduleInfo> schedules = sortedSchedules.stream()
                 .map(item -> {
@@ -717,7 +726,29 @@ public class PlanService {
     }
 
     /**
-     * 공유 링크로 플랜 참가
+     * 공유 링크로 플랜 조회 (참가자 생성 없이 조회만)
+     *
+     * @param shareToken 공유 토큰 (UUID 기반 13자)
+     * @param user 현재 로그인한 사용자
+     * @return 플랜 상세 정보
+     * @throws BusinessException 공유 링크가 유효하지 않은 경우
+     */
+    public PlanDetailResponse getPlanByShareToken(String shareToken, User user) {
+        // shareToken으로 Plan 찾기
+        Plan plan = planRepository.findByShareToken(shareToken)
+                .orElseThrow(() -> new BusinessException(PlanErrorCode.INVALID_SHARE_TOKEN));
+
+        // 자기 자신의 플랜은 조회 불가
+        if (plan.getUserId().equals(user.getId())) {
+            throw new BusinessException(PlanErrorCode.USER_ALREADY_PARTICIPANT);
+        }
+
+        // 참가자 체크 없이 조회 가능 (공유 링크이므로)
+        return buildPlanDetailResponse(plan);
+    }
+
+    /**
+     * 공유 링크로 플랜 참가 수락 (참가자 생성)
      *
      * @param shareToken 공유 토큰 (UUID 기반 13자)
      * @param user 현재 로그인한 사용자
@@ -725,7 +756,7 @@ public class PlanService {
      * @throws BusinessException 공유 링크가 유효하지 않은 경우, 이미 참가자인 경우
      */
     @Transactional
-    public PlanDetailResponse joinPlanByShareToken(String shareToken, User user) {
+    public PlanDetailResponse acceptPlanInvitation(String shareToken, User user) {
         // shareToken으로 Plan 찾기
         Plan plan = planRepository.findByShareToken(shareToken)
                 .orElseThrow(() -> new BusinessException(PlanErrorCode.INVALID_SHARE_TOKEN));
@@ -779,7 +810,6 @@ public class PlanService {
         planRepository.save(plan);
     }
 
-    // 계획 공유 수락
     // 계획 공유 거절
     // 계획 공유 인원 추방
     // 계획 공유 나가기

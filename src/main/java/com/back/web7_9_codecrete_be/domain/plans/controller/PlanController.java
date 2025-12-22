@@ -258,17 +258,31 @@ public class PlanController {
     }
 
     /**
-     * 공유 링크로 플랜 참가
+     * 공유 링크로 플랜 조회 (참가자 생성 없이 조회만)
      *
      * @param shareToken 공유 토큰 (UUID 기반 13자)
      * @return 플랜 상세 정보 (200 OK)
      */
-    @PostMapping("/share/{shareToken}")
-    @Operation(summary = "공유 링크로 플랜 참가", description = "공유 링크 토큰을 통해 플랜에 참가합니다. 유효한 공유 토큰이 필요하며, 이미 참가자인 경우 상태만 업데이트됩니다.")
-    public RsData<PlanDetailResponse> joinPlanByShareToken(@PathVariable String shareToken) {
+    @GetMapping("/share/{shareToken}")
+    @Operation(summary = "공유 링크로 플랜 조회", description = "공유 링크 토큰을 통해 플랜을 조회합니다. 참가자 생성 없이 플랜 정보만 조회합니다.")
+    public RsData<PlanDetailResponse> getPlanByShareToken(@PathVariable String shareToken) {
         User user = rq.getUser();
-        PlanDetailResponse response = planService.joinPlanByShareToken(shareToken, user);
-        return RsData.success("플랜 참가 성공", response);
+        PlanDetailResponse response = planService.getPlanByShareToken(shareToken, user);
+        return RsData.success("플랜 조회 성공", response);
+    }
+
+    /**
+     * 공유 링크로 플랜 참가 수락
+     *
+     * @param shareToken 공유 토큰 (UUID 기반 13자)
+     * @return 플랜 상세 정보 (200 OK)
+     */
+    @PostMapping("/share/{shareToken}/accept")
+    @Operation(summary = "공유 링크로 플랜 참가 수락", description = "공유 링크 토큰을 통해 플랜 참가를 수락합니다. 참가자가 생성되며 상태가 ACCEPTED로 설정됩니다.")
+    public RsData<PlanDetailResponse> acceptPlanInvitation(@PathVariable String shareToken) {
+        User user = rq.getUser();
+        PlanDetailResponse response = planService.acceptPlanInvitation(shareToken, user);
+        return RsData.success("플랜 참가 수락 성공", response);
     }
 
     /**
