@@ -1,5 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.location.controller;
 
+import com.back.web7_9_codecrete_be.domain.location.dto.request.TmapSummaryRequest;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.TmapSummaryResponse;
 import com.back.web7_9_codecrete_be.domain.location.service.TmapService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -70,5 +72,10 @@ public class TmapApiController {
             @RequestParam double endY
     ) {
         return tmapService.getRoute(startX, startY, endX, endY);
+    }
+
+    @GetMapping("/tmap/summary")
+    public TmapSummaryResponse getSummaryTransit(double startX, double startY, double endX, double endY){
+        return tmapService.getSummaryRoute(startX, startY, endX, endY);
     }
 }

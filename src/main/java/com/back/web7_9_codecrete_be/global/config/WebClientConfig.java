@@ -37,7 +37,7 @@ public class WebClientConfig {
     @Value("${tmap.base-url}")
     private String tmapBaseUrl;
 
-    @Value("https://apis-navi.kakaomobility.com")
+    @Value("${https://apis-navi.kakaomobility.com}")
     private String kakaoMobilityUrl;
 
     @Bean
@@ -87,7 +87,7 @@ public class WebClientConfig {
     }
 
     @Bean
-    public RestClient TmapRestClient(){
+    public RestClient tmapRestClient(){
         return RestClient.builder()
                 .baseUrl(tmapBaseUrl)
                 .defaultHeader("appKey", tmapApiKey)

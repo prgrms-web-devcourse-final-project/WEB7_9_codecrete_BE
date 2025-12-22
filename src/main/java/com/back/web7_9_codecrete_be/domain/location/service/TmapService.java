@@ -1,12 +1,12 @@
 package com.back.web7_9_codecrete_be.domain.location.service;
 
-import com.back.web7_9_codecrete_be.domain.location.dto.response.TmapResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.TmapRequest;
+import com.back.web7_9_codecrete_be.domain.location.dto.request.TmapSummaryRequest;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.TmapSummaryResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
 @RequiredArgsConstructor
@@ -16,7 +16,7 @@ public class TmapService {
 
     public String getRoute(double startX, double startY, double endX, double endY) {
 
-        TmapResponse req = new TmapResponse();
+        TmapRequest req = new TmapRequest();
         req.setStartX(String.valueOf(startX));
         req.setStartY(String.valueOf(startY));
         req.setEndX(String.valueOf(endX));
@@ -30,5 +30,19 @@ public class TmapService {
                 .body(req)
                 .retrieve()
                 .body(String.class);
+    }
+
+    public TmapSummaryResponse getSummaryRoute(double startX, double startY, double endX, double endY){
+        return TmapRestClient.post()
+                .uri("/transit/routes/sub")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new TmapSummaryRequest(
+                        startX, startY,
+                        endX, endY,
+                        1,
+                        "json"
+                ))
+                .retrieve()
+                .body(TmapSummaryResponse.class);
     }
 }
