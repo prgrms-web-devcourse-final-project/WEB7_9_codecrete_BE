@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.artists.controller;
 
+import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistSort;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.CreateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.SearchRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.UpdateRequest;
@@ -65,11 +66,15 @@ public class ArtistsController {
         return RsData.success("아티스트 생성이 완료되었습니다.", null);
     }
 
-    @Operation(summary = "아티스트 목록 조회", description = "아티스트 전체 목록을 조회합니다.")
+    @Operation(summary = "아티스트 목록 조회",
+            description = "아티스트 전체 목록을 조회합니다(NAME: 이름순 / LIKE: 인기순 (좋아요 많은 순)")
     @GetMapping()
-    public RsData<Slice<ArtistListResponse>> list(Pageable pageable) {
+    public RsData<Slice<ArtistListResponse>> list(
+            Pageable pageable,
+            @RequestParam(required = false) ArtistSort sort
+    ) {
         User user = rq.getUserOrNull(); // 로그인하지 않은 경우 null
-        return RsData.success("아티스트 전체 목록을 조회했습니다.", artistService.listArtist(pageable, user));
+        return RsData.success("아티스트 전체 목록을 조회했습니다.", artistService.listArtist(pageable, user, sort));
     }
 
     @Operation(summary = "아티스트 상세 조회", description = "아티스트의 상세 정보를 조회합니다.")

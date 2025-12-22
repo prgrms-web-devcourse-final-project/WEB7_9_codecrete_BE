@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.artists.service;
 
+import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistSort;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.UpdateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistListResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
@@ -16,6 +17,7 @@ import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.ArtistErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.AccessLevel;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,7 +63,13 @@ public class ArtistService {
     }
 
     @Transactional(readOnly = true)
-    public Slice<ArtistListResponse> listArtist(Pageable pageable, User user) {
+    public Slice<ArtistListResponse> listArtist(Pageable pageable, User user, ArtistSort sort) {
+        // Pageable의 sort를 제거 (우리가 정의한 sort 파라미터만 사용)
+        Pageable pageableWithoutSort = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize()
+        );
+
         // 로그인한 유저가 좋아요한 아티스트 ID 목록 조회
         Set<Long> likedArtistIds = new HashSet<>();
         if (user != null) {
@@ -71,11 +79,22 @@ public class ArtistService {
 
         final Set<Long> finalLikedArtistIds = likedArtistIds;
 
-        return artistRepository.findAllBy(pageable)
-                .map(artist -> {
-                    boolean isLiked = finalLikedArtistIds.contains(artist.getId());
-                    return ArtistListResponse.from(artist, isLiked);
-                });
+        // 정렬에 따라 다른 쿼리 사용
+        Slice<Artist> artistSlice;
+        if (sort == null) {
+            // sort가 없으면 기본 정렬 (id 순)
+            artistSlice = artistRepository.findAllBy(pageableWithoutSort);
+        } else {
+            artistSlice = switch (sort) {
+                case NAME -> artistRepository.findAllOrderByName(pageableWithoutSort);
+                case LIKE -> artistRepository.findAllOrderByLikeCountDesc(pageableWithoutSort);
+            };
+        }
+
+        return artistSlice.map(artist -> {
+            boolean isLiked = finalLikedArtistIds.contains(artist.getId());
+            return ArtistListResponse.from(artist, isLiked);
+        });
     }
 
     @Transactional(readOnly = true)
