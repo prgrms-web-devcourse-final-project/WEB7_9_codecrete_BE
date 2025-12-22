@@ -712,8 +712,8 @@ public class PlanService {
         // 권한 체크 (수정 권한 확인: OWNER 또는 EDITOR)
         Plan plan = findPlanWithEditPermissionCheck(planId, user);
 
-        // shareToken이 이미 있으면 재사용, 없으면 생성
-        if (plan.getShareToken() == null) {
+        // shareToken이 없거나 만료되었으면 새로 생성, 유효하면 재사용
+        if (plan.getShareToken() == null || plan.isShareTokenExpired()) {
             plan.generateShareToken();
             planRepository.save(plan);
         }
@@ -738,6 +738,11 @@ public class PlanService {
         Plan plan = planRepository.findByShareToken(shareToken)
                 .orElseThrow(() -> new BusinessException(PlanErrorCode.INVALID_SHARE_TOKEN));
 
+        // 만료 시간 검증
+        if (plan.isShareTokenExpired()) {
+            throw new BusinessException(PlanErrorCode.SHARE_TOKEN_EXPIRED);
+        }
+
         // 자기 자신의 플랜은 조회 불가
         if (plan.getUserId().equals(user.getId())) {
             throw new BusinessException(PlanErrorCode.USER_ALREADY_PARTICIPANT);
@@ -760,6 +765,11 @@ public class PlanService {
         // shareToken으로 Plan 찾기
         Plan plan = planRepository.findByShareToken(shareToken)
                 .orElseThrow(() -> new BusinessException(PlanErrorCode.INVALID_SHARE_TOKEN));
+
+        // 만료 시간 검증
+        if (plan.isShareTokenExpired()) {
+            throw new BusinessException(PlanErrorCode.SHARE_TOKEN_EXPIRED);
+        }
 
         // 자기 자신의 플랜은 참가할 수 없음
         if (plan.getUserId().equals(user.getId())) {

@@ -54,6 +54,9 @@ public class Plan {
     @Column(name = "share_token", unique = true, length = 13)
     private String shareToken;
 
+    @Column(name = "share_token_expires_at")
+    private LocalDateTime shareTokenExpiresAt;
+
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanParticipant> participants = new ArrayList<>();
 
@@ -91,9 +94,23 @@ public class Plan {
 
     public void generateShareToken() {
         this.shareToken = UUID.randomUUID().toString().substring(0, 13);
+        // 만료 시간: 현재 시간으로부터 1일 후
+        this.shareTokenExpiresAt = LocalDateTime.now().plusDays(1);
     }
 
     public void clearShareToken() {
         this.shareToken = null;
+        this.shareTokenExpiresAt = null;
+    }
+
+    /**
+     * 공유 토큰이 만료되었는지 확인
+     * @return 만료되었으면 true, 아니면 false
+     */
+    public boolean isShareTokenExpired() {
+        if (shareTokenExpiresAt == null) {
+            return true; // 만료 시간이 없으면 만료된 것으로 간주
+        }
+        return LocalDateTime.now().isAfter(shareTokenExpiresAt);
     }
 }

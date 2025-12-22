@@ -21,7 +21,8 @@ public enum PlanErrorCode implements ErrorCode {
 	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "P-109", "사용자를 찾을 수 없습니다."),
 	USER_ALREADY_PARTICIPANT(HttpStatus.BAD_REQUEST, "P-110", "이미 참가자로 등록된 사용자입니다."),
 	INVALID_SHARE_TOKEN(HttpStatus.NOT_FOUND, "P-111", "유효하지 않은 공유 링크입니다."),
-	SHARE_TOKEN_NOT_GENERATED(HttpStatus.BAD_REQUEST, "P-112", "공유 링크가 생성되지 않았습니다.");
+	SHARE_TOKEN_NOT_GENERATED(HttpStatus.BAD_REQUEST, "P-112", "공유 링크가 생성되지 않았습니다."),
+	SHARE_TOKEN_EXPIRED(HttpStatus.BAD_REQUEST, "P-113", "공유 링크가 만료되었습니다.");
 
 	private final HttpStatus status;
 	private final String code;
