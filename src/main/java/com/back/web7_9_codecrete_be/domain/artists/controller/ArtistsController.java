@@ -16,6 +16,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -65,8 +67,8 @@ public class ArtistsController {
 
     @Operation(summary = "아티스트 목록 조회", description = "아티스트 전체 목록을 조회합니다.")
     @GetMapping()
-    public RsData<List<ArtistListResponse>> list() {
-        return RsData.success("아티스트 전체 목록을 조회했습니다.", artistService.listArtist());
+    public RsData<Slice<ArtistListResponse>> list(Pageable pageable) {
+        return RsData.success("아티스트 전체 목록을 조회했습니다.", artistService.listArtist(pageable));
     }
 
     @Operation(summary = "아티스트 상세 조회", description = "아티스트의 상세 정보를 조회합니다.")

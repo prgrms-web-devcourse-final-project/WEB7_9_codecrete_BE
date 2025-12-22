@@ -16,6 +16,8 @@ import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.ArtistErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.AccessLevel;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -57,10 +59,9 @@ public class ArtistService {
     }
 
     @Transactional(readOnly = true)
-    public List<ArtistListResponse> listArtist() {
-        return artistRepository.findAll().stream()
-                .map(ArtistListResponse::from)
-                .toList();
+    public Slice<ArtistListResponse> listArtist(Pageable pageable) {
+        return artistRepository.findAllBy(pageable)
+                .map(ArtistListResponse::from);
     }
 
     @Transactional(readOnly = true)

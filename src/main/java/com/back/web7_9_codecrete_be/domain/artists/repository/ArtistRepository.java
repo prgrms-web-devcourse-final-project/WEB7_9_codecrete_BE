@@ -2,6 +2,7 @@ package com.back.web7_9_codecrete_be.domain.artists.repository;
 
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -25,4 +26,6 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     List<Artist> findTop5ByGenreIdAndIdNot(Long genreId, long excludeId);
 
     List<Artist> findAllByArtistNameContainingIgnoreCaseOrNameKoContainingIgnoreCase(String artistName1, String artistName2);
+
+    Slice<Artist> findAllBy(Pageable pageable);
 }
