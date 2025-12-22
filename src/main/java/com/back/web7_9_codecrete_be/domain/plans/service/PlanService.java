@@ -224,7 +224,7 @@ public class PlanService {
      */
     @Transactional
     public PlanDeleteResponse deletePlan(Long planId, User user) {
-        Plan plan = findPlanWithEditPermissionCheck(planId, user);
+        Plan plan = findPlanWithOwnerCheck(planId, user);
         Long deletedPlanId = plan.getPlanId();
         
         // Plan 삭제 시 cascade 설정으로 인해 participants와 schedules도 함께 삭제.
@@ -460,6 +460,7 @@ public class PlanService {
                 .build();
     }
 
+
     /**
      * Plan을 조회하고 참가자 권한을 체크하는 메서드
      *
@@ -486,6 +487,28 @@ public class PlanService {
 
         if (!isParticipant) {
             throw new BusinessException(PlanErrorCode.PLAN_FORBIDDEN);
+        }
+
+        return plan;
+    }
+
+    /**
+     * Plan을 조회하고 소유자 권한을 체크
+     * 소유자만 삭제 가능
+     *
+     * @param planId 계획 ID
+     * @param user 현재 로그인한 사용자
+     * @return Plan 엔티티
+     * @throws BusinessException 계획을 찾을 수 없거나 소유자가 아닌 경우
+     */
+    private Plan findPlanWithOwnerCheck(Long planId, User user) {
+        Long userId = user.getId();
+        Plan plan = planRepository.findById(planId)
+                .orElseThrow(() -> new BusinessException(PlanErrorCode.PLAN_NOT_FOUND));
+
+        // 소유자만 삭제 가능
+        if (!plan.getUserId().equals(userId)) {
+            throw new BusinessException(PlanErrorCode.PLAN_UNAUTHORIZED);
         }
 
         return plan;
@@ -667,7 +690,95 @@ public class PlanService {
         participant.updateRole(request.getRole());
     }
 
-    // 계획 공유 초대
+    /**
+     * 공유 링크 생성 (UUID)
+     *
+     * @param planId 계획 ID
+     * @param user 현재 로그인한 사용자 (권한 체크용)
+     * @return 공유 링크 응답 DTO
+     * @throws BusinessException 계획을 찾을 수 없거나 권한이 없는 경우
+     */
+    @Transactional
+    public PlanShareLinkResponse generateShareLink(Long planId, User user) {
+        // 권한 체크 (수정 권한 확인: OWNER 또는 EDITOR)
+        Plan plan = findPlanWithEditPermissionCheck(planId, user);
+
+        // shareToken이 이미 있으면 재사용, 없으면 생성
+        if (plan.getShareToken() == null) {
+            plan.generateShareToken();
+            planRepository.save(plan);
+        }
+
+        return PlanShareLinkResponse.builder()
+                .planId(plan.getPlanId())
+                .shareToken(plan.getShareToken())
+                .shareLink("/plans/share/" + plan.getShareToken())
+                .build();
+    }
+
+    /**
+     * 공유 링크로 플랜 참가
+     *
+     * @param shareToken 공유 토큰 (UUID)
+     * @param user 현재 로그인한 사용자
+     * @return 플랜 상세 정보
+     * @throws BusinessException 공유 링크가 유효하지 않은 경우, 이미 참가자인 경우
+     */
+    @Transactional
+    public PlanDetailResponse joinPlanByShareToken(String shareToken, User user) {
+        // shareToken으로 Plan 찾기
+        Plan plan = planRepository.findByShareToken(shareToken)
+                .orElseThrow(() -> new BusinessException(PlanErrorCode.INVALID_SHARE_TOKEN));
+
+        // 자기 자신의 플랜은 참가할 수 없음
+        if (plan.getUserId().equals(user.getId())) {
+            throw new BusinessException(PlanErrorCode.USER_ALREADY_PARTICIPANT);
+        }
+
+        // DB 레벨에서 이미 참가자인지 확인 (유니크 제약조건 검증)
+        boolean isAlreadyParticipant = planParticipantRepository.existsByUser_IdAndPlan_PlanId(
+                user.getId(), plan.getPlanId());
+
+        if (isAlreadyParticipant) {
+            // 이미 참가자인 경우 상태를 ACCEPTED로 변경
+            PlanParticipant participant = planParticipantRepository
+                    .findByUser_IdAndPlan_PlanId(user.getId(), plan.getPlanId())
+                    .orElseThrow(() -> new BusinessException(PlanErrorCode.PLAN_NOT_FOUND));
+
+            participant.updateInviteStatus(PlanParticipant.InviteStatus.ACCEPTED);
+            planParticipantRepository.save(participant);
+        } else {
+            // 새로운 참가자 추가 (기본 역할은 VIEWER, 상태는 ACCEPTED)
+            PlanParticipant participant = PlanParticipant.builder()
+                    .user(user)
+                    .plan(plan)
+                    .inviteStatus(PlanParticipant.InviteStatus.ACCEPTED)
+                    .role(PlanParticipant.ParticipantRole.VIEWER)
+                    .build();
+
+            plan.addParticipant(participant);
+            planRepository.save(plan);
+        }
+
+        return getPlanDetail(plan.getPlanId(), user);
+    }
+
+    /**
+     * 공유 링크 삭제 (shareToken 제거)
+     *
+     * @param planId 계획 ID
+     * @param user 현재 로그인한 사용자 (권한 체크용)
+     * @throws BusinessException 계획을 찾을 수 없거나 권한이 없는 경우
+     */
+    @Transactional
+    public void deleteShareLink(Long planId, User user) {
+        // 권한 체크 (수정 권한 확인: OWNER 또는 EDITOR)
+        Plan plan = findPlanWithEditPermissionCheck(planId, user);
+
+        plan.clearShareToken();
+        planRepository.save(plan);
+    }
+
     // 계획 공유 수락
     // 계획 공유 거절
     // 계획 공유 인원 추방
