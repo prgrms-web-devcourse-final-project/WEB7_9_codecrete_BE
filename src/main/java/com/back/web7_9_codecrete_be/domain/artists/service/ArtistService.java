@@ -98,7 +98,7 @@ public class ArtistService {
     }
 
     @Transactional(readOnly = true)
-    public ArtistDetailResponse getArtistDetail(Long artistId) {
+    public ArtistDetailResponse getArtistDetail(Long artistId, User user) {
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
 
@@ -108,13 +108,20 @@ public class ArtistService {
 
         long likeCount = artistLikeRepository.countByArtistId(artistId);
 
+        // 로그인한 유저의 좋아요 여부 확인
+        boolean isLiked = false;
+        if (user != null) {
+            isLiked = artistLikeRepository.existsByArtistAndUser(artist, user);
+        }
+
         return spotifyService.getArtistDetail(
                 artist.getSpotifyArtistId(),
                 artist.getArtistGroup(),
                 artist.getArtistType(),
                 likeCount,
                 artist.getId(),
-                artist.getGenre() != null ? artist.getGenre().getId() : null
+                artist.getGenre() != null ? artist.getGenre().getId() : null,
+                isLiked
         );
     }
 

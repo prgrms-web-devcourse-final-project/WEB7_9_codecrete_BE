@@ -82,7 +82,8 @@ public class ArtistsController {
     public RsData<ArtistDetailResponse> artist(
             @PathVariable Long id
     ) {
-        return RsData.success("아티스트 상세 조회를 성공했습니다.", artistService.getArtistDetail(id));
+        User user = rq.getUserOrNull(); // 로그인하지 않은 경우 null
+        return RsData.success("아티스트 상세 조회를 성공했습니다.", artistService.getArtistDetail(id, user));
     }
 
     @Operation(summary = "아티스트 정보 수정", description = "아티스트 정보를 수정합니다.")
