@@ -107,4 +107,26 @@ public class KakaoLocalService {
 
         return response;
     }
+
+    public KakaoMobilityResponse NaviSearchSummary(double startX, double startY, double endX, double endY) {
+
+        KakaoMobilityResponse response = kakaoMobilityClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v1/directions")
+                        .queryParam("origin", startX + "," + startY)
+                        .queryParam("destination", endX + "," + endY)
+                        .queryParam("priority", "TIME")
+                        .queryParam("summary", "true")
+                        .build()
+                )
+                .retrieve()
+                .body(KakaoMobilityResponse.class);
+
+
+        if (response == null || response.getRoutes().isEmpty()) {
+            throw new BusinessException(LocationErrorCode.ROUTE_NOT_FOUND);
+        }
+
+        return response;
+    }
 }

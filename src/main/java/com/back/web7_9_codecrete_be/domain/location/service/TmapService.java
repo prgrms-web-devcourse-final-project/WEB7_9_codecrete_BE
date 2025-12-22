@@ -2,18 +2,22 @@ package com.back.web7_9_codecrete_be.domain.location.service;
 
 import com.back.web7_9_codecrete_be.domain.location.dto.response.TmapRequest;
 import com.back.web7_9_codecrete_be.domain.location.dto.request.TmapSummaryRequest;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.TmapSummaryAllResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.TmapSummaryResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 @Service
-@RequiredArgsConstructor
 public class TmapService {
 
-    private final RestClient TmapRestClient;
+    private final RestClient tmapRestClient;
 
+    public TmapService(@Qualifier("tmapRestClient") RestClient tmapRestClient) {
+        this.tmapRestClient = tmapRestClient;
+    }
     public String getRoute(double startX, double startY, double endX, double endY) {
 
         TmapRequest req = new TmapRequest();
@@ -24,7 +28,7 @@ public class TmapService {
         req.setCount(5);
         req.setFormat("json");
 
-        return TmapRestClient.post()
+        return tmapRestClient.post()
                 .uri("/transit/routes")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(req)
@@ -32,8 +36,8 @@ public class TmapService {
                 .body(String.class);
     }
 
-    public TmapSummaryResponse getSummaryRoute(double startX, double startY, double endX, double endY){
-        return TmapRestClient.post()
+    public TmapSummaryAllResponse getSummaryRoute(double startX, double startY, double endX, double endY){
+        return tmapRestClient.post()
                 .uri("/transit/routes/sub")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new TmapSummaryRequest(
@@ -43,6 +47,6 @@ public class TmapService {
                         "json"
                 ))
                 .retrieve()
-                .body(TmapSummaryResponse.class);
+                .body(TmapSummaryAllResponse.class);
     }
 }

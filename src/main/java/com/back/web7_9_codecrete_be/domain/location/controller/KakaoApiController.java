@@ -94,5 +94,28 @@ public class KakaoApiController {
                 .flatMap(section -> section.getGuides().stream())
                 .toList();
     }
+    @GetMapping("/navigate/summary")
+    public List<KakaoMobilityResponse.Guide> navigateSummary(
+            @RequestParam double startX,
+            @RequestParam double startY,
+            @RequestParam double endX,
+            @RequestParam double endY
+    ) {
+        KakaoMobilityResponse res = kakaoLocalService.NaviSearchSummary(startX, startY, endX, endY);
+
+        if (res == null || res.getRoutes() == null || res.getRoutes().isEmpty()) {
+            return List.of();
+        }
+
+        KakaoMobilityResponse.Route route0 = res.getRoutes().get(0);
+        if (route0.getSections() == null || route0.getSections().isEmpty()) {
+            return List.of();
+        }
+
+        return route0.getSections().stream()
+                .filter(section -> section.getGuides() != null && !section.getGuides().isEmpty())
+                .flatMap(section -> section.getGuides().stream())
+                .toList();
+    }
 }
 
