@@ -12,6 +12,7 @@ import com.back.web7_9_codecrete_be.domain.users.repository.UserRestoreTokenRedi
 import com.back.web7_9_codecrete_be.global.error.code.UserErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import com.back.web7_9_codecrete_be.global.storage.FileStorageService;
+import com.back.web7_9_codecrete_be.global.storage.ImageFileValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,7 +35,7 @@ public class UserService {
     private final UserRestoreTokenRedisRepository userRestoreTokenRedisRepository;
     private final EmailService emailService;
 
-    private static final long MAX_PROFILE_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+    private final ImageFileValidator imageFileValidator;
 
     // 내 정보 조회
     @Transactional(readOnly = true)
@@ -74,14 +75,7 @@ public class UserService {
     public String updateProfileImage(User user, MultipartFile file) {
         validateActiveUser(user);
 
-        // 파일 유효성 검사
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException(UserErrorCode.INVALID_PROFILE_IMAGE);
-        }
-
-        if (file.getSize() > MAX_PROFILE_IMAGE_SIZE) {
-            throw new BusinessException(UserErrorCode.PROFILE_IMAGE_SIZE_EXCEEDED);
-        }
+        imageFileValidator.validateImageFile(file);
 
         // 기존 이미지 URL 보관
         String oldImageUrl = user.getProfileImage();
