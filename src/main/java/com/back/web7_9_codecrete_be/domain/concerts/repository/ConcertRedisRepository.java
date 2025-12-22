@@ -141,7 +141,7 @@ public class ConcertRedisRepository {
 
     // 해당 접두어의 모든 항목 삭제
     private void deleteAllItemsByPREFIX(String prefix) {
-        String pattern = CONCERT_LIST_PREFIX + "*";
+        String pattern = prefix + "*";
         ScanOptions options = ScanOptions.scanOptions().match(pattern).count(100).build();
         Set<String> keys = redisTemplate.execute((RedisCallback<Set<String>>) connection -> {
                     Set<String> keySet = new HashSet<>();
