@@ -188,6 +188,13 @@ public class KopisApiService {
     @Transactional
     @Scheduled(cron = "0 0 2 * * Mon")
     public SetResultResponse updateConcertData() throws InterruptedException {
+        String key = "init";
+        String value = concertRedisRepository.lockGet(key);
+        if(value != null) {
+            log.error("초기 업데이트가 진행중입니다.");
+            return null;
+        }
+
         ConcertUpdateTime concertUpdateTime = concertUpdateTimeRepository.getReferenceById(1L);
         LocalDate lastUpdatedDate = concertUpdateTime.getUpdateTime().toLocalDate();
         ConcertUpdateTime updatedTime = concertUpdateTime.setUpdateTime(LocalDateTime.now());
@@ -283,9 +290,13 @@ public class KopisApiService {
                 updatedConcertImages += saveConcertImages(concertDetail, savedConcert);
             }
 
-
             Thread.sleep(300);
         }
+
+        // 갱신 후 업데이트 시간 저장, 캐시의 데이터 삭제
+        concertUpdateTimeRepository.save(updatedTime);
+        concertRedisRepository.deleteAllConcertsList();
+        concertRedisRepository.deleteAllConcertDetail();
         return new SetResultResponse(addedConcerts,updatedConcerts,addedConcertPlaces,updatedConcertPlaces,addedConcertImages,updatedConcertImages,addedTicketOffices,updatedTicketOffices);
     }
 
