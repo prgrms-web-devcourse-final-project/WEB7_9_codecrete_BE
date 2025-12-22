@@ -308,7 +308,7 @@ public class ConcertNotifyService {
 
             String htmlContent = htmlStringBuilder.toString();
             String textContent = textStringBuilder.toString();
-//            emailService.sendNotifyEmail(targetEmail, htmlContent,textContent);
+            emailService.sendNotifyEmail(targetEmail, htmlContent,textContent);
         }
         log.info("일일 공연 예매 오픈 알림 : " +  totalConcertsCount + "건의 공연을 " + totalEmailCount + "명의 사용자에게 전송했습니다.");
         return totalConcertsCount + "건의 공연을 " + totalEmailCount + "명의 사용자에게 전송했습니다.";
