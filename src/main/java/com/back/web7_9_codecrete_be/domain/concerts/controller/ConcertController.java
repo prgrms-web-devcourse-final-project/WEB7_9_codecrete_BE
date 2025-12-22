@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.sql.ast.tree.expression.Summarization;
 import org.springdoc.core.converters.models.PageableAsQueryParam;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -209,4 +210,24 @@ public class ConcertController {
         return RsData.success(concertService.getConcertPlaceDetail(concertId));
     }
 
+    @PostMapping("autoSet")
+    public RsData<Void> autoSetConcert(){
+        concertService.saveTitles();
+        return RsData.success(null);
+    }
+
+    @GetMapping("autoComplete")
+    public RsData<List<String>> autoCompleteConcert(
+            @RequestParam String keyword,
+            @RequestParam int start,
+            @RequestParam int end
+    ){
+        return RsData.success(concertService.autoTest(keyword,start,end));
+    }
+
+    @PostMapping("autoDelete")
+    public RsData<Void> autoDeleteConcert(){
+        concertService.resetAutoComplete();
+        return RsData.success(null);
+    }
 }

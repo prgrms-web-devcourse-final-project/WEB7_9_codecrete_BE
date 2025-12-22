@@ -6,6 +6,7 @@ import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOffic
 import com.back.web7_9_codecrete_be.domain.concerts.entity.*;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.*;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
+import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
 import com.back.web7_9_codecrete_be.global.error.code.ConcertErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -39,6 +41,8 @@ public class ConcertService {
     private final ConcertImageRepository concertImageRepository;
 
     private final ConcertRedisRepository concertRedisRepository;
+
+    private final ConcertSearchRedisTemplate concertSearchRedisTemplate;
 
     // 공연 목록 조회
     public List<ConcertItem> getConcertsList(Pageable pageable, ListSort sort) {
@@ -76,6 +80,29 @@ public class ConcertService {
         }
         return concertRepository.getConcertItemsByKeyword(keyword, pageable);
     }
+
+    // 자동완성
+    public List<String> autoTest(String keyword,int start, int end) {
+        return concertSearchRedisTemplate.getAutoCompleteWord(keyword, start, end);
+    }
+
+    // 자동완성 초기화
+    public void resetAutoComplete(){
+        concertSearchRedisTemplate.deleteAutoCompleteWords();
+    }
+
+    // 자동완성 단어 저장
+    public void saveTitles(){
+        List<Concert>  concerts = concertRepository.findAll();
+        List<String> names = concerts.stream().map(concert -> concert.getName()).toList();
+        List<String> eachWords = new ArrayList<>();
+        for (String name : names) {
+            String[] words = name.split(" ");
+            eachWords.addAll(Arrays.stream(words).toList());
+        }
+        concertSearchRedisTemplate.addAllAutoCompleteWord(names);
+    }
+
 
     // 공연 상세 조회 조회시 조회수 1 증가 -> 캐싱에 따른 조회수 불일치 해소를 어떻게 할 것인가? V -> 이제 캐싱된거 날리고 새로운 수치 반영 어케할 것인지 + 여러번 조회수 올릴 시 처리 어떻게 할지
     @Transactional
@@ -121,14 +148,14 @@ public class ConcertService {
         return result;
     }
 
-    // todo : 티켓팅 공연 개수 조회
+    // 티켓팅 공연 개수 조회
     public Long getTotalTicketingConcertsCount() {
         Long result = concertRedisRepository.getTotalConcertsCount(ListSort.TICKETING);
         if(result == -1) result = concertRedisRepository.saveTotalConcertsCount(concertRepository.countTicketingConcertsFromLocalDateTime(LocalDateTime.of(LocalDate.now(), LocalTime.MIN)), ListSort.TICKETING);
         return  result;
     }
 
-    // todo : 좋아요한 공연 개수 조회
+    // 좋아요한 공연 개수 조회
     public Long getTotalLikedConcertsCount(User user) {
         Long result = concertRedisRepository.getUserLikedCount(user);
         if(result == -1) result = concertRedisRepository.saveUserLikedCount(user,concertLikeRepository.countByUser(user));
