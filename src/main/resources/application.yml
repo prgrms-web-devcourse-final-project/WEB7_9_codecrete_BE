@@ -51,6 +51,8 @@ tmap:     #Tmap 대중교통 추천 api 키
 kakao:    #Kakao map REST API 키
   base-url: https://dapi.kakao.com
   restapi-key: ${KAKAOMAP_API_KEY}
+  mobility:
+    base-url: https://apis-navi.kakaomobility.com
 
 kopis:
   api-key: ${KOPIST_API_KEY}

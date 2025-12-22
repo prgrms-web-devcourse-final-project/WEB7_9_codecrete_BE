@@ -3,6 +3,8 @@ package com.back.web7_9_codecrete_be.domain.location.controller;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoLocalResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoMobilityResponse;
 import com.back.web7_9_codecrete_be.domain.location.service.KakaoLocalService;
+import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
+import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -95,7 +97,7 @@ public class KakaoApiController {
                 .toList();
     }
     @GetMapping("/navigate/summary")
-    public List<KakaoMobilityResponse.Guide> navigateSummary(
+    public KakaoMobilityResponse.Summary navigateSummary(
             @RequestParam double startX,
             @RequestParam double startY,
             @RequestParam double endX,
@@ -104,18 +106,16 @@ public class KakaoApiController {
         KakaoMobilityResponse res = kakaoLocalService.NaviSearchSummary(startX, startY, endX, endY);
 
         if (res == null || res.getRoutes() == null || res.getRoutes().isEmpty()) {
-            return List.of();
+            throw new BusinessException(LocationErrorCode.ROUTE_NOT_FOUND);
         }
 
         KakaoMobilityResponse.Route route0 = res.getRoutes().get(0);
-        if (route0.getSections() == null || route0.getSections().isEmpty()) {
-            return List.of();
+        if (route0.getSummary() == null) {
+            throw new BusinessException(LocationErrorCode.ROUTE_NOT_FOUND);
         }
 
-        return route0.getSections().stream()
-                .filter(section -> section.getGuides() != null && !section.getGuides().isEmpty())
-                .flatMap(section -> section.getGuides().stream())
-                .toList();
+        return route0.getSummary();
+
     }
 }
 

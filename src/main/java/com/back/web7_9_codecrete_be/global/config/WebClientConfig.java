@@ -37,7 +37,7 @@ public class WebClientConfig {
     @Value("${tmap.base-url}")
     private String tmapBaseUrl;
 
-    @Value("${https://apis-navi.kakaomobility.com}")
+    @Value("${kakao.mobility.base-url}")
     private String kakaoMobilityUrl;
 
     @Bean
