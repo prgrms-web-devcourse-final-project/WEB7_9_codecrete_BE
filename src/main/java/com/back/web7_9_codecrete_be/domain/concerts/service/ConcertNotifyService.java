@@ -81,7 +81,8 @@ public class ConcertNotifyService {
         List<ConcertLike> concertLikes = concertLikeRepository.getTodayConcertTicketingLikes(startOfToday, endOfToday);
         for (ConcertLike concertLike : concertLikes) {
             log.info("사용자 email 조회");
-            // map에 해당 사용자 email의 ConcertId list 가져오기, 없다면 새로은 arraylist 사용
+            // map에 해당 사용자 email의 ConcertId list 가져오기, 없다면 새로은 arraylist 생성
+            if(!concertLike.getUser().getUserSetting().isEmailNotifications()) continue;
             List<Long> tempList = emailMap.getOrDefault(concertLike.getUser().getEmail(), new ArrayList<>());
             // 임시 리스트에 concertId 추가
             tempList.add(concertLike.getConcert().getConcertId());
@@ -158,7 +159,7 @@ public class ConcertNotifyService {
             
                 <div style="padding:32px;">
             """.formatted(today));
-            //전체 타이틀 부분(text);
+            // 전체 타이틀 부분(text)
             textStringBuilder.append("""
                     [NCB] 공연 예매 알림입니다.
                     %s 오늘의 공연 예매 알림
@@ -307,7 +308,7 @@ public class ConcertNotifyService {
 
             String htmlContent = htmlStringBuilder.toString();
             String textContent = textStringBuilder.toString();
-            emailService.sendNotifyEmail(targetEmail, htmlContent,textContent);
+//            emailService.sendNotifyEmail(targetEmail, htmlContent,textContent);
         }
         log.info("일일 공연 예매 오픈 알림 : " +  totalConcertsCount + "건의 공연을 " + totalEmailCount + "명의 사용자에게 전송했습니다.");
         return totalConcertsCount + "건의 공연을 " + totalEmailCount + "명의 사용자에게 전송했습니다.";
