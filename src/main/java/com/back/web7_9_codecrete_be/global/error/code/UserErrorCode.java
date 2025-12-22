@@ -16,10 +16,6 @@ public enum UserErrorCode implements ErrorCode {
     USER_NOT_DELETED(HttpStatus.BAD_REQUEST, "U-104", "탈퇴 상태의 계정만 복구할 수 있습니다."),
     INVALID_RESTORE_TOKEN(HttpStatus.BAD_REQUEST, "U-105", "유효하지 않거나 만료된 복구 링크입니다."),
 
-    // 3xx - 입력값 / 파일
-    INVALID_PROFILE_IMAGE(HttpStatus.BAD_REQUEST, "U-110", "유효하지 않은 프로필 이미지입니다."),
-    PROFILE_IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "U-111", "프로필 이미지 크기가 10MB를 초과했습니다."),
-
     // 2xx - 인증 / 비밀번호
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "U-120", "현재 비밀번호가 일치하지 않습니다.");
 

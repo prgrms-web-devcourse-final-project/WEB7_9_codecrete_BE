@@ -78,6 +78,9 @@ dependencies {
     // AWS S3
     implementation("software.amazon.awssdk:s3")
     implementation("io.awspring.cloud:spring-cloud-aws-s3:3.0.2")
+
+    // Apache Tika
+    implementation("org.apache.tika:tika-core:2.9.0")
     
     // 서버 정상 작동 확인용
     implementation("org.springframework.boot:spring-boot-starter-actuator")

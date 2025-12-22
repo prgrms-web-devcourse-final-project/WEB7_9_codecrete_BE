@@ -1,9 +1,11 @@
 package com.back.web7_9_codecrete_be.domain.users.controller;
 
 import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
+import com.back.web7_9_codecrete_be.domain.users.dto.request.UserSettingUpdateRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdateNicknameRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdatePasswordRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.response.UserResponse;
+import com.back.web7_9_codecrete_be.domain.users.dto.response.UserSettingResponse;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.service.UserService;
 import com.back.web7_9_codecrete_be.global.rq.Rq;
@@ -86,5 +88,23 @@ public class UserController {
     public RsData<?> restoreByToken(@RequestParam String token) {
         userService.restoreByToken(token);
         return RsData.success("계정이 성공적으로 복구되었습니다.");
+    }
+
+    @Operation(summary = "유저 설정 조회", description = "로그인한 사용자의 설정 정보를 조회합니다.")
+    @GetMapping("/settings")
+    public RsData<?> getMySettings() {
+        User user = rq.getUser();
+        UserSettingResponse response = userService.getMySettings(user);
+        return RsData.success("유저 설정 조회 성공", response);
+    }
+
+    @Operation(summary = "유저 설정 수정", description = "로그인한 사용자의 설정 정보를 부분 수정합니다.")
+    @PatchMapping("/settings")
+    public RsData<?> updateMySettings(
+            @RequestBody UserSettingUpdateRequest req
+    ) {
+        User user = rq.getUser();
+        userService.updateMySettings(user, req);
+        return RsData.success("유저 설정 수정 성공");
     }
 }
