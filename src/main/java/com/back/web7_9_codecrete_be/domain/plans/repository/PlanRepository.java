@@ -15,12 +15,10 @@ public interface PlanRepository extends JpaRepository<Plan, Long> {
     /**
      * - Plan 상세 조회 및 권한 체크 시
      * @param id Plan ID
-     * @return Plan 엔티티 (concert, participants, schedules 포함)
-     * @EntityGraph:
-     * - Plan + concert + participants + schedules를 LEFT OUTER JOIN으로 한 번에 조회
-     * - 총 1번의 쿼리만 실행되어 N + 1 문제 방지 & 성능 향상
+     * @return Plan 엔티티 (concert, participants 포함)
+     * schedules는 @BatchSize로 배치 로드됨 (MultipleBagFetchException 방지)
      */
-    @EntityGraph(attributePaths = {"concert", "participants", "schedules"})
+    @EntityGraph(attributePaths = {"concert", "participants"})
     Optional<Plan> findById(Long id);
 
     /**
@@ -43,8 +41,9 @@ public interface PlanRepository extends JpaRepository<Plan, Long> {
     /**
      * - shareToken으로 Plan 조회
      * @param shareToken 공유 토큰
-     * @return 해당 토큰을 가진 Plan 엔티티
+     * @return 해당 토큰을 가진 Plan 엔티티 (concert, participants 포함)
+     * schedules는 @BatchSize로 배치 로드됨 (MultipleBagFetchException 방지)
      */
-    @EntityGraph(attributePaths = {"concert", "participants", "schedules"})
+    @EntityGraph(attributePaths = {"concert", "participants"})
     Optional<Plan> findByShareToken(String shareToken);
 }
