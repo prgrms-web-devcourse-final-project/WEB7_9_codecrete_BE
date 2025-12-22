@@ -98,18 +98,18 @@ public class ConcertService {
     }
 
     // 조회수 갱신
-    // todo : 조회수 갱신시 '조회수 기준' 목록 캐싱 초기화하기
     @Transactional
-    @Scheduled(cron = "0 0 * * * *")
+    @Scheduled(cron = "0 0 5 * * * ")
     public void viewCountUpdate(){
         Map<Long,Integer> viewCountMap = concertRedisRepository.getViewCountMap();
         if(viewCountMap == null || viewCountMap.isEmpty()) {
             log.info("viewCountMap is empty");
         } else{
-            for (Long concertId : viewCountMap.keySet()) {
-                int viewCount = viewCountMap.get(concertId);
-                concertRepository.concertViewCountSet(concertId, viewCount);
+            for (Map.Entry<Long, Integer> viewCountEntry : viewCountMap.entrySet()) {
+                concertRepository.concertViewCountSet(viewCountEntry.getKey(), viewCountEntry.getValue());
             }
+            concertRedisRepository.deleteViewCountMap();
+            concertRedisRepository.deleteAllConcertsList();
             log.info("viewCount updated");
         }
     }

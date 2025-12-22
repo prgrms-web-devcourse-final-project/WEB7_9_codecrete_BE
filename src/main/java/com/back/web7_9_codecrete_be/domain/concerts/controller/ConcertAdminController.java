@@ -122,6 +122,13 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
         return RsData.success(kopisApiService.updateConcertData());
     }
 
+    @Operation(summary = "공연 조회수 갱신", description = "캐시에 저장되어 있는 조회수를 DB에 반영하고 캐싱된 공연 목록을 초기화합니다.")
+    @PostMapping("updateConcertViewCount")
+    public RsData<Void> updateConcertViewCount(){
+        concertService.viewCountUpdate();
+        return RsData.success(null);
+    }
+
     @Operation(summary = "알림 이메일 전송", description = "예매일이 오늘인 공연에 대해 알림 이메일을 전송합니다.")
     @PostMapping("sendTicketingEmail")
     public RsData<String> sendTicketingEmail(){
