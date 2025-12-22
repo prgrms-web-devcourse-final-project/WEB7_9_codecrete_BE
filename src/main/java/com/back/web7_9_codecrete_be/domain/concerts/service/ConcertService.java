@@ -114,7 +114,26 @@ public class ConcertService {
         }
     }
 
+    // 총 공연 개수 조회
+    public Long getTotalConcertsCount() {
+        Long result = concertRedisRepository.getTotalConcertsCount(ListSort.VIEW);
+        if(result == -1) result = concertRedisRepository.saveTotalConcertsCount(concertRepository.count(), ListSort.VIEW);
+        return result;
+    }
 
+    // todo : 티켓팅 공연 개수 조회
+    public Long getTotalTicketingConcertsCount() {
+        Long result = concertRedisRepository.getTotalConcertsCount(ListSort.TICKETING);
+        if(result == -1) result = concertRedisRepository.saveTotalConcertsCount(concertRepository.countTicketingConcertsFromLocalDateTime(LocalDateTime.of(LocalDate.now(), LocalTime.MIN)), ListSort.TICKETING);
+        return  result;
+    }
+
+    // todo : 좋아요한 공연 개수 조회
+    public Long getTotalLikedConcertsCount(User user) {
+        Long result = concertRedisRepository.getUserLikedCount(user);
+        if(result == -1) result = concertRedisRepository.saveUserLikedCount(user,concertLikeRepository.countByUser(user));
+        return  result;
+    }
 
     // N+1 문제 발생해서 버림
     /*
@@ -162,6 +181,7 @@ public class ConcertService {
         }
         ConcertLike concertLike = new ConcertLike(concert, user);
         concertLikeRepository.save(concertLike);
+        concertRedisRepository.deleteUserLikedCount(user);
         concertRepository.concertLikeCountUp(concertId);
     }
 
@@ -175,6 +195,7 @@ public class ConcertService {
             throw new BusinessException(ConcertErrorCode.NOT_FOUND_CONCERTLIKE);
         }
         concertLikeRepository.delete(concertLike);
+        concertRedisRepository.deleteUserLikedCount(user);
         concertRepository.concertLikeCountDown(concertId);
     }
 

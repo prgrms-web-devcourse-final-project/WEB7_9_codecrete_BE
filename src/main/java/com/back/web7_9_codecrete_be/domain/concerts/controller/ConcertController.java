@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.sql.ast.tree.expression.Summarization;
 import org.springdoc.core.converters.models.PageableAsQueryParam;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -74,6 +75,27 @@ public class ConcertController {
         User user = rq.getUser();
         return RsData.success(concertService.getLikedConcertsList(pageable, user));
     }
+
+    @Operation(summary = "공연 총 개수 조회", description = "저장된 공연의 총 개수를 조회합니다.")
+    @GetMapping("totalConcertCount")
+    public RsData<Long> getTotalConcertCount(){
+        return RsData.success(concertService.getTotalConcertsCount());
+    }
+
+    @Operation(summary = "티켓팅 일정이 다가오는 공연의 개수 조회" ,
+            description = "티켓팅 일정 정보가 있고, 티켓팅 일정이 다가오는 공연의 개수를 조회합니다. <br/>list/TICKETING에 대응하는 공연의 개수입니다.")
+    @GetMapping("totalTicketingConcertCount")
+    public RsData<Long> getTotalTicketingConcertCount(){
+        return RsData.success(concertService.getTotalTicketingConcertsCount());
+    }
+
+    @Operation(summary = "좋아요 누른 공연의 개수 조회", description = "현재 로그인한 사용자가 좋아요를 누른 공연의 개수를 조회합니다.")
+    @GetMapping("likedConcertCount")
+    public RsData<Long> getLikedConcertCount(){
+        User user = rq.getUser();
+        return RsData.success(concertService.getTotalLikedConcertsCount(user));
+    }
+
 
     @Operation(summary = "공연 상세 조회", description = "공연에 대한 상세 목록을 조회합니다.")
     @GetMapping("concertDetail")

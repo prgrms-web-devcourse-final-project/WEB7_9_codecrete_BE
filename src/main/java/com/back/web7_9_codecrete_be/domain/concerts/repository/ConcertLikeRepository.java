@@ -39,5 +39,7 @@ public interface ConcertLikeRepository extends JpaRepository<ConcertLike, Long> 
     List<ConcertLike> getTodayConcertTicketingLikes(
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
+
+    Long countByUser(User user);
 }
 

@@ -3,11 +3,11 @@ package com.back.web7_9_codecrete_be.domain.concerts.repository;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ListSort;
+import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.*;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Repository;
 
 import java.util.*;
@@ -27,6 +27,8 @@ public class ConcertRedisRepository {
     private static final String CONCERT_LIST_PREFIX = "concertList: ";
 
     private static final String VIEW_COUNT_MAP = "viewCountMap";
+
+    private static final String CONCERTS_COUNT_PREFIX = "totalConcertsCount: ";
 
     private static final int HOUR = 3600;
 
@@ -158,6 +160,48 @@ public class ConcertRedisRepository {
         } else {
             log.info("no items with prefix: %s".formatted(prefix));
         }
+    }
+
+    // 총 공연의 개수 저장
+    public Long saveTotalConcertsCount(Long totalConcertsCount, ListSort sort) {
+        redisTemplate.opsForValue().set(CONCERTS_COUNT_PREFIX + sort.name(),totalConcertsCount.toString());
+        return totalConcertsCount;
+    }
+
+    // 총 공연의 개수 조회
+    public Long getTotalConcertsCount(ListSort sort) {
+        String raw =  redisTemplate.opsForValue().get(CONCERTS_COUNT_PREFIX + sort.name());
+        if (raw == null) return -1L;
+        else return Long.parseLong(redisTemplate.opsForValue().get(CONCERTS_COUNT_PREFIX +  sort.name()));
+    }
+
+    // 총 공연의 개수 삭제
+    public void deleteTotalConcertsCount(ListSort sort) {
+        redisTemplate.delete(CONCERTS_COUNT_PREFIX+sort.name());
+    }
+
+    // 사용자가 좋아요를 누른 공연의 개수 조회(임시 캐시 느낌으로 짧게 저장, 조회시 시간 갱신 ~1일
+    public Long getUserLikedCount(User user) {
+        String raw = redisTemplate.opsForValue().get(CONCERTS_COUNT_PREFIX + user.getId());
+        if (raw == null) return -1L;
+        redisTemplate.expire(CONCERTS_COUNT_PREFIX + user.getId(), 1, TimeUnit.DAYS);
+        return Long.parseLong(redisTemplate.opsForValue().get(CONCERTS_COUNT_PREFIX + user.getId()));
+    }
+
+    // 사용자가 좋아요를 누른 공연의 개수 저장
+    public Long saveUserLikedCount(User user,Long count) {
+        redisTemplate.opsForValue().set(
+                CONCERTS_COUNT_PREFIX + user.getId(),
+                count.toString(),
+                1,
+                TimeUnit.DAYS
+        );
+        return count;
+    }
+
+    // 좋아요 누른 공연의 개수 캐시 삭제
+    public void deleteUserLikedCount(User user) {
+        redisTemplate.delete(CONCERTS_COUNT_PREFIX + user.getId());
     }
 
 
