@@ -2,6 +2,7 @@ package com.back.web7_9_codecrete_be.domain.location.controller;
 
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoLocalResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoMobilityResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoRouteTransitResponse;
 import com.back.web7_9_codecrete_be.domain.location.service.KakaoLocalService;
 import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
@@ -116,6 +117,29 @@ public class KakaoApiController {
 
         return route0.getSummary();
 
+    }
+
+    @PostMapping("/navigate/onlyguide")
+    public List<KakaoRouteTransitResponse.Guide> navigateOnlyGuides(
+            @RequestParam double startX,
+            @RequestParam double startY,
+            @RequestParam double endX,
+            @RequestParam double endY,
+            @RequestParam double wayX,
+            @RequestParam double wayY
+    ) {
+        KakaoRouteTransitResponse res = kakaoLocalService.NaviSearchTransit(startX, startY, endX, endY, wayX, wayY);
+
+        if (res == null || res.getRoutes() == null || res.getRoutes().isEmpty()) {
+            return List.of();
+        }
+
+        KakaoRouteTransitResponse.Route route0 = res.getRoutes().get(0);
+
+        return route0.getSections().stream()
+                .filter(section -> section.getGuides() != null && !section.getGuides().isEmpty())
+                .flatMap(section -> section.getGuides().stream())
+                .toList();
     }
 }
 

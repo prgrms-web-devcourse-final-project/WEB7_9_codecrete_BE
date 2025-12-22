@@ -3,6 +3,7 @@ package com.back.web7_9_codecrete_be.domain.location.service;
 import com.back.web7_9_codecrete_be.domain.location.dto.KakaoCoordinateResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoLocalResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoMobilityResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoRouteTransitResponse;
 import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -127,6 +128,23 @@ public class KakaoLocalService {
             throw new BusinessException(LocationErrorCode.ROUTE_NOT_FOUND);
         }
 
+        return response;
+    }
+
+    public KakaoRouteTransitResponse NaviSearchTransit(double startX, double startY
+    , double endX, double endY, double wayX, double wayY){
+        KakaoRouteTransitResponse response = kakaoMobilityClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v1/waypoints/directions")
+                        .queryParam("origin", startX + "," + startY)
+                        .queryParam("destination", endX + "," + endY)
+                        .queryParam("waypoints", wayX + "," + wayY)
+                        .queryParam("priority", "TIME")
+                        .queryParam("summary", "false")
+                        .build()
+                )
+                .retrieve()
+                .body(KakaoRouteTransitResponse.class);
         return response;
     }
 }

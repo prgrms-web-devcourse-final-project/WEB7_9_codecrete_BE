@@ -1,10 +1,8 @@
 package com.back.web7_9_codecrete_be.domain.location.service;
 
-import com.back.web7_9_codecrete_be.domain.location.dto.response.TmapRequest;
+import com.back.web7_9_codecrete_be.domain.location.dto.request.TmapRequest;
 import com.back.web7_9_codecrete_be.domain.location.dto.request.TmapSummaryRequest;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.TmapSummaryAllResponse;
-import com.back.web7_9_codecrete_be.domain.location.dto.response.TmapSummaryResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;

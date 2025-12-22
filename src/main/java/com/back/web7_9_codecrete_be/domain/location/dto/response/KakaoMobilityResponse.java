@@ -39,7 +39,7 @@ public class KakaoMobilityResponse {
 
 
     @Getter
-    public static class Guide {   // ✅ 추가
+    public static class Guide {
         private String name;
         private double x;
         private double y;
