@@ -13,7 +13,12 @@ public class ConcertTicketTimeSetRequest {
     @NotNull(message = "예매 시작 시간 입력시 해당 공연의 ID 값 입력은 필수입니다.")
     private Long  concertId;
 
-    @Schema(description = "티켓팅 시간입니다.")
+    @Schema(description = "티켓팅 시작 시간입니다.")
     @NotNull(message = "예매 시작 시간 설정시 시간 입력은 필수입니다.")
     private LocalDateTime ticketTime;
+
+
+    @Schema(description = "티켓팅 종료 시간입니다.")
+    @NotNull(message = "예매 종료 시간 설정시 시간 입력은 필수입니다.")
+    private LocalDateTime ticketEndTime;
 }
