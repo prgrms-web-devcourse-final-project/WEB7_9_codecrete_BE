@@ -202,7 +202,7 @@ public class ConcertController {
             @Schema(description = """
                     <h3>조회 기준이 되는 concertId입니다.</h3>
                     <hr/>
-                    DB에 저장되어 있는 공연의 ID 값을 기준으로 해당 공연의 공연장 상세 정보를조회합니다. <br/>
+                    DB에 저장되어 있는 공연의 ID 값을 기준으로 해당 공연의 공연장 상세 정보를 조회합니다. <br/>
                     <strong>?concertId={concertId}</strong> 로 값을 넘기시면 됩니다.
                     """)
             long concertId
@@ -210,11 +210,6 @@ public class ConcertController {
         return RsData.success(concertService.getConcertPlaceDetail(concertId));
     }
 
-    @PostMapping("autoSet")
-    public RsData<Void> autoSetConcert(){
-        concertService.saveTitles();
-        return RsData.success(null);
-    }
 
     @GetMapping("autoComplete")
     public RsData<List<String>> autoCompleteConcert(
@@ -225,9 +220,4 @@ public class ConcertController {
         return RsData.success(concertService.autoTest(keyword,start,end));
     }
 
-    @PostMapping("autoDelete")
-    public RsData<Void> autoDeleteConcert(){
-        concertService.resetAutoComplete();
-        return RsData.success(null);
-    }
 }
