@@ -9,6 +9,7 @@ import com.back.web7_9_codecrete_be.domain.plans.dto.response.PlanDeleteResponse
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.PlanDetailResponse;
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.PlanListResponse;
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.PlanResponse;
+import com.back.web7_9_codecrete_be.domain.plans.dto.response.PlanShareLinkResponse;
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.ScheduleResponse;
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.ScheduleListResponse;
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.ScheduleDeleteResponse;
@@ -212,48 +213,6 @@ public class PlanController {
     }
 
     /**
-     * 계획 공유 초대
-     *
-     * @param planId 계획 ID
-     * @return 성공 메시지 (200 OK)
-     */
-    @PostMapping("/invite/{planId}")
-    @Operation(summary = "계획 공유 초대", description = "다른 사용자에게 계획 공유를 초대합니다. 계획의 소유자 또는 편집 권한이 있는 사용자만 초대할 수 있습니다. 초대된 사용자는 수락 또는 거절할 수 있습니다.")
-    public RsData<Void> invitePlan(@PathVariable Long planId) {
-        User user = rq.getUser();
-        // TODO: 구현 필요
-        return RsData.success("계획 공유 초대 성공", null);
-    }
-
-    /**
-     * 계획 공유 수락
-     *
-     * @param planId 계획 ID
-     * @return 성공 메시지 (200 OK)
-     */
-    @PostMapping("/accept/{planId}")
-    @Operation(summary = "계획 공유 수락", description = "받은 계획 공유 초대를 수락합니다. 수락 시 해당 계획에 참가자로 추가되며, 초대 시 설정된 역할(Editor 또는 Viewer)로 참여하게 됩니다.")
-    public RsData<Void> acceptPlanInvite(@PathVariable Long planId) {
-        User user = rq.getUser();
-        // TODO: 구현 필요
-        return RsData.success("계획 공유 수락 성공", null);
-    }
-
-    /**
-     * 계획 공유 거절
-     *
-     * @param planId 계획 ID
-     * @return 성공 메시지 (200 OK)
-     */
-    @PostMapping("/deny/{planId}")
-    @Operation(summary = "계획 공유 거절", description = "받은 계획 공유 초대를 거절합니다. 거절 시 해당 계획에 참가자로 추가되지 않으며, 초대 상태가 거절로 변경됩니다.")
-    public RsData<Void> denyPlanInvite(@PathVariable Long planId) {
-        User user = rq.getUser();
-        // TODO: 구현 필요
-        return RsData.success("계획 공유 거절 성공", null);
-    }
-
-    /**
      * 계획 공유 인원 추방
      *
      * @param planId 계획 ID
@@ -282,5 +241,61 @@ public class PlanController {
         User user = rq.getUser();
         // TODO: 구현 필요
         return RsData.success("계획 나가기 성공", null);
+    }
+
+    /**
+     * 공유 링크 생성 (UUID 기반 13자)
+     *
+     * @param planId 계획 ID
+     * @return 공유 링크 정보 (200 OK)
+     */
+    @PostMapping("/{planId}/share/link")
+    @Operation(summary = "공유 링크 생성", description = "플랜 공유를 위한 UUID 기반 13자 토큰 링크를 생성합니다. 계획의 소유자 또는 편집 권한이 있는 사용자만 링크를 생성할 수 있습니다.")
+    public RsData<PlanShareLinkResponse> generateShareLink(@PathVariable Long planId) {
+        User user = rq.getUser();
+        PlanShareLinkResponse response = planService.generateShareLink(planId, user);
+        return RsData.success("공유 링크 생성 성공", response);
+    }
+
+    /**
+     * 공유 링크로 플랜 조회 (참가자 생성 없이 조회만)
+     *
+     * @param shareToken 공유 토큰 (UUID 기반 13자)
+     * @return 플랜 상세 정보 (200 OK)
+     */
+    @GetMapping("/share/{shareToken}")
+    @Operation(summary = "공유 링크로 플랜 조회", description = "공유 링크 토큰을 통해 플랜을 조회합니다. 참가자 생성 없이 플랜 정보만 조회합니다.")
+    public RsData<PlanDetailResponse> getPlanByShareToken(@PathVariable String shareToken) {
+        User user = rq.getUser();
+        PlanDetailResponse response = planService.getPlanByShareToken(shareToken, user);
+        return RsData.success("플랜 조회 성공", response);
+    }
+
+    /**
+     * 공유 링크로 플랜 참가 수락
+     *
+     * @param shareToken 공유 토큰 (UUID 기반 13자)
+     * @return 플랜 상세 정보 (200 OK)
+     */
+    @PostMapping("/share/{shareToken}/accept")
+    @Operation(summary = "공유 링크로 플랜 참가 수락", description = "공유 링크 토큰을 통해 플랜 참가를 수락합니다. 참가자가 생성되며 상태가 ACCEPTED로 설정됩니다.")
+    public RsData<PlanDetailResponse> acceptPlanInvitation(@PathVariable String shareToken) {
+        User user = rq.getUser();
+        PlanDetailResponse response = planService.acceptPlanInvitation(shareToken, user);
+        return RsData.success("플랜 참가 수락 성공", response);
+    }
+
+    /**
+     * 공유 링크 삭제
+     *
+     * @param planId 계획 ID
+     * @return 성공 메시지 (200 OK)
+     */
+    @DeleteMapping("/{planId}/share/link")
+    @Operation(summary = "공유 링크 삭제", description = "생성된 공유 링크를 삭제합니다. 계획의 소유자 또는 편집 권한이 있는 사용자만 링크를 삭제할 수 있습니다.")
+    public RsData<Void> deleteShareLink(@PathVariable Long planId) {
+        User user = rq.getUser();
+        planService.deleteShareLink(planId, user);
+        return RsData.success("공유 링크 삭제 성공", null);
     }
 }
