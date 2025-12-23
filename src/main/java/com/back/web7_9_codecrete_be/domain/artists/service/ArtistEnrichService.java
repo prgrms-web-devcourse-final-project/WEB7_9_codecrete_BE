@@ -189,7 +189,7 @@ public class ArtistEnrichService {
         // 기존 artistType이 있으면 유지, 없으면 가져온 값 사용
         String artistTypeStr = result.artistType != null ? result.artistType : 
                 (artist.getArtistType() != null ? artist.getArtistType().name() : null);
-        
+
         // String을 ArtistType enum으로 변환
         ArtistType artistType;
         if (artistTypeStr != null) {
@@ -329,8 +329,8 @@ public class ArtistEnrichService {
                                             artist.getMusicBrainzId(), artistGroup);
                                 }
                             }
-                        }
-                        
+        }
+
                         if (artistType != null || artistGroup != null) {
                             log.info("✅ -1단계 성공 (MBID 직접 검색): artistId={}, mbid={}, qid={}, type={}, group={}", 
                                     artist.getId(), artist.getMusicBrainzId(), mbidWikidataQid, artistType, artistGroup);
@@ -459,13 +459,13 @@ public class ArtistEnrichService {
                                                 artist.getSpotifyArtistId(), artistGroup, groups);
                                     } else {
                                         // SPARQL로 못 찾으면 기존 방식 시도
-                                        artistGroup = resolveGroupNameFromWikidata(entity);
-                                        if (artistGroup != null) {
-                                            source += "Wikidata ";
+                artistGroup = resolveGroupNameFromWikidata(entity);
+                if (artistGroup != null) {
+                    source += "Wikidata ";
                                             log.debug("소속 그룹 추출 성공 (Wikidata): spotifyId={}, group={}", 
                                                     artist.getSpotifyArtistId(), artistGroup);
-                                        }
-                                    }
+            }
+        }
                                 }
                                 // Wikidata에서 못 찾으면 MusicBrainz에서 시도
                                 if (artistGroup == null && mbInfo.getArtistGroup() != null && 
@@ -499,9 +499,9 @@ public class ArtistEnrichService {
                         
                         // MBID 상세 조회
                         Optional<MusicBrainzClient.ArtistInfo> mbInfoOpt = musicBrainzClient.getArtistByMbid(mbid);
-                        if (mbInfoOpt.isPresent()) {
-                            MusicBrainzClient.ArtistInfo mbInfo = mbInfoOpt.get();
-                            
+            if (mbInfoOpt.isPresent()) {
+                MusicBrainzClient.ArtistInfo mbInfo = mbInfoOpt.get();
+
                             // Type 덮어쓰기 정책: 합의(consensus) 방식
                             if (mbInfo.getArtistType() != null && !mbInfo.getArtistType().isBlank() && 
                                 "spotify-url".equals(mbidSource)) {
@@ -517,7 +517,7 @@ public class ArtistEnrichService {
                                 } else if (wdType == null) {
                                     // Wikidata에서 type을 못 찾았으면 MusicBrainz 사용
                                     artistType = mbType;
-                                    source += "MusicBrainz ";
+                    source += "MusicBrainz ";
                                     log.debug("artistType 추출 성공 (MusicBrainz, Wikidata type 없음): spotifyId={}, mbid={}, type={}", 
                                             artist.getSpotifyArtistId(), mbid, mbType);
                                 } else {
@@ -530,8 +530,8 @@ public class ArtistEnrichService {
                             // SOLO일 때만 group 추출 (MusicBrainz만 사용, Wikidata는 이미 시도했거나 없음)
                             if ("SOLO".equals(artistType) && artistGroup == null) {
                                 if (mbInfo.getArtistGroup() != null && !mbInfo.getArtistGroup().isBlank()) {
-                                    artistGroup = mbInfo.getArtistGroup();
-                                    source += "MusicBrainz ";
+                    artistGroup = mbInfo.getArtistGroup();
+                    source += "MusicBrainz ";
                                     log.debug("소속 그룹 추출 성공 (MusicBrainz): spotifyId={}, mbid={}, group={}", 
                                             artist.getSpotifyArtistId(), mbid, artistGroup);
                                 }
@@ -619,7 +619,7 @@ public class ArtistEnrichService {
         }
 
         return new EnrichResult(nameKo, artistGroup, artistType, source.trim());
-    }
+        }
 
     // Wikidata 엔티티에서 정보 추출 (한국이름-활동명, 소속그룹, 솔로/그룹)
     private EnrichResult extractInfoFromWikidata(JsonNode entity) {
