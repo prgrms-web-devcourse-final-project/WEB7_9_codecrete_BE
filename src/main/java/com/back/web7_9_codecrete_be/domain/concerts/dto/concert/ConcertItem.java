@@ -1,8 +1,15 @@
 package com.back.web7_9_codecrete_be.domain.concerts.dto.concert;
 
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
@@ -10,6 +17,7 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
+@RequiredArgsConstructor
 public class ConcertItem {
 
     @Schema(description = "콘서트 Id입니다.")
@@ -21,12 +29,18 @@ public class ConcertItem {
     @Schema(description = "콘서트 장소 이름입니다.")
     private String placeName;
 
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     @Schema(description = "콘서트 예매 시작 날짜입니다.",format = "yyyy-MM-ddThh:mm:ss")
     private LocalDateTime ticketTime;
 
+    @JsonSerialize(using = LocalDateSerializer.class)
+    @JsonDeserialize(using = LocalDateDeserializer.class)
     @Schema(description = "콘서트 시작 날짜입니다.",format = "yyyy-MM-dd")
     private LocalDate startDate ;
 
+    @JsonSerialize(using = LocalDateSerializer.class)
+    @JsonDeserialize(using = LocalDateDeserializer.class)
     @Schema(description = "콘서트 종료 날짜입니다.",format = "yyyy-MM-dd")
     private LocalDate endDate ;
 
@@ -59,7 +73,7 @@ public class ConcertItem {
         this.likeCount = concert.getLikeCount();
     }
 
-    public ConcertItem(long id, String name, String placeName,LocalDateTime ticketTime, LocalDate startDate, LocalDate endDate, String posterUrl, int maxPrice, int minPrice, int viewCount, int likeCount) {
+    public ConcertItem(long id, String name, String placeName, LocalDateTime ticketTime, LocalDate startDate, LocalDate endDate, String posterUrl, int maxPrice, int minPrice, int viewCount, int likeCount) {
         this.id = id;
         this.name = name;
         this.placeName = placeName;

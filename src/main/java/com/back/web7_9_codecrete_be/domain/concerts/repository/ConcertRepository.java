@@ -20,110 +20,60 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
 
     @Query("""
     SELECT
-    new com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem(
-    c.concertId as id,
-    c.name as name,
-    c.concertPlace.placeName as placeName,
-    c.ticketTime as ticketTime,
-    c.startDate as startDate,
-    c.endDate as endDate,
-    c.posterUrl as posterUrl,
-    c.maxPrice as maxPrice,
-    c.minPrice as minPrice,
-    c.viewCount as viewCount,
-    c.likeCount as likeCount
-    )
-    FROM 
+    c
+    FROM
     Concert c
+    JOIN FETCH
+    c.concertPlace cp
 """)
     List<ConcertItem> getConcertItems(Pageable pageable);
 
-    @Query("""
+    @Query(value = """
     SELECT
-    new com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem(
-    c.concertId as id,
-    c.name as name,
-    c.concertPlace.placeName as placeName,
-    c.ticketTime as ticketTime,
-    c.startDate as startDate,
-    c.endDate as endDate,
-    c.posterUrl as posterUrl,
-    c.maxPrice as maxPrice,
-    c.minPrice as minPrice,
-    c.viewCount as viewCount,
-    c.likeCount as likeCount
-    )
-    FROM 
+    c
+    FROM
     Concert c
-    ORDER BY 
+    JOIN FETCH
+    c.concertPlace cp
+    ORDER BY
     c.apiConcertId
-""")
+""") // Kopis API의 ID 순서대로
     List<ConcertItem> getConcertItemsOrderByApiId(Pageable pageable);
 
     @Query("""
     SELECT
-    new com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem(
-    c.concertId as id,
-    c.name as name,
-    c.concertPlace.placeName as placeName,
-    c.ticketTime as ticketTime,
-    c.startDate as startDate,
-    c.endDate as endDate,
-    c.posterUrl as posterUrl,
-    c.maxPrice as maxPrice,
-    c.minPrice as minPrice,
-    c.viewCount as viewCount,
-    c.likeCount as likeCount
-    )
-    FROM 
+    c
+    FROM
     Concert c
-    ORDER BY 
+    JOIN FETCH
+    c.concertPlace cp
+    ORDER BY
     c.viewCount
-    DESC 
-""")
+    DESC
+""") // 조회수 기준 내림차순
     List<ConcertItem> getConcertItemsOrderByViewCountDesc(Pageable pageable);
 
     @Query("""
     SELECT
-    new com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem(
-    c.concertId as id,
-    c.name as name,
-    c.concertPlace.placeName as placeName,
-    c.ticketTime as ticketTime,
-    c.startDate as startDate,
-    c.endDate as endDate,
-    c.posterUrl as posterUrl,
-    c.maxPrice as maxPrice,
-    c.minPrice as minPrice,
-    c.viewCount as viewCount,
-    c.likeCount as likeCount
-    )
-    FROM 
+    c
+    FROM
     Concert c
-    ORDER BY 
+    JOIN FETCH
+    c.concertPlace cp
+    ORDER BY
     c.likeCount
-    desc 
-""")
+    desc
+""") // 좋아요 기준 내림차순
     List<ConcertItem> getConcertItemsOrderByLikeCountDesc(Pageable pageable);
 
 
     @Query("""
     SELECT
-    new com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem(
-    c.concertId as id,
-    c.name as name,
-    c.concertPlace.placeName as placeName,
-    c.ticketTime as ticketTime,
-    c.startDate as startDate,
-    c.endDate as endDate,
-    c.posterUrl as posterUrl,
-    c.maxPrice as maxPrice,
-    c.minPrice as minPrice,
-    c.viewCount as viewCount,
-    c.likeCount as likeCount
-    )
+    c
     FROM 
     Concert c
+    JOIN FETCH
+    c.concertPlace cp
     WHERE
     c.startDate >= :fromDate
     ORDER BY 
@@ -137,21 +87,11 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
 
     @Query("""
     SELECT
-    new com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem(
-    c.concertId as id,
-    c.name as name,
-    c.concertPlace.placeName as placeName,
-    c.ticketTime as ticketTime,
-    c.startDate as startDate,
-    c.endDate as endDate,
-    c.posterUrl as posterUrl,
-    c.maxPrice as maxPrice,
-    c.minPrice as minPrice,
-    c.viewCount as viewCount,
-    c.likeCount as likeCount
-    )
+    c
     FROM 
     Concert c
+    JOIN FETCH
+    c.concertPlace cp
     WHERE
     c.ticketTime >= :fromDate
     AND 
@@ -167,21 +107,11 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
 
     @Query("""
     SELECT
-    new com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem(
-    c.concertId as id,
-    c.name as name,
-    c.concertPlace.placeName as placeName,
-    c.ticketTime as ticketTime,
-    c.startDate as startDate,
-    c.endDate as endDate,
-    c.posterUrl as posterUrl,
-    c.maxPrice as maxPrice,
-    c.minPrice as minPrice,
-    c.viewCount as viewCount,
-    c.likeCount as likeCount
-    )
+    c
     FROM 
     Concert c
+    JOIN FETCH
+    c.concertPlace cp
     WHERE 
     c.ticketTime IS NULL
     ORDER BY 
@@ -193,26 +123,16 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     );
 
     @Query("""
-    SELECT 
-    new com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem(
-    c.concertId as id,
-    c.name as name,
-    c.concertPlace.placeName as placeName,
-    c.ticketTime as ticketTime,
-    c.startDate as startDate,
-    c.endDate as endDate,
-    c.posterUrl as posterUrl,
-    c.maxPrice as maxPrice,
-    c.minPrice as minPrice,
-    c.viewCount as viewCount,
-    c.likeCount as likeCount
-    )
-    FROM 
+    SELECT
+    c
+    FROM
     Concert c,
     ConcertLike cl
-    WHERE 
+    JOIN FETCH
+    c.concertPlace cp
+    WHERE
     c.concertId = cl.concert.concertId
-    AND 
+    AND
     cl.user.id = :userId
     ORDER BY
     cl.createDate
@@ -223,21 +143,11 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
                                            @Param("userId") Long userId);
     @Query("""
     SELECT
-    new com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem(
-    c.concertId as id,
-    c.name as name,
-    c.concertPlace.placeName as placeName,
-    c.ticketTime as ticketTime,
-    c.startDate as startDate,
-    c.endDate as endDate,
-    c.posterUrl as posterUrl,
-    c.maxPrice as maxPrice,
-    c.minPrice as minPrice,
-    c.viewCount as viewCount,
-    c.likeCount as likeCount
-    )
+    c
     FROM 
     Concert c
+    JOIN FETCH
+    c.concertPlace cp
     WHERE 
     c.name LIKE %:keyword%
     ORDER BY 
@@ -282,6 +192,15 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     where c.concertId = :concertId
 """)
     Integer concertViewCountUp(@Param("concertId") long concertId);
+
+    @Modifying
+    @Query("""
+    UPDATE 
+    Concert c
+    SET c.viewCount = :viewCount
+    where c.concertId = :concertId
+""")
+    Integer concertViewCountSet(@Param("concertId") long concertId, @Param("viewCount") int viewCount);
 
     @Modifying
     @Query("""

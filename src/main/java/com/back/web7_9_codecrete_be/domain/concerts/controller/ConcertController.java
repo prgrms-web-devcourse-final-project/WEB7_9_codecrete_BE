@@ -3,10 +3,7 @@ package com.back.web7_9_codecrete_be.domain.concerts.controller;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concert.ConcertListResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceListResponse;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertLikeResponse;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ListSort;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.*;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concertPlace.PlaceDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOfficeElement;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.TicketOffice;
@@ -80,7 +77,7 @@ public class ConcertController {
 
     @Operation(summary = "공연 상세 조회", description = "공연에 대한 상세 목록을 조회합니다.")
     @GetMapping("concertDetail")
-    public ConcertDetailResponse getConcertDetail(
+    public RsData<ConcertDetailResponse> getConcertDetail(
             @RequestParam
             @Schema(description = """
                     <h3>조회 기준이 되는 concertId입니다.</h3>
@@ -90,7 +87,7 @@ public class ConcertController {
                     """)
             long concertId
     ) {
-        return concertService.getConcertDetail(concertId);
+        return RsData.success(concertService.getConcertDetail(concertId));
     }
 
     @Operation(summary = "공연 예매처 조회", description = "공연에 대한 예매처들을 조회합니다.")
