@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.artists.service;
 
+import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistSort;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.UpdateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistListResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
@@ -16,11 +17,16 @@ import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.ArtistErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.AccessLevel;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
@@ -57,14 +63,42 @@ public class ArtistService {
     }
 
     @Transactional(readOnly = true)
-    public List<ArtistListResponse> listArtist() {
-        return artistRepository.findAll().stream()
-                .map(ArtistListResponse::from)
-                .toList();
+    public Slice<ArtistListResponse> listArtist(Pageable pageable, User user, ArtistSort sort) {
+        // Pageable의 sort를 제거 (우리가 정의한 sort 파라미터만 사용)
+        Pageable pageableWithoutSort = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize()
+        );
+
+        // 로그인한 유저가 좋아요한 아티스트 ID 목록 조회
+        Set<Long> likedArtistIds = new HashSet<>();
+        if (user != null) {
+            List<Long> artistIds = artistLikeRepository.findArtistIdsByUserId(user.getId());
+            likedArtistIds.addAll(artistIds);
+        }
+
+        final Set<Long> finalLikedArtistIds = likedArtistIds;
+
+        // 정렬에 따라 다른 쿼리 사용
+        Slice<Artist> artistSlice;
+        if (sort == null) {
+            // sort가 없으면 기본 정렬 (id 순)
+            artistSlice = artistRepository.findAllBy(pageableWithoutSort);
+        } else {
+            artistSlice = switch (sort) {
+                case NAME -> artistRepository.findAllOrderByName(pageableWithoutSort);
+                case LIKE -> artistRepository.findAllOrderByLikeCountDesc(pageableWithoutSort);
+            };
+        }
+
+        return artistSlice.map(artist -> {
+            boolean isLiked = finalLikedArtistIds.contains(artist.getId());
+            return ArtistListResponse.from(artist, isLiked);
+        });
     }
 
     @Transactional(readOnly = true)
-    public ArtistDetailResponse getArtistDetail(Long artistId) {
+    public ArtistDetailResponse getArtistDetail(Long artistId, User user) {
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
 
@@ -74,13 +108,20 @@ public class ArtistService {
 
         long likeCount = artistLikeRepository.countByArtistId(artistId);
 
+        // 로그인한 유저의 좋아요 여부 확인
+        boolean isLiked = false;
+        if (user != null) {
+            isLiked = artistLikeRepository.existsByArtistAndUser(artist, user);
+        }
+
         return spotifyService.getArtistDetail(
                 artist.getSpotifyArtistId(),
                 artist.getArtistGroup(),
                 artist.getArtistType(),
                 likeCount,
                 artist.getId(),
-                artist.getGenre() != null ? artist.getGenre().getId() : null
+                artist.getGenre() != null ? artist.getGenre().getId() : null,
+                isLiked
         );
     }
 

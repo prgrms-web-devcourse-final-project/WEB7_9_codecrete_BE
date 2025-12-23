@@ -2,6 +2,7 @@ package com.back.web7_9_codecrete_be.domain.artists.repository;
 
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -25,4 +26,21 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     List<Artist> findTop5ByGenreIdAndIdNot(Long genreId, long excludeId);
 
     List<Artist> findAllByArtistNameContainingIgnoreCaseOrNameKoContainingIgnoreCase(String artistName1, String artistName2);
+
+    Slice<Artist> findAllBy(Pageable pageable);
+
+    // 이름순 정렬 (nameKo 우선, 없으면 artistName) - 가나다순
+    @Query("""
+        SELECT a FROM Artist a 
+        ORDER BY 
+        CASE 
+            WHEN a.nameKo IS NOT NULL AND a.nameKo != '' THEN a.nameKo 
+            ELSE a.artistName 
+        END ASC
+    """)
+    Slice<Artist> findAllOrderByName(Pageable pageable);
+
+    // 인기순 정렬 (좋아요 많은 순)
+    @Query("SELECT a FROM Artist a ORDER BY a.likeCount DESC")
+    Slice<Artist> findAllOrderByLikeCountDesc(Pageable pageable);
 }

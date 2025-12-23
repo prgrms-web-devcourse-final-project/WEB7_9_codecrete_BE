@@ -38,6 +38,9 @@ public class Concert {
     @Column(name = "ticket_time", nullable = true)
     private LocalDateTime ticketTime;
 
+    @Column(name = "ticket_end_time", nullable = true)
+    private LocalDateTime ticketEndTime;
+
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
@@ -62,11 +65,12 @@ public class Concert {
 
 
 
-    public Concert(ConcertPlace concertPlace, String name, String content, LocalDate startDate, LocalDate endDate, LocalDateTime ticketTime, int maxPrice, int minPrice, String posterUrl,String apiConcertId) {
+    public Concert(ConcertPlace concertPlace, String name, String content, LocalDate startDate, LocalDate endDate, LocalDateTime ticketTime,LocalDateTime ticketEndTime, int maxPrice, int minPrice, String posterUrl,String apiConcertId) {
         this.concertPlace = concertPlace;
         this.name = name;
         this.content = content;
         this.ticketTime = ticketTime;
+        this.ticketEndTime = ticketTime;
         this.startDate = startDate;
         this.endDate = endDate;
         this.createdDate = LocalDateTime.now();
@@ -109,8 +113,9 @@ public class Concert {
         return this;
     }
 
-    public Concert ticketTimeSet(LocalDateTime ticketTime){
+    public Concert ticketTimeSet(LocalDateTime ticketTime, LocalDateTime ticketEndTime) {
         this.ticketTime = ticketTime;
+        this.ticketEndTime = ticketEndTime;
         return this;
     }
 

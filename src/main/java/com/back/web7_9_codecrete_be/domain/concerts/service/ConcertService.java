@@ -8,6 +8,7 @@ import com.back.web7_9_codecrete_be.domain.concerts.repository.*;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
 import com.back.web7_9_codecrete_be.global.error.code.ConcertErrorCode;
+import com.back.web7_9_codecrete_be.global.error.code.ErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -235,10 +236,15 @@ public class ConcertService {
         return new ConcertItem(updatedConcert);
     }
 
-    // 공연 시간 설정
+    // 공연 예매 시간 설정
     public ConcertDetailResponse setConcertTicketingTime(ConcertTicketTimeSetRequest concertTicketTimeSetRequest) {
         Concert concert = findConcertByConcertId(concertTicketTimeSetRequest.getConcertId());
-        concert.ticketTimeSet(concertTicketTimeSetRequest.getTicketTime());
+        LocalDateTime ticketTime = concertTicketTimeSetRequest.getTicketTime();
+        LocalDateTime ticketEndTime = concertTicketTimeSetRequest.getTicketEndTime();
+        if(ticketTime.isAfter(ticketEndTime)) throw new BusinessException(ConcertErrorCode.NOT_VALID_TICKETING_TIME);
+        if(ticketTime.isBefore(LocalDateTime.now())) throw new BusinessException(ConcertErrorCode.NOT_VALID_TICKETING_TIME);
+
+        concert.ticketTimeSet(ticketTime, ticketEndTime);
         Concert savedConcert = concertRepository.save(concert);
         return concertRepository.getConcertDetailById(savedConcert.getConcertId());
     }
