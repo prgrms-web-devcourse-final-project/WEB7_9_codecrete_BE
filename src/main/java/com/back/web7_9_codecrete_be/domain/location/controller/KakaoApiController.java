@@ -1,7 +1,11 @@
 package com.back.web7_9_codecrete_be.domain.location.controller;
 
-import com.back.web7_9_codecrete_be.domain.location.dto.KakaoLocalResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoLocalResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoMobilityResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoRouteTransitResponse;
 import com.back.web7_9_codecrete_be.domain.location.service.KakaoLocalService;
+import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
+import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -32,7 +36,7 @@ public class KakaoApiController {
     public List<KakaoLocalResponse.Document> KakaoRestaurants(
             @RequestParam double lat,
             @RequestParam double lon
-    ){
+    ) {
         return kakaoLocalService.searchNearbyRestaurants(lat, lon);
     }
 
@@ -46,7 +50,7 @@ public class KakaoApiController {
     public List<KakaoLocalResponse.Document> KakaoCafes(
             @RequestParam double lat,
             @RequestParam double lon
-    ){
+    ) {
         return kakaoLocalService.searchNearbyCafes(lat, lon);
     }
 
@@ -68,4 +72,74 @@ public class KakaoApiController {
         String addressName = kakaoLocalService.coordinateToAddressName(lat, lon);
         return RsData.success("좌표를 주소로 변환했습니다.", addressName);
     }
+
+
+    @GetMapping("/navigate/guides")
+    public List<KakaoMobilityResponse.Guide> navigateGuides(
+            @RequestParam double startX,
+            @RequestParam double startY,
+            @RequestParam double endX,
+            @RequestParam double endY
+    ) {
+        KakaoMobilityResponse res = kakaoLocalService.NaviSearch(startX, startY, endX, endY);
+
+        if (res == null || res.getRoutes() == null || res.getRoutes().isEmpty()) {
+            return List.of();
+        }
+
+        KakaoMobilityResponse.Route route0 = res.getRoutes().get(0);
+        if (route0.getSections() == null || route0.getSections().isEmpty()) {
+            return List.of();
+        }
+
+        return route0.getSections().stream()
+                .filter(section -> section.getGuides() != null && !section.getGuides().isEmpty())
+                .flatMap(section -> section.getGuides().stream())
+                .toList();
+    }
+    @GetMapping("/navigate/summary")
+    public KakaoMobilityResponse.Summary navigateSummary(
+            @RequestParam double startX,
+            @RequestParam double startY,
+            @RequestParam double endX,
+            @RequestParam double endY
+    ) {
+        KakaoMobilityResponse res = kakaoLocalService.NaviSearchSummary(startX, startY, endX, endY);
+
+        if (res == null || res.getRoutes() == null || res.getRoutes().isEmpty()) {
+            throw new BusinessException(LocationErrorCode.ROUTE_NOT_FOUND);
+        }
+
+        KakaoMobilityResponse.Route route0 = res.getRoutes().get(0);
+        if (route0.getSummary() == null) {
+            throw new BusinessException(LocationErrorCode.ROUTE_NOT_FOUND);
+        }
+
+        return route0.getSummary();
+
+    }
+
+    @PostMapping("/navigate/onlyguide")
+    public List<KakaoRouteTransitResponse.Guide> navigateOnlyGuides(
+            @RequestParam double startX,
+            @RequestParam double startY,
+            @RequestParam double endX,
+            @RequestParam double endY,
+            @RequestParam double wayX,
+            @RequestParam double wayY
+    ) {
+        KakaoRouteTransitResponse res = kakaoLocalService.NaviSearchTransit(startX, startY, endX, endY, wayX, wayY);
+
+        if (res == null || res.getRoutes() == null || res.getRoutes().isEmpty()) {
+            return List.of();
+        }
+
+        KakaoRouteTransitResponse.Route route0 = res.getRoutes().get(0);
+
+        return route0.getSections().stream()
+                .filter(section -> section.getGuides() != null && !section.getGuides().isEmpty())
+                .flatMap(section -> section.getGuides().stream())
+                .toList();
+    }
 }
+

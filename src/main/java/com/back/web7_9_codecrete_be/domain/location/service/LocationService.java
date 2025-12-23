@@ -1,13 +1,10 @@
 package com.back.web7_9_codecrete_be.domain.location.service;
 
-import com.back.web7_9_codecrete_be.domain.location.dto.KakaoLocalResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.request.LocationRequestDto;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.LocationResponseDto;
 import com.back.web7_9_codecrete_be.domain.location.entity.Location;
 import com.back.web7_9_codecrete_be.domain.location.repository.LocationRepository;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
-import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
-import com.back.web7_9_codecrete_be.global.error.code.AuthErrorCode;
 import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
