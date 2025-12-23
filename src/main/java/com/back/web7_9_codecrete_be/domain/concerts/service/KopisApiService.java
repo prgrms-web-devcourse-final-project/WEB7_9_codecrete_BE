@@ -67,9 +67,9 @@ public class KopisApiService {
                 .build();
     }
 
-    @Async
+    @Async // 서버 처리 대비 비동기 실행
     @Transactional
-    public void setConcertsList() throws InterruptedException {
+    public void setConcertsData() throws InterruptedException {
         // 최초 시작 시간 저장
         if(concertUpdateTimeRepository.count() != 0) {
             log.error("이미 최초 저장이 되었습니다!. UpdateConcert를 통해 데이터를 갱신해주십시오!");
@@ -119,6 +119,7 @@ public class KopisApiService {
         }catch (Exception e){
             log.error("공연 목록 저장 도중 오류 발생");
             log.error("오류 내용 : " + e.getMessage());
+            concertRedisRepository.unlockSave(key);
             return;
         }
 
@@ -174,6 +175,7 @@ public class KopisApiService {
         } catch (Exception e) {
             log.error("개별 공연 세부 내용 저장 도중 오류 발생");
             log.error("오류 내용 : " + e.getMessage());
+            concertRedisRepository.unlockSave(key);
             return ;
         }
         ConcertUpdateTime concertUpdateTime = new ConcertUpdateTime(now);

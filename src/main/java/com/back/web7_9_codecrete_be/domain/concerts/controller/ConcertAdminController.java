@@ -31,7 +31,7 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
     @Operation(summary = "초기 공연 정보 저장", description = "25년 12월부터 앞으로 6개월 이후까지의 전체 공연의 정보를 가져와서 저장합니다. 대략 10~12분 정도 시간이 소요됩니다.")
     @PostMapping("setConcertData")
     public RsData<Void> setConcert() throws InterruptedException {
-        kopisApiService.setConcertsList();
+        kopisApiService.setConcertsData();
         return RsData.success(HttpStatus.ACCEPTED,"저장 요청을 보냈습니다",null);
     }
 
