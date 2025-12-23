@@ -1,20 +1,17 @@
 package com.back.web7_9_codecrete_be.domain.concerts.service;
 
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.*;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.WeightedString;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concertPlace.PlaceDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOfficeElement;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.*;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.*;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
-import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
 import com.back.web7_9_codecrete_be.global.error.code.ConcertErrorCode;
-import com.back.web7_9_codecrete_be.global.error.code.ErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
-import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,14 +19,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@EnableScheduling
 public class ConcertService {
     private final ConcertRepository concertRepository;
 
@@ -83,7 +78,7 @@ public class ConcertService {
     }
 
     // 자동완성
-    public List<String> autoTest(String keyword,int start, int end) {
+    public List<AutoCompleteItem> autoCompleteSerch(String keyword, int start, int end) {
         return concertSearchRedisTemplate.getAutoCompleteWord(keyword, start, end);
     }
 
@@ -95,13 +90,19 @@ public class ConcertService {
     // 자동완성 단어 저장
     public void saveTitles(){
         List<Concert>  concerts = concertRepository.findAll();
-        List<String> names = concerts.stream().map(concert -> concert.getName()).toList();
-        List<String> eachWords = new ArrayList<>();
-        for (String name : names) {
-            String[] words = name.split(" ");
-            eachWords.addAll(Arrays.stream(words).toList());
-        }
+        List<String> names = concerts.stream()
+                .map(Concert::getName)
+                .toList();
         concertSearchRedisTemplate.addAllAutoCompleteWord(names);
+    }
+
+    // 자동완성 단어저장 v2
+    public void saveTitles2(){
+        List<Concert>  concerts = concertRepository.findAll();
+        List<WeightedString> weightedStrings = concerts.stream()
+                .map(WeightedString::new)
+                .toList();
+        concertSearchRedisTemplate.addAllWordsWithWeight(weightedStrings);
     }
 
 
@@ -127,7 +128,6 @@ public class ConcertService {
 
     // 조회수 갱신
     @Transactional
-    @Scheduled(cron = "0 0 5 * * * ")
     public void viewCountUpdate(){
         Map<Long,Integer> viewCountMap = concertRedisRepository.getViewCountMap();
         if(viewCountMap == null || viewCountMap.isEmpty()) {
