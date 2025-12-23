@@ -75,7 +75,7 @@ public class AuthService {
         }
         tokenService.issueTokens(user);
 
-        return new LoginResponse(user.getId(), user.getNickname());
+        return new LoginResponse(user.getId(), user.getNickname(), user.getRole());
     }
 
     // 이메일 인증코드 전송
@@ -154,7 +154,7 @@ public class AuthService {
         // 5. 토큰 발급
         tokenService.issueTokens(user);
 
-        return new LoginResponse(user.getId(), user.getNickname());
+        return new LoginResponse(user.getId(), user.getNickname(), user.getRole());
     }
 
     private User registerKakaoUser(KakaoUserInfo info) {
@@ -195,7 +195,7 @@ public class AuthService {
         // 5. 토큰 발급
         tokenService.issueTokens(user);
 
-        return new LoginResponse(user.getId(), user.getNickname());
+        return new LoginResponse(user.getId(), user.getNickname(), user.getRole());
     }
 
     private User registerGoogleUser(GoogleUserInfo info) {

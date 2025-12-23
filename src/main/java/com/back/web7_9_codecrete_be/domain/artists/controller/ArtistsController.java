@@ -45,6 +45,15 @@ public class ArtistsController {
         return RsData.success("enrich 성공", updated);
     }
 
+    @Operation(summary = "MusicBrainz ID 수집", description = "아티스트의 MusicBrainz ID를 수집합니다.")
+    @PostMapping("/musicbrainz-id")
+    public RsData<Integer> fetchMusicBrainzIds(
+            @RequestParam(required = false, defaultValue = "100") int limit
+    ) {
+        int updated = enrichService.fetchMusicBrainzIds(limit);
+        return RsData.success("MusicBrainz ID 수집 성공", updated);
+    }
+
     @Operation(summary = "아티스트 생성", description = "아티스트를 등록합니다.")
     @PostMapping()
     public RsData<Void> create(
