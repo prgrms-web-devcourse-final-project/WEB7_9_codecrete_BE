@@ -9,7 +9,10 @@ import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.ConcertErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,9 +21,12 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
+@EnableScheduling
 public class ConcertService {
     private final ConcertRepository concertRepository;
 
@@ -32,28 +38,25 @@ public class ConcertService {
 
     private final ConcertImageRepository concertImageRepository;
 
+    private final ConcertRedisRepository concertRedisRepository;
 
     // 공연 목록 조회
     public List<ConcertItem> getConcertsList(Pageable pageable, ListSort sort) {
+        List<ConcertItem> concertItems;
+        concertItems = concertRedisRepository.getConcertsList(pageable, sort);
+
+        if(concertItems != null && !concertItems.isEmpty()) return concertItems;
+
         switch (sort) {
-            case LIKE -> {
-                return concertRepository.getConcertItemsOrderByLikeCountDesc(pageable);
-            }
-            case VIEW -> {
-                return concertRepository.getConcertItemsOrderByViewCountDesc(pageable);
-            }
-            case TICKETING -> {
-                return concertRepository.getUpComingTicketingConcertItemsFromDateASC(pageable, LocalDateTime.of(LocalDate.now(), LocalTime.MIN));
-            }
-            case UPCOMING -> {
-                return concertRepository.getUpComingConcertItemsFromDateASC(pageable,LocalDate.now());
-            }
-            case REGISTERED -> {
-                return concertRepository.getConcertItemsOrderByApiId(pageable);
-            }
+            case LIKE -> concertItems = concertRepository.getConcertItemsOrderByLikeCountDesc(pageable);
+            case VIEW -> concertItems = concertRepository.getConcertItemsOrderByViewCountDesc(pageable);
+            case TICKETING -> concertItems = concertRepository.getUpComingTicketingConcertItemsFromDateASC(pageable, LocalDateTime.of(LocalDate.now(), LocalTime.MIN));
+            case UPCOMING -> concertItems = concertRepository.getUpComingConcertItemsFromDateASC(pageable,LocalDate.now());
+            case REGISTERED -> concertItems = concertRepository.getConcertItemsOrderByApiId(pageable);
         }
 
-        return concertRepository.getConcertItems(pageable);
+        concertRedisRepository.listSave(sort,pageable,concertItems);
+        return concertItems;
     }
 
     // 사용자가 좋아요 한 공연 목록 조회
@@ -74,19 +77,62 @@ public class ConcertService {
         return concertRepository.getConcertItemsByKeyword(keyword, pageable);
     }
 
-    // 공연 상세 조회 조회시 조회수 1 증가
+    // 공연 상세 조회 조회시 조회수 1 증가 -> 캐싱에 따른 조회수 불일치 해소를 어떻게 할 것인가? V -> 이제 캐싱된거 날리고 새로운 수치 반영 어케할 것인지 + 여러번 조회수 올릴 시 처리 어떻게 할지
     @Transactional
     public ConcertDetailResponse getConcertDetail(long concertId) {
-        ConcertDetailResponse concertDetailResponse = concertRepository.getConcertDetailById(concertId);
-        List<ConcertImage>  concertImages = concertImageRepository.getConcertImagesByConcert_ConcertId(concertId);
-        List<String> concertImageUrls = new ArrayList<>();
-        for(ConcertImage concertImage : concertImages){
-            concertImageUrls.add(concertImage.getImageUrl());
+        ConcertDetailResponse concertDetailResponse = concertRedisRepository.getDetail(concertId);
+        if(concertDetailResponse == null){
+            concertDetailResponse = concertRepository.getConcertDetailById(concertId);
+            List<ConcertImage>  concertImages = concertImageRepository.getConcertImagesByConcert_ConcertId(concertId);
+            List<String> concertImageUrls = new ArrayList<>();
+            for(ConcertImage concertImage : concertImages){
+                concertImageUrls.add(concertImage.getImageUrl());
+            }
+
+            concertRepository.concertViewCountUp(concertId);
+            concertDetailResponse.setConcertImageUrls(concertImageUrls);
+            concertDetailResponse.setViewCount(concertDetailResponse.getViewCount() + 1);
+            concertRedisRepository.detailSave(concertId, concertDetailResponse);
         }
-        concertRepository.concertViewCountUp(concertId);
-        concertDetailResponse.setConcertImageUrls(concertImageUrls);
-        concertDetailResponse.setViewCount(concertDetailResponse.getViewCount() + 1);
         return concertDetailResponse;
+    }
+
+    // 조회수 갱신
+    @Transactional
+    @Scheduled(cron = "0 0 5 * * * ")
+    public void viewCountUpdate(){
+        Map<Long,Integer> viewCountMap = concertRedisRepository.getViewCountMap();
+        if(viewCountMap == null || viewCountMap.isEmpty()) {
+            log.info("viewCountMap is empty");
+        } else{
+            for (Map.Entry<Long, Integer> viewCountEntry : viewCountMap.entrySet()) {
+                concertRepository.concertViewCountSet(viewCountEntry.getKey(), viewCountEntry.getValue());
+            }
+            concertRedisRepository.deleteViewCountMap();
+            concertRedisRepository.deleteAllConcertsList();
+            log.info("viewCount updated");
+        }
+    }
+
+    // 총 공연 개수 조회
+    public Long getTotalConcertsCount() {
+        Long result = concertRedisRepository.getTotalConcertsCount(ListSort.VIEW);
+        if(result == -1) result = concertRedisRepository.saveTotalConcertsCount(concertRepository.count(), ListSort.VIEW);
+        return result;
+    }
+
+    // todo : 티켓팅 공연 개수 조회
+    public Long getTotalTicketingConcertsCount() {
+        Long result = concertRedisRepository.getTotalConcertsCount(ListSort.TICKETING);
+        if(result == -1) result = concertRedisRepository.saveTotalConcertsCount(concertRepository.countTicketingConcertsFromLocalDateTime(LocalDateTime.of(LocalDate.now(), LocalTime.MIN)), ListSort.TICKETING);
+        return  result;
+    }
+
+    // todo : 좋아요한 공연 개수 조회
+    public Long getTotalLikedConcertsCount(User user) {
+        Long result = concertRedisRepository.getUserLikedCount(user);
+        if(result == -1) result = concertRedisRepository.saveUserLikedCount(user,concertLikeRepository.countByUser(user));
+        return  result;
     }
 
     // N+1 문제 발생해서 버림
@@ -135,6 +181,7 @@ public class ConcertService {
         }
         ConcertLike concertLike = new ConcertLike(concert, user);
         concertLikeRepository.save(concertLike);
+        concertRedisRepository.deleteUserLikedCount(user);
         concertRepository.concertLikeCountUp(concertId);
     }
 
@@ -148,6 +195,7 @@ public class ConcertService {
             throw new BusinessException(ConcertErrorCode.NOT_FOUND_CONCERTLIKE);
         }
         concertLikeRepository.delete(concertLike);
+        concertRedisRepository.deleteUserLikedCount(user);
         concertRepository.concertLikeCountDown(concertId);
     }
 

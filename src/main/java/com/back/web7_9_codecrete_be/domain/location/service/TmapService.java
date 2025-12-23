@@ -1,32 +1,50 @@
 package com.back.web7_9_codecrete_be.domain.location.service;
 
-import com.back.web7_9_codecrete_be.domain.location.dto.KakaoLocalResponse;
-import com.back.web7_9_codecrete_be.domain.location.dto.TmapResponse;
-import lombok.RequiredArgsConstructor;
+import com.back.web7_9_codecrete_be.domain.location.dto.request.TmapRequest;
+import com.back.web7_9_codecrete_be.domain.location.dto.request.TmapSummaryRequest;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.TmapSummaryAllResponse;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestClient;
 
 @Service
-@RequiredArgsConstructor
 public class TmapService {
 
-    private final WebClient TmapClient;
+    private final RestClient tmapRestClient;
 
+    public TmapService(@Qualifier("tmapRestClient") RestClient tmapRestClient) {
+        this.tmapRestClient = tmapRestClient;
+    }
     public String getRoute(double startX, double startY, double endX, double endY) {
 
-        TmapResponse request = new TmapResponse();
-        request.setStartX(String.valueOf(startX));
-        request.setStartY(String.valueOf(startY));
-        request.setEndX(String.valueOf(endX));
-        request.setEndY(String.valueOf(endY));
-        request.setFormat("json");
-        request.setCount(5);
+        TmapRequest req = new TmapRequest();
+        req.setStartX(String.valueOf(startX));
+        req.setStartY(String.valueOf(startY));
+        req.setEndX(String.valueOf(endX));
+        req.setEndY(String.valueOf(endY));
+        req.setCount(5);
+        req.setFormat("json");
 
-        return TmapClient.post()
+        return tmapRestClient.post()
                 .uri("/transit/routes")
-                .bodyValue(request)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(req)
                 .retrieve()
-                .bodyToMono(String.class)
-                .block();
+                .body(String.class);
+    }
+
+    public TmapSummaryAllResponse getSummaryRoute(double startX, double startY, double endX, double endY){
+        return tmapRestClient.post()
+                .uri("/transit/routes/sub")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new TmapSummaryRequest(
+                        startX, startY,
+                        endX, endY,
+                        1,
+                        "json"
+                ))
+                .retrieve()
+                .body(TmapSummaryAllResponse.class);
     }
 }
