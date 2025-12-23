@@ -17,15 +17,8 @@ public class Genre {
     @Column(name = "genre_name", nullable = false, length = 30)
     private String genreName;
 
-    @Column(name = "genre_group", length = 30)
-    private String genreGroup;
 
-    @Column(name = "genre_memo")
-    private String genreMemo;
-
-    public Genre(String genreName, String genreGroup, String genreMemo) {
+    public Genre(String genreName) {
         this.genreName = genreName;
-        this.genreGroup = genreGroup;
-        this.genreMemo = genreMemo;
     }
 }

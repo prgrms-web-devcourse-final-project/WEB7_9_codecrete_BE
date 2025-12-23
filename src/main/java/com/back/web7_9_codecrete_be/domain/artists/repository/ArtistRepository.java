@@ -12,6 +12,7 @@ import java.util.List;
 @Repository
 public interface ArtistRepository extends JpaRepository<Artist, Long> {
     boolean existsBySpotifyArtistId(String spotifyArtistId);
+    java.util.Optional<Artist> findBySpotifyArtistId(String spotifyArtistId);
     
     @Query("SELECT a FROM Artist a WHERE a.nameKo IS NULL ORDER BY a.id ASC")
     List<Artist> findByNameKoIsNullOrderByIdAsc(Pageable pageable);
@@ -23,7 +24,16 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     boolean existsByNameKo(String nameKo);
 
     List<Artist> findTop5ByArtistGroupAndIdNot(String artistGroup, long excludeId);
-    List<Artist> findTop5ByGenreIdAndIdNot(Long genreId, long excludeId);
+    
+    @Query("""
+        SELECT DISTINCT a FROM Artist a
+        JOIN a.artistGenres ag
+        WHERE ag.genre.id = :genreId AND a.id != :excludeId
+        ORDER BY a.likeCount DESC
+    """)
+    List<Artist> findTop5ByGenreIdAndIdNot(@org.springframework.data.repository.query.Param("genreId") Long genreId, 
+                                             @org.springframework.data.repository.query.Param("excludeId") long excludeId,
+                                             Pageable pageable);
 
     List<Artist> findAllByArtistNameContainingIgnoreCaseOrNameKoContainingIgnoreCase(String artistName1, String artistName2);
 

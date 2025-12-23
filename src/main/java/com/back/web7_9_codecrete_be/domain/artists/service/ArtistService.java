@@ -52,12 +52,12 @@ public class ArtistService {
     }
 
     @Transactional
-    public Artist createArtist(String artistName, String artistGroup, ArtistType artistType, String genreName) {
+    public Artist createArtist(String spotifyArtistId, String artistName, String artistGroup, ArtistType artistType, String genreName) {
         Genre genre = genreService.findByGenreName(genreName);
         if(artistRepository.existsByArtistName(artistName) || artistRepository.existsByNameKo(artistName)) {
             throw new BusinessException(ArtistErrorCode.ARTIST_ALREADY_EXISTS);
         }
-        Artist artist = new Artist(artistName, artistGroup, artistType, genre);
+        Artist artist = new Artist(spotifyArtistId, artistName, artistGroup, artistType, genre);
         artistRepository.save(artist);
         return artist;
     }
@@ -114,13 +114,19 @@ public class ArtistService {
             isLiked = artistLikeRepository.existsByArtistAndUser(artist, user);
         }
 
+        // 첫 번째 장르 ID 가져오기 (없으면 null)
+        Long genreId = artist.getArtistGenres().stream()
+                .findFirst()
+                .map(ag -> ag.getGenre().getId())
+                .orElse(null);
+
         return spotifyService.getArtistDetail(
                 artist.getSpotifyArtistId(),
                 artist.getArtistGroup(),
                 artist.getArtistType(),
                 likeCount,
                 artist.getId(),
-                artist.getGenre() != null ? artist.getGenre().getId() : null,
+                genreId,
                 isLiked
         );
     }
@@ -149,7 +155,7 @@ public class ArtistService {
 
         if (req.genreName() != null && !req.genreName().isBlank()) {
             Genre genre = genreService.findByGenreName(req.genreName().trim());
-            artist.changeGenre(genre);
+            artist.replaceGenres(Set.of(genre));
             changed = true;
         }
 
