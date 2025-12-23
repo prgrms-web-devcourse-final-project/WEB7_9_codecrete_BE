@@ -1,71 +1,98 @@
 package com.back.web7_9_codecrete_be.domain.location.dto.response;
 
-import lombok.Getter;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Data;
+
 import java.util.List;
 
-@Getter
-public class KakaoRouteTransitResponse {        //Kakao mobility api에서 경유지 추가 response
+@Data
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+public class KakaoRouteTransitResponse {
 
+    private String transId;
     private List<Route> routes;
 
-    @Getter
+    @Data
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class Route {
+        private int resultCode;
+        private String resultMsg;
         private Summary summary;
         private List<Section> sections;
     }
 
-    @Getter
+    @Data
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class Summary {
         private Origin origin;
         private Destination destination;
-        private List<Waypoint> waypoints; // 경유지(요청값)
-
+        private List<Waypoint> waypoints;
         private String priority;
+        private Bound bound;   // optional일 수 있음
         private Fare fare;
-
-        private int distance; // meters
-        private int duration; // seconds
+        private int distance;
+        private int duration;
     }
 
-    @Getter
+    @Data
     public static class Origin {
         private String name;
         private double x;
         private double y;
     }
 
-    @Getter
+    @Data
     public static class Destination {
         private String name;
         private double x;
         private double y;
     }
 
-    @Getter
+    @Data
     public static class Waypoint {
         private String name;
         private double x;
         private double y;
     }
 
-    @Getter
+    @Data
+    public static class Bound {
+        private double minX;
+        private double minY;
+        private double maxX;
+        private double maxY;
+    }
+
+    @Data
     public static class Fare {
         private int taxi;
         private int toll;
     }
 
-    @Getter
+    @Data
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class Section {
-        private List<Road> roads;
-        private List<Guide> guides;
+        private int distance;
+        private int duration;
+        private Bound bound;        // summary=false일 때만 올 수 있음
+        private List<Road> roads;   // summary=false일 때만 올 수 있음
+        private List<Guide> guides; // summary=false일 때만 올 수 있음
     }
 
-    @Getter
+    @Data
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class Road {
+        private String name;
+        private int distance;
+        private int duration;
+        private double trafficSpeed;
+        private int trafficState;
         private List<Double> vertexes;
     }
 
-    @Getter
+    @Data
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class Guide {
         private String name;
         private double x;
@@ -74,6 +101,6 @@ public class KakaoRouteTransitResponse {        //Kakao mobility api에서 경�
         private int duration;
         private int type;
         private String guidance;
-        private int road_index;
+        private int roadIndex;
     }
 }

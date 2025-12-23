@@ -3,13 +3,14 @@ package com.back.web7_9_codecrete_be.domain.location.service;
 import com.back.web7_9_codecrete_be.domain.location.dto.KakaoCoordinateResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoLocalResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoMobilityResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.request.KakaoRouteTransitRequest;
+//import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoRouteTransitFeResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoRouteTransitResponse;
 import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 
@@ -139,20 +140,25 @@ public class KakaoLocalService {
 
 
     //Kakao mobility api에서 경유지가 있을때
-    public KakaoRouteTransitResponse NaviSearchTransit(double startX, double startY
-    , double endX, double endY, double wayX, double wayY){
+    public KakaoRouteTransitResponse NaviSearchTransit(KakaoRouteTransitRequest transitRequest){
+
+
+        //카카오가 원하는 요청값을 만들어주고 보내야함 (필수값들)
+        KakaoRouteTransitRequest transit = new KakaoRouteTransitRequest();
+        transit.setOrigin(transitRequest.getOrigin());
+        transit.setDestination(transitRequest.getDestination());
+        transit.setWaypoints(transitRequest.getWaypoints());
+
+        transit.setPriority("TIME");
+        transit.setSummary(false);
+        transit.setCar_fuel("GASOLINE");
+        transit.setCar_hipass(false);
+
         KakaoRouteTransitResponse response = kakaoMobilityClient.post()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/v1/waypoints/directions")
-                        .queryParam("origin", startX + "," + startY)
-                        .queryParam("destination", endX + "," + endY)
-                        .queryParam("waypoints", wayX + "," + wayY)
-                        .queryParam("priority", "TIME")
-                        .queryParam("summary", "false")
-                        .build()
-                )
+                .uri("/v1/waypoints/directions")
+                .body(transit)
                 .retrieve()
-                .body(KakaoRouteTransitResponse.class);
+                .body(KakaoRouteTransitResponse.class);     //KakaoRouteTransitResponse로 카카오 자동차 api에서 주는 응답값
         return response;
     }
 }
