@@ -87,17 +87,8 @@ public class ConcertService {
         concertSearchRedisTemplate.deleteAutoCompleteWords();
     }
 
-    // 자동완성 단어 저장
-    public void saveTitles(){
-        List<Concert>  concerts = concertRepository.findAll();
-        List<String> names = concerts.stream()
-                .map(Concert::getName)
-                .toList();
-        concertSearchRedisTemplate.addAllAutoCompleteWord(names);
-    }
-
     // 자동완성 단어저장 v2
-    public void saveTitles2(){
+    public void setAutoComplete(){
         List<Concert>  concerts = concertRepository.findAll();
         List<WeightedString> weightedStrings = concerts.stream()
                 .map(WeightedString::new)

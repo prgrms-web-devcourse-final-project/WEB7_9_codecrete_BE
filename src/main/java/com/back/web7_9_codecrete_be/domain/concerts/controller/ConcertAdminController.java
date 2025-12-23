@@ -139,7 +139,7 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
     @Operation(summary = "자동 검색어를 세팅합니다.", description = "검색어 자동완성을 위해 필요한 데이터를 저장합니다.")
     @PostMapping("autoSet")
     public RsData<Void> autoCompleteSetConcert(){
-        concertService.saveTitles2();
+        concertService.setAutoComplete();
         return RsData.success(null);
     }
 

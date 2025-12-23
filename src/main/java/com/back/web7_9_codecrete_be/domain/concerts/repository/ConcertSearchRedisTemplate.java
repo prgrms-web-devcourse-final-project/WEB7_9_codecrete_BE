@@ -24,20 +24,6 @@ public class ConcertSearchRedisTemplate {
     private static final String DATE_KEY  = "data:";
     private static final String CONCERT_ID_KEY = "concertName:";
 
-    public void addAllAutoCompleteWord(List<String> autoCompleteWords) {
-        for (String title : autoCompleteWords) {
-            redisTemplate.opsForValue().set(DATE_KEY + title, title);
-
-            for(int i = 0 ;i<title.length();i++){
-                for(int j = i+1; j<= title.length();j++ ){
-                    String subWord = title.substring(i,j);
-                    redisTemplate.opsForZSet().add(INDEX_KEY + subWord, title, 0);
-                }
-            }
-        }
-    }
-
-
     public void addAllWordsWithWeight(List<WeightedString> weightedStrings) {
         // PipeLine 사용해서 한번에 처리 -> IO 시간 감소
         redisTemplate.executePipelined((RedisCallback<?>) connection ->{

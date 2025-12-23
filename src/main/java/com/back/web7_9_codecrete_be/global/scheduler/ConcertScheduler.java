@@ -29,6 +29,7 @@ public class ConcertScheduler {
     public void concertDataUpdateSchedule() {
         concertService.viewCountUpdate();
         concertService.resetAutoComplete();
+        concertService.setAutoComplete();
     }
 
     // 이메일 알림을 전송합니다.
