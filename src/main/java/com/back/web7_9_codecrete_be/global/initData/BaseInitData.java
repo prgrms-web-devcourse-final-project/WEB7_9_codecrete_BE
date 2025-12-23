@@ -85,68 +85,71 @@ public class BaseInitData {
         }
 
         ConcertPlace place = concertPlaceRepository.findAll().stream()
-            .findFirst()
-            .orElseGet(() ->
-                concertPlaceRepository.save(
-                    new ConcertPlace(
-                        "테스트 공연장",
-                        "서울특별시 중구 테스트로 123",
-                        37.5665,
-                        126.9780,
-                        5000,
-                        "API-CONCERT-PLACE-1"
-                    )
-                )
-            );
+                .findFirst()
+                .orElseGet(() ->
+                        concertPlaceRepository.save(
+                                new ConcertPlace(
+                                        "테스트 공연장",
+                                        "서울특별시 중구 테스트로 123",
+                                        37.5665,
+                                        126.9780,
+                                        5000,
+                                        "API-CONCERT-PLACE-1"
+                                )
+                        )
+                );
 
         LocalDateTime now = LocalDateTime.now();
 
         // 채팅 가능 (정책 기간 중)
         concertRepository.save(
-            new Concert(
-                place,
-                "채팅 가능 공연",
-                "채팅 테스트용 공연 (정책 기간 중)",
-                LocalDate.now(),
-                LocalDate.now().plusDays(2),
-                LocalDateTime.of(2025, 12, 19, 0, 0),
-                150000,
-                50000,
-                "https://example.com/poster1.jpg",
-                "API-CONCERT-CHAT-1"
-            )
+                new Concert(
+                        place,
+                        "채팅 가능 공연",
+                        "채팅 테스트용 공연 (정책 기간 중)",
+                        LocalDate.now(),
+                        LocalDate.now().plusDays(2),
+                        LocalDateTime.of(2025, 12, 19, 0, 0),
+                        LocalDateTime.of(2025, 12, 21, 0, 0),
+                        150000,
+                        50000,
+                        "https://example.com/poster1.jpg",
+                        "API-CONCERT-CHAT-1"
+                )
         );
 
         // 채팅 불가 (정책 시작 전)
         concertRepository.save(
-            new Concert(
-                place,
-                "채팅 불가 공연 - 시작 전",
-                "아직 채팅이 오픈되지 않은 공연",
-                LocalDate.now().plusDays(5),
-                LocalDate.now().plusDays(7),
-                LocalDateTime.of(2025, 12, 25, 0, 0),
-                120000,
-                40000,
-                "https://example.com/poster2.jpg",
-                "API-CONCERT-CHAT-2"
-            )
+                new Concert(
+                        place,
+                        "채팅 불가 공연 - 시작 전",
+                        "아직 채팅이 오픈되지 않은 공연",
+                        LocalDate.now().plusDays(5),
+                        LocalDate.now().plusDays(7),
+                        LocalDateTime.of(2025, 12, 25, 0, 0),
+                        LocalDateTime.of(2025, 12, 30, 0, 0),
+                        120000,
+                        40000,
+                        "https://example.com/poster2.jpg",
+                        "API-CONCERT-CHAT-2"
+                )
         );
 
         // 채팅 불가 (정책 종료 후)
         concertRepository.save(
-            new Concert(
-                place,
-                "채팅 종료된 공연",
-                "채팅 가능 기간이 지난 공연",
-                LocalDate.now().minusDays(10),
-                LocalDate.now().minusDays(7),
-                LocalDateTime.of(2025, 11, 1, 0, 0),
-                100000,
-                30000,
-                "https://example.com/poster3.jpg",
-                "API-CONCERT-CHAT-3"
-            )
+                new Concert(
+                        place,
+                        "채팅 종료된 공연",
+                        "채팅 가능 기간이 지난 공연",
+                        LocalDate.now().minusDays(10),
+                        LocalDate.now().minusDays(7),
+                        LocalDateTime.of(2025, 11, 1, 0, 0),
+                        LocalDateTime.of(2025, 11, 15, 0, 0),
+                        100000,
+                        30000,
+                        "https://example.com/poster3.jpg",
+                        "API-CONCERT-CHAT-3"
+                )
         );
     }
 }

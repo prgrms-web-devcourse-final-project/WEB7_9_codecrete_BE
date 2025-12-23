@@ -211,7 +211,7 @@ public class ConcertService {
     // 공연 시간 설정
     public ConcertDetailResponse setConcertTicketingTime(ConcertTicketTimeSetRequest concertTicketTimeSetRequest) {
         Concert concert = findConcertByConcertId(concertTicketTimeSetRequest.getConcertId());
-        concert.ticketTimeSet(concertTicketTimeSetRequest.getTicketTime());
+        concert.ticketTimeSet(concertTicketTimeSetRequest.getTicketTime(), concertTicketTimeSetRequest.getTicketEndTime());
         Concert savedConcert = concertRepository.save(concert);
         return concertRepository.getConcertDetailById(savedConcert.getConcertId());
     }

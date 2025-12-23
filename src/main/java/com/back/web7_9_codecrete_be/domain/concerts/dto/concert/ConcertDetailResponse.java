@@ -40,6 +40,11 @@ public class ConcertDetailResponse {
     @Schema(description = "콘서트 예매 시작 날짜입니다.")
     private LocalDateTime ticketTime;
 
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    @Schema(description = "콘서트 예매 종료 날짜입니다.")
+    private LocalDateTime ticketEndTime;
+
     @JsonSerialize(using = LocalDateSerializer.class)
     @JsonDeserialize(using = LocalDateDeserializer.class)
     @Schema(description = "콘서트 시작 날짜입니다.",format = "yyyy-MM-dd")
@@ -67,6 +72,7 @@ public class ConcertDetailResponse {
 
     @Schema(description = "콘서트 이미지 목록입니다.")
     private List<String> concertImageUrls;
+
 
 
 }

@@ -34,6 +34,11 @@ public class ConcertItem {
     @Schema(description = "콘서트 예매 시작 날짜입니다.",format = "yyyy-MM-ddThh:mm:ss")
     private LocalDateTime ticketTime;
 
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    @Schema(description = "콘서트 예매 종료 날짜입니다.")
+    private LocalDateTime ticketEndTime;
+
     @JsonSerialize(using = LocalDateSerializer.class)
     @JsonDeserialize(using = LocalDateDeserializer.class)
     @Schema(description = "콘서트 시작 날짜입니다.",format = "yyyy-MM-dd")
@@ -64,6 +69,7 @@ public class ConcertItem {
         this.name = concert.getName();
         this.placeName = concert.getConcertPlace().getPlaceName();
         this.ticketTime = concert.getTicketTime();
+        this.ticketEndTime = concert.getTicketEndTime();
         this.startDate = concert.getStartDate();
         this.endDate =concert.getEndDate();
         this.posterUrl = concert.getPosterUrl();
