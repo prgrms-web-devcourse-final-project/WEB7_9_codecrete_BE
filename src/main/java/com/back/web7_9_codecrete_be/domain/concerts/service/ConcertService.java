@@ -7,6 +7,7 @@ import com.back.web7_9_codecrete_be.domain.concerts.entity.*;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.*;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.ConcertErrorCode;
+import com.back.web7_9_codecrete_be.global.error.code.ErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -121,14 +122,14 @@ public class ConcertService {
         return result;
     }
 
-    // todo : 티켓팅 공연 개수 조회
+    // 티켓팅 공연 개수 조회
     public Long getTotalTicketingConcertsCount() {
         Long result = concertRedisRepository.getTotalConcertsCount(ListSort.TICKETING);
         if(result == -1) result = concertRedisRepository.saveTotalConcertsCount(concertRepository.countTicketingConcertsFromLocalDateTime(LocalDateTime.of(LocalDate.now(), LocalTime.MIN)), ListSort.TICKETING);
         return  result;
     }
 
-    // todo : 좋아요한 공연 개수 조회
+    // 좋아요한 공연 개수 조회
     public Long getTotalLikedConcertsCount(User user) {
         Long result = concertRedisRepository.getUserLikedCount(user);
         if(result == -1) result = concertRedisRepository.saveUserLikedCount(user,concertLikeRepository.countByUser(user));
@@ -208,10 +209,15 @@ public class ConcertService {
         return new ConcertItem(updatedConcert);
     }
 
-    // 공연 시간 설정
+    // 공연 예매 시간 설정
     public ConcertDetailResponse setConcertTicketingTime(ConcertTicketTimeSetRequest concertTicketTimeSetRequest) {
         Concert concert = findConcertByConcertId(concertTicketTimeSetRequest.getConcertId());
-        concert.ticketTimeSet(concertTicketTimeSetRequest.getTicketTime(), concertTicketTimeSetRequest.getTicketEndTime());
+        LocalDateTime ticketTime = concertTicketTimeSetRequest.getTicketTime();
+        LocalDateTime ticketEndTime = concertTicketTimeSetRequest.getTicketEndTime();
+        if(ticketTime.isAfter(ticketEndTime)) throw new BusinessException(ConcertErrorCode.NOT_VALID_TICKETING_TIME);
+        if(ticketTime.isBefore(LocalDateTime.now())) throw new BusinessException(ConcertErrorCode.NOT_VALID_TICKETING_TIME);
+
+        concert.ticketTimeSet(ticketTime, ticketEndTime);
         Concert savedConcert = concertRepository.save(concert);
         return concertRepository.getConcertDetailById(savedConcert.getConcertId());
     }
