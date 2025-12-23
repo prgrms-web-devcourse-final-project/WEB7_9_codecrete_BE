@@ -4,7 +4,7 @@ import lombok.Getter;
 import java.util.List;
 
 @Getter
-public class KakaoRouteTransitResponse {
+public class KakaoRouteTransitResponse {        //Kakao mobility api에서 경유지 추가 response
 
     private List<Route> routes;
 
@@ -18,7 +18,7 @@ public class KakaoRouteTransitResponse {
     public static class Summary {
         private Origin origin;
         private Destination destination;
-        private List<Waypoint> waypoints; // ✅ 경유지(요청값)
+        private List<Waypoint> waypoints; // 경유지(요청값)
 
         private String priority;
         private Fare fare;

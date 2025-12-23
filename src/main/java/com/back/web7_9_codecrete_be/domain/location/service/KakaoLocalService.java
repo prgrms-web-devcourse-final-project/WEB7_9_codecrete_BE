@@ -20,6 +20,7 @@ public class KakaoLocalService {
     private final RestClient kakaoRestClient;
     private final RestClient kakaoMobilityClient;
 
+    // 해당 좌표의 1km 근방에 존재하는 음식점를 거리순으로 나타냄
     public List<KakaoLocalResponse.Document> searchNearbyRestaurants(double lat, double lng) {
 
         return kakaoRestClient.get()
@@ -37,6 +38,8 @@ public class KakaoLocalService {
                 .body(KakaoLocalResponse.class)
                 .getDocuments();
     }
+
+    // 해당 좌표의 1km 근방에 존재하는 카페를 거리순으로 나타냄
     public List<KakaoLocalResponse.Document> searchNearbyCafes(double lat, double lng) {
 
         return kakaoRestClient.get()
@@ -55,6 +58,7 @@ public class KakaoLocalService {
                 .getDocuments();
     }
 
+    //좌표를 주소로 변환해주는 api 연동
     public String coordinateToAddressName(double lat, double lng) {
 
         KakaoCoordinateResponse response = kakaoRestClient.get()
@@ -87,6 +91,7 @@ public class KakaoLocalService {
         return addressName;
     }
 
+    //카카오 모빌리티에서 전체 응답값 가져오기
     public KakaoMobilityResponse NaviSearch(double startX, double startY, double endX, double endY) {
 
         KakaoMobilityResponse response = kakaoMobilityClient.get()
@@ -109,6 +114,7 @@ public class KakaoLocalService {
         return response;
     }
 
+    //카카오 자동차에서 summary부분만 가져오기
     public KakaoMobilityResponse NaviSearchSummary(double startX, double startY, double endX, double endY) {
 
         KakaoMobilityResponse response = kakaoMobilityClient.get()
@@ -131,6 +137,8 @@ public class KakaoLocalService {
         return response;
     }
 
+
+    //Kakao mobility api에서 경유지가 있을때
     public KakaoRouteTransitResponse NaviSearchTransit(double startX, double startY
     , double endX, double endY, double wayX, double wayY){
         KakaoRouteTransitResponse response = kakaoMobilityClient.post()
