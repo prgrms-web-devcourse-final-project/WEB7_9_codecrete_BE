@@ -6,6 +6,7 @@ import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceListElement;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceListResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.result.SetResultResponse;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ListSort;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.*;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.*;
 import lombok.extern.slf4j.Slf4j;
@@ -297,6 +298,7 @@ public class KopisApiService {
         concertUpdateTimeRepository.save(updatedTime);
         concertRedisRepository.deleteAllConcertsList();
         concertRedisRepository.deleteAllConcertDetail();
+        concertRedisRepository.deleteTotalConcertsCount(ListSort.VIEW);
         return new SetResultResponse(addedConcerts,updatedConcerts,addedConcertPlaces,updatedConcertPlaces,addedConcertImages,updatedConcertImages,addedTicketOffices,updatedTicketOffices);
     }
 
