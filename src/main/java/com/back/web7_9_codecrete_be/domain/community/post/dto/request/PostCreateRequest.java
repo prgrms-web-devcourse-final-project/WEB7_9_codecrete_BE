@@ -14,7 +14,7 @@ public class PostCreateRequest {
     @Schema(
             description = "게시글 카테고리",
             example = "REVIEW",
-            allowableValues = {"NOTICE", "REVIEW", "TRADE", "PHOTO"}
+            allowableValues = {"NOTICE", "REVIEW", "JOIN", "TRADE", "PHOTO"}
     )
     private PostCategory category;
 
