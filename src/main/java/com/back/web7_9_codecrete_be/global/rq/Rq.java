@@ -45,6 +45,18 @@ public class Rq {
         return userDetails.getUser();
     }
 
+    // 현재 인증된 사용자 정보 가져오기 (로그인하지 않은 경우 null 반환)
+    public User getUserOrNull() {
+        try {
+            return getUser();
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == AuthErrorCode.UNAUTHORIZED_USER) {
+                return null;
+            }
+            throw e;
+        }
+    }
+
     // 쿠키 설정
     public void setCookie(String name, String value, long maxAge) {
         String safeValue = value != null ? value : "";
