@@ -26,7 +26,6 @@ import java.util.Map;
 
 @Slf4j
 @Service
-@EnableScheduling
 @RequiredArgsConstructor
 public class ConcertNotifyService {
     private final UserRepository userRepository;
@@ -106,7 +105,6 @@ public class ConcertNotifyService {
         return emailMap;
     }
 
-    @Scheduled(cron = "0 0 9 * * *")
     public String sendTodayTicketingConcertsNotifyingEmail() {
         List<Concert> concerts = getTodayTicketingConcerts();
         // 빠른 조회를 위해 Map으로 변환

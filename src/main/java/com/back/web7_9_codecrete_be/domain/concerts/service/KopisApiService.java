@@ -187,10 +187,7 @@ public class KopisApiService {
         concertRedisRepository.unlockSave(key);
     }
 
-
-    // 매주 월요일 새벽 2시 기준으로 데이터 갱신
     @Transactional
-    @Scheduled(cron = "0 0 2 * * Mon")
     public SetResultResponse updateConcertData() throws InterruptedException {
         String key = "init";
         String value = concertRedisRepository.lockGet(key);
