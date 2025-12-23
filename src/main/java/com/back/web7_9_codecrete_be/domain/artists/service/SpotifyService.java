@@ -190,7 +190,8 @@ public class SpotifyService {
             ArtistType artistType,
             long likeCount,
             long artistId,
-            Long genreId
+            Long genreId,
+            boolean isLiked
     ) {
         try {
             SpotifyApi api = spotifyClient.getAuthorizedApi();
@@ -219,7 +220,8 @@ public class SpotifyService {
                     "", // 설명
                     toAlbumResponses(albums != null ? albums.getItems() : null, spotifyArtistId),
                     toTopTrackResponses(topTracks),
-                    relatedResponses
+                    relatedResponses,
+                    isLiked
             );
         } catch (Exception e) {
             log.error("Spotify 상세 조회 실패: artistId={}", spotifyArtistId, e);

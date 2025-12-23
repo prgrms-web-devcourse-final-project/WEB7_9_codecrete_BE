@@ -20,7 +20,10 @@ public record ArtistListResponse(
         int likeCount,
 
         @Schema(description = "아티스트 프로필 사진 URL 입니다.")
-        String imageUrl
+        String imageUrl,
+
+        @Schema(description = "로그인한 유저의 좋아요 여부입니다. 비회원인 경우 false입니다.")
+        Boolean isLiked
 ) {
     public static ArtistListResponse from(Artist artist) {
         return new ArtistListResponse(
@@ -29,7 +32,20 @@ public record ArtistListResponse(
                 artist.getArtistGroup(),
                 artist.getGenre().getGenreName(),
                 artist.getLikeCount(),
-                artist.getImageUrl()
+                artist.getImageUrl(),
+                false // 기본값은 false
+        );
+    }
+
+    public static ArtistListResponse from(Artist artist, boolean isLiked) {
+        return new ArtistListResponse(
+                artist.getId(),
+                artist.getArtistName(),
+                artist.getArtistGroup(),
+                artist.getGenre().getGenreName(),
+                artist.getLikeCount(),
+                artist.getImageUrl(),
+                isLiked
         );
     }
 }
