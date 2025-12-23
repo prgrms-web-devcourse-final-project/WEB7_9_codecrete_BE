@@ -1,26 +1,31 @@
 package com.back.web7_9_codecrete_be.domain.chats.controller;
 
+import java.security.Principal;
+
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import com.back.web7_9_codecrete_be.domain.chats.dto.ChatMessageRequest;
+import com.back.web7_9_codecrete_be.domain.chats.service.ChatMessageService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class ChatMessageController {
 
-	private final SimpMessagingTemplate messagingTemplate;
+	private final ChatMessageService chatMessageService;
 
 	@MessageMapping("/chat/send")
-	public void send(ChatMessageRequest message) {
+	public void send(ChatMessageRequest message, Principal principal) {
 
-		messagingTemplate.convertAndSend(
-			"/topic/chat/" + message.getConcertId(),
-			message
-		);
+		if (principal == null) {
+			throw new IllegalStateException("Unauthenticated WebSocket access");
+		}
+
+		chatMessageService.sendMessage(message, principal);
 	}
 }
 
