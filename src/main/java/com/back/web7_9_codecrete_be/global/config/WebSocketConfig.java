@@ -6,20 +6,37 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+import com.back.web7_9_codecrete_be.global.websocket.JwtHandshakeHandler;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Configuration
 @EnableWebSocketMessageBroker
+@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+	private final JwtHandshakeHandler jwtHandshakeHandler;
 
 	@Override
 	public void configureMessageBroker(MessageBrokerRegistry config) {
+
 		config.enableSimpleBroker("/topic");
 		config.setApplicationDestinationPrefixes("/app");
+
 	}
 
 	@Override
 	public void registerStompEndpoints(StompEndpointRegistry registry) {
+
+		log.info("WebSocket 엔드포인트 등록: /ws-chat");
+
 		registry.addEndpoint("/ws-chat")
-			.setAllowedOriginPatterns("*"); // https://www.naeconcertbutakhae.shop
+			.setHandshakeHandler(jwtHandshakeHandler)
+			.setAllowedOriginPatterns("http://localhost:3000",
+				"https://www.naeconcertbutakhae.shop");
+
 	}
 
 }

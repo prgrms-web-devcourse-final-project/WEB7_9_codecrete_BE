@@ -1,7 +1,7 @@
 package com.back.web7_9_codecrete_be.global.security;
 
-import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -14,7 +14,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
+import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
+
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @RequiredArgsConstructor
@@ -48,6 +50,7 @@ public class SecurityConfig {
 			// Authorization 설정
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(
+					"/ws-chat/**",
 					"/actuator/**",
 					"/api/v1/auth/**",      // 로그인/회원가입은 허용
 					"/v3/api-docs/**",       // Swagger
