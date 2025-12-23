@@ -34,6 +34,9 @@ public class Artist {
     @Column(name = "spotify_artist_id", unique = true)
     private String spotifyArtistId;
 
+    @Column(name = "musicbrainz_id")
+    private String musicBrainzId;
+
     @Column(name = "name_ko", length = 200)
     private String nameKo;
 
@@ -88,5 +91,9 @@ public class Artist {
         if (this.likeCount > 0) {
             this.likeCount--;
         }
+    }
+
+    public void setMusicBrainzId(String musicBrainzId) {
+        this.musicBrainzId = musicBrainzId;
     }
 }
