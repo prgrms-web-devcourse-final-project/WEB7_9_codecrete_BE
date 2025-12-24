@@ -27,7 +27,7 @@ public class ChatStompDocsController {
         ```
         ws://localhost:8080/ws-chat
         or
-        wss://www.naeconcertbutakhae.shop/ws-chat
+        wss://api.naeconcertbutakhae.shop/ws-chat
         ```
 
         #### 2️⃣ SEND Destination
