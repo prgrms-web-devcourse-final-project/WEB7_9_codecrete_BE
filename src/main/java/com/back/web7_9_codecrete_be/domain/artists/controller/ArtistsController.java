@@ -149,6 +149,12 @@ public class ArtistsController {
         return RsData.success("찜한 아티스트 공연 리스트 조회 성공", artistService.getConcertList(user.getId()));
     }
 
+    @GetMapping("/likes")
+    public RsData<List<LikeArtistResponse>> findLikeArtists() {
+        User user = rq.getUser();
+        return RsData.success("유저가 찜한 아티스트 목록 조회 성공", artistService.findArtistsLikeByUserId(user));
+    }
+
     @Operation(summary = "아티스트 인기 순위(구현 전)", description = "Spotify 인기도를 바탕으로 아티스트 인기 순위 랭킹을 제공합니다.")
     @GetMapping("/ranking")
     public void artistRanking() {}
