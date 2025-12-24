@@ -105,12 +105,6 @@ public class ArtistService {
 
         long likeCount = artistLikeRepository.countByArtistId(artistId);
 
-        // 로그인한 유저의 좋아요 여부 확인
-        boolean isLiked = false;
-        if (user != null) {
-            isLiked = artistLikeRepository.existsByArtistAndUser(artist, user);
-        }
-
         // 첫 번째 장르 ID 가져오기 (없으면 null)
         Long genreId = artist.getArtistGenres().stream()
                 .findFirst()
@@ -123,8 +117,7 @@ public class ArtistService {
                 artist.getArtistType(),
                 likeCount,
                 artist.getId(),
-                genreId,
-                isLiked
+                genreId
         );
     }
 

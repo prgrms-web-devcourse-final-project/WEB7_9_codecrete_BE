@@ -291,8 +291,7 @@ public class SpotifyService {
             ArtistType artistType,
             long likeCount,
             long artistId,
-            Long genreId,
-            boolean isLiked
+            Long genreId
     ) {
         try {
             SpotifyApi api = spotifyClient.getAuthorizedApi();
@@ -316,7 +315,7 @@ public class SpotifyService {
             );
 
             return new ArtistDetailResponse(
-                    artistId,
+                    (long) artistId,
                     artist.getName(),
                     nameKo,
                     artistGroup,
@@ -324,12 +323,11 @@ public class SpotifyService {
                     pickImageUrl(artist.getImages()),
                     likeCount,
                     albums != null ? albums.getTotal() : 0,
-                    artist.getPopularity(), // 별점으로 수정
-                    "", // 설명
+                    artist.getPopularity(),
+                    "",
                     toAlbumResponses(albums != null ? albums.getItems() : null, spotifyArtistId),
                     toTopTrackResponses(topTracks),
-                    relatedResponses,
-                    isLiked
+                    relatedResponses
             );
         } catch (Exception e) {
             log.error("Spotify 상세 조회 실패: artistId={}", spotifyArtistId, e);

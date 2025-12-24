@@ -43,9 +43,6 @@ public record ArtistDetailResponse(
         List<TopTrackResponse> topTracks,
 
         @Schema(description = "아티스트와 관련 있는 다른 아티스트 목록입니다.")
-        List<RelatedArtistResponse> relatedArtists,
-
-        @Schema(description = "로그인한 유저의 좋아요 여부입니다. 비회원인 경우 false입니다.")
-        Boolean isLiked
+        List<RelatedArtistResponse> relatedArtists
 ) {
 }
