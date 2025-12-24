@@ -6,8 +6,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 public record ArtistDetailResponse(
+        @Schema(description = "아티스트 아이디입니다.")
+        Long id,
+
         @Schema(description = "아티스트 이름입니다.")
         String artistName,
+
+        @Schema(description = "한국어 기준 아티스트 이름입니다.")
+        String nameKo,
 
         @Schema(description = "아티스트 소속 그룹입니다. 아티스트 이름이 그룹인 경우, null 로 처리됩니다.")
         String artistGroup,
@@ -37,9 +43,6 @@ public record ArtistDetailResponse(
         List<TopTrackResponse> topTracks,
 
         @Schema(description = "아티스트와 관련 있는 다른 아티스트 목록입니다.")
-        List<RelatedArtistResponse> relatedArtists,
-
-        @Schema(description = "로그인한 유저의 좋아요 여부입니다. 비회원인 경우 false입니다.")
-        Boolean isLiked
+        List<RelatedArtistResponse> relatedArtists
 ) {
 }

@@ -1,15 +1,12 @@
 package com.back.web7_9_codecrete_be.domain.artists.service;
 
+import com.back.web7_9_codecrete_be.domain.artists.dto.response.*;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistSort;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.UpdateRequest;
-import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistListResponse;
-import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
-import com.back.web7_9_codecrete_be.domain.artists.dto.response.SearchResponse;
 import com.back.web7_9_codecrete_be.domain.artists.entity.*;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistLikeRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ConcertArtistRepository;
-import com.back.web7_9_codecrete_be.domain.artists.dto.response.ConcertListByArtistResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
@@ -98,7 +95,7 @@ public class ArtistService {
     }
 
     @Transactional(readOnly = true)
-    public ArtistDetailResponse getArtistDetail(Long artistId, User user) {
+    public ArtistDetailResponse getArtistDetail(Long artistId) {
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
 
@@ -107,12 +104,6 @@ public class ArtistService {
         }
 
         long likeCount = artistLikeRepository.countByArtistId(artistId);
-
-        // 로그인한 유저의 좋아요 여부 확인
-        boolean isLiked = false;
-        if (user != null) {
-            isLiked = artistLikeRepository.existsByArtistAndUser(artist, user);
-        }
 
         // 첫 번째 장르 ID 가져오기 (없으면 null)
         Long genreId = artist.getArtistGenres().stream()
@@ -126,8 +117,7 @@ public class ArtistService {
                 artist.getArtistType(),
                 likeCount,
                 artist.getId(),
-                genreId,
-                isLiked
+                genreId
         );
     }
 
@@ -207,7 +197,7 @@ public class ArtistService {
     @Transactional
     public void linkArtistConcert(Long artistId, Long concertId) {
         Artist artist = findArtist(artistId);
-        // TODO: 멘토링 질문 남겨놓은 기능이라, 멘토링 후 구현 방향 확정되면 함수 선언 후 Service 사용 예정. 현재는 임시로 Repository 사용
+        // TODO: 추후 수정 예정
         Concert concert = concertRepository.findById(concertId)
                 .orElseThrow();
         concertArtistRepository.save(new ConcertArtist(artist, concert));
@@ -228,5 +218,13 @@ public class ArtistService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<LikeArtistResponse> findArtistsLikeByUserId(User user) {
+        List<Artist> artists = artistLikeRepository.findArtistsByUserId(user.getId());
+        
+        return artists.stream()
+                .map(LikeArtistResponse::from)
+                .toList();
+    }
 
 }

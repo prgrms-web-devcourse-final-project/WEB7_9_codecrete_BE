@@ -7,6 +7,9 @@ public record SearchResponse(
         @Schema(description = "아티스트 이름입니다.")
         String artistName,
 
+        @Schema(description = "한국어 기준 아티스트 이름입니다.")
+        String nameKo,
+
         @Schema(description = "아티스트 소속 그룹입니다. 아티스트 이름이 그룹인 경우, null 로 처리됩니다.")
         String artistGroup,
 
@@ -16,6 +19,7 @@ public record SearchResponse(
     public static SearchResponse from(Artist artist) {
         return new SearchResponse(
                 artist.getArtistName(),
+                artist.getNameKo(),
                 artist.getArtistGroup(),
                 artist.getLikeCount()
         );

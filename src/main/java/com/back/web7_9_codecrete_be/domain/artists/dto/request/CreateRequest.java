@@ -11,7 +11,7 @@ public record CreateRequest(
         @NotBlank
         @Size(max = 30, message = "Spotify ID 는 필수로 입력해야합니다.")
         @Schema(description = "Spotify ID 입니다.")
-        String spotifyID,
+        String spotifyId,
 
         @NotBlank(message = "아티스트 이름은 필수로 입력해야합니다.")
         @Size(max = 200, message = "아티스트 이름은 200자를 넘길 수 없습니다.")
