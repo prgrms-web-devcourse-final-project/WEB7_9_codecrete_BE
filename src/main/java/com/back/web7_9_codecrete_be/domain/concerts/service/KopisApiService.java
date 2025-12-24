@@ -110,7 +110,7 @@ public class KopisApiService {
                     totalConcertsList.add(p);
                 }
                 log.info("Total Concert List: {}", totalConcertsList.size() + "개의 데이터 가져오는중...");
-                Thread.sleep(200);
+                Thread.sleep(120);
             }
 
         }catch (Exception e){
@@ -124,7 +124,9 @@ public class KopisApiService {
         log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
         try {
             for (ConcertListElement performanceListElement : totalConcertsList) {
+                // API에서 공연 상세 가져오기
                 ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(serviceKey, performanceListElement.getApiConcertId());
+                Thread.sleep(120);
                 ConcertDetailElement concertDetail = concertDetailResponse.getConcertDetail();
 
                 // 콘서트 위치 저장
@@ -135,6 +137,7 @@ public class KopisApiService {
                 if (concertPlace == null) {
                     // 맵이나 DB에 없다면 API에서 해당 콘서트 위치를 가져와서 DB에 저장 후 캐시에 저장
                     ConcertPlaceDetailResponse concertPlaceDetailElement = getConcertPlaceDetailResponse(serviceKey, concertPlaceAPiKey);
+                    Thread.sleep(120);
                     ConcertPlaceDetailElement concertPlaceDetail = concertPlaceDetailElement.getConcertPlaceDetail();
                     concertPlace = concertPlaceDetail.getConcertPlace();
                     ConcertPlace savedConcertPlace = placeRepository.save(concertPlace);
@@ -165,8 +168,6 @@ public class KopisApiService {
 
                 addedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
                 addedConcertImages += saveConcertImages(concertDetail, savedConcert);
-
-                Thread.sleep(300);
             }
         } catch (Exception e) {
             log.error("개별 공연 세부 내용 저장 도중 오류 발생");
@@ -284,6 +285,7 @@ public class KopisApiService {
                 // 기존에 저장되어 있던 연관 테이블 데이터 삭제
                 ticketOfficeRepository.deleteByConcertId(savedConcert.getConcertId());
                 imageRepository.deleteByConcertId(savedConcert.getConcertId());
+                // 갱신된 데이터로 연관 테이블 저장
                 updatedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
                 updatedConcertImages += saveConcertImages(concertDetail, savedConcert);
             }
