@@ -232,8 +232,10 @@ public class ConcertService {
         Concert concert = findConcertByConcertId(concertTicketTimeSetRequest.getConcertId());
         LocalDateTime ticketTime = concertTicketTimeSetRequest.getTicketTime();
         LocalDateTime ticketEndTime = concertTicketTimeSetRequest.getTicketEndTime();
+
         if(ticketTime.isAfter(ticketEndTime)) throw new BusinessException(ConcertErrorCode.NOT_VALID_TICKETING_TIME);
-        if(ticketTime.isBefore(LocalDateTime.now())) throw new BusinessException(ConcertErrorCode.NOT_VALID_TICKETING_TIME);
+        if(ticketTime.isAfter(concert.getEndDate().atTime(LocalTime.MAX))) throw new BusinessException(ConcertErrorCode.CONCERT_TICKETING_TIME_IS_NOT_AFTER_CONCERT_END_DATE);
+        if(ticketEndTime.isAfter(concert.getEndDate().atTime(LocalTime.MAX))) throw new BusinessException(ConcertErrorCode.CONCERT_TICKETING_END_TIME_IS_NOT_AFTER_CONCERT_END_DATE);
 
         concert.ticketTimeSet(ticketTime, ticketEndTime);
         Concert savedConcert = concertRepository.save(concert);
