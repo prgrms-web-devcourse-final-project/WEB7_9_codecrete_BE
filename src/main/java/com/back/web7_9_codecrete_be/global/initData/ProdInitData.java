@@ -22,7 +22,7 @@ public class ProdInitData {
     }
 
     private void setConcertAutoCompletion(){
-        concertService.
+        concertService.setAutoComplete();
     }
 
 }
