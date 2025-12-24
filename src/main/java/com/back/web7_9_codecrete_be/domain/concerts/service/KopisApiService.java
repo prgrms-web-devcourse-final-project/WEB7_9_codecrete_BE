@@ -15,8 +15,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
-import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
@@ -296,7 +294,7 @@ public class KopisApiService {
         // 갱신 후 업데이트 시간 저장, 캐시의 데이터 삭제
         concertUpdateTimeRepository.save(updatedTime);
         concertRedisRepository.deleteAllConcertsList();
-        concertRedisRepository.deleteAllConcertDetail();
+        concertRedisRepository.deleteAllCachedConcertDetail();
         concertRedisRepository.deleteTotalConcertsCount(ListSort.VIEW);
         return new SetResultResponse(addedConcerts,updatedConcerts,addedConcertPlaces,updatedConcertPlaces,addedConcertImages,updatedConcertImages,addedTicketOffices,updatedTicketOffices);
     }

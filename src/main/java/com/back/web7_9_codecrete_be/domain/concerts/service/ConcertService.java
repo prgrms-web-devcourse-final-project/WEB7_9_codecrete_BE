@@ -55,7 +55,7 @@ public class ConcertService {
             case REGISTERED -> concertItems = concertRepository.getConcertItemsOrderByApiId(pageable);
         }
 
-        concertRedisRepository.listSave(sort,pageable,concertItems);
+        concertRedisRepository.saveConcertsList(sort,pageable,concertItems);
         return concertItems;
     }
 
@@ -100,7 +100,7 @@ public class ConcertService {
     // 공연 상세 조회 조회시 조회수 1 증가 -> 캐싱에 따른 조회수 불일치 해소를 어떻게 할 것인가? V -> 이제 캐싱된거 날리고 새로운 수치 반영 어케할 것인지 + 여러번 조회수 올릴 시 처리 어떻게 할지
     @Transactional
     public ConcertDetailResponse getConcertDetail(long concertId) {
-        ConcertDetailResponse concertDetailResponse = concertRedisRepository.getDetail(concertId);
+        ConcertDetailResponse concertDetailResponse = concertRedisRepository.getCachedConcertDetail(concertId);
         if(concertDetailResponse == null){
             concertDetailResponse = concertRepository.getConcertDetailById(concertId);
             List<ConcertImage>  concertImages = concertImageRepository.getConcertImagesByConcert_ConcertId(concertId);
@@ -112,7 +112,10 @@ public class ConcertService {
             concertRepository.concertViewCountUp(concertId);
             concertDetailResponse.setConcertImageUrls(concertImageUrls);
             concertDetailResponse.setViewCount(concertDetailResponse.getViewCount() + 1);
-            concertRedisRepository.detailSave(concertId, concertDetailResponse);
+            concertRedisRepository.saveConcertDetail(concertId, concertDetailResponse);
+        } else{
+            concertDetailResponse.setViewCount(concertDetailResponse.getViewCount() + 1);
+            concertRedisRepository.saveConcertDetail(concertId, concertDetailResponse);
         }
         return concertDetailResponse;
     }
@@ -120,14 +123,13 @@ public class ConcertService {
     // 조회수 갱신
     @Transactional
     public void viewCountUpdate(){
-        Map<Long,Integer> viewCountMap = concertRedisRepository.getViewCountMap();
+        Map<Long,Integer> viewCountMap = concertRedisRepository.getCachedViewCountMap();
         if(viewCountMap == null || viewCountMap.isEmpty()) {
             log.info("viewCountMap is empty");
         } else{
             for (Map.Entry<Long, Integer> viewCountEntry : viewCountMap.entrySet()) {
                 concertRepository.concertViewCountSet(viewCountEntry.getKey(), viewCountEntry.getValue());
             }
-            concertRedisRepository.deleteViewCountMap();
             concertRedisRepository.deleteAllConcertsList();
             log.info("viewCount updated");
         }
@@ -238,7 +240,10 @@ public class ConcertService {
         if(ticketEndTime.isAfter(concert.getEndDate().atTime(LocalTime.MAX))) throw new BusinessException(ConcertErrorCode.CONCERT_TICKETING_END_TIME_IS_NOT_AFTER_CONCERT_END_DATE);
 
         concert.ticketTimeSet(ticketTime, ticketEndTime);
+        // DB에 저장
         Concert savedConcert = concertRepository.save(concert);
+        // 캐시에도 갱신
+        concertRedisRepository.updateCachedTickingDate(concert.getConcertId(),ticketTime,ticketEndTime);
         return concertRepository.getConcertDetailById(savedConcert.getConcertId());
     }
 
