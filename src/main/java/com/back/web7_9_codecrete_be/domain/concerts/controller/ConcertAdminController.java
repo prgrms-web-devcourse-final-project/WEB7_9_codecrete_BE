@@ -136,4 +136,18 @@ public class ConcertAdminController { // todo : 인증 권한 추가하기
         return RsData.success(resultMessage,null);
     }
 
+    @Operation(summary = "자동 검색어를 세팅합니다.", description = "검색어 자동완성을 위해 필요한 데이터를 저장합니다.")
+    @PostMapping("autoSet")
+    public RsData<Void> autoCompleteSetConcert(){
+        concertService.setAutoComplete();
+        return RsData.success(null);
+    }
+
+    @Operation(summary = "세팅된 자동 검색어를 삭제합니다.", description = "검색어 자동 완성을 위해 세팅된 데이터를 삭제합니다.")
+    @PostMapping("autoDelete")
+    public RsData<Void> autoDeleteConcert(){
+        concertService.resetAutoComplete();
+        return RsData.success(null);
+    }
+
 }

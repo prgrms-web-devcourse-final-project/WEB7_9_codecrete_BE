@@ -1,14 +1,9 @@
 package com.back.web7_9_codecrete_be.domain.concerts.controller;
 
-import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concert.ConcertListResponse;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceDetailResponse;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceListResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.*;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concertPlace.PlaceDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.ticketOffice.TicketOfficeElement;
-import com.back.web7_9_codecrete_be.domain.concerts.entity.TicketOffice;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
-import com.back.web7_9_codecrete_be.domain.concerts.service.KopisApiService;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.rq.Rq;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
@@ -17,16 +12,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.sql.ast.tree.expression.Summarization;
-import org.springdoc.core.converters.models.PageableAsQueryParam;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-import javax.swing.*;
 import java.util.List;
 
 @Slf4j
@@ -201,12 +189,41 @@ public class ConcertController {
             @Schema(description = """
                     <h3>조회 기준이 되는 concertId입니다.</h3>
                     <hr/>
-                    DB에 저장되어 있는 공연의 ID 값을 기준으로 해당 공연의 공연장 상세 정보를조회합니다. <br/>
+                    DB에 저장되어 있는 공연의 ID 값을 기준으로 해당 공연의 공연장 상세 정보를 조회합니다. <br/>
                     <strong>?concertId={concertId}</strong> 로 값을 넘기시면 됩니다.
                     """)
             long concertId
     ){
         return RsData.success(concertService.getConcertPlaceDetail(concertId));
+    }
+
+    @Operation(summary = "검색어 자동완성", description = "주어진 문자열을 가지고 있는 결과를 조회합니다.")
+    @GetMapping("autoComplete")
+    public RsData<List<AutoCompleteItem>> autoCompleteConcert(
+            @RequestParam
+            @Schema(description = """
+                    <h3>검색어 입니다.</h3>
+                    <hr/>
+                    메모리에 캐싱되어 있는 공연의 정보들을 검색하고 표시합니다. <br/>
+                    검색 결과는 조회수 순으로 나옵니다.
+                    """)
+            String keyword,
+            @RequestParam
+            @Schema(description = """
+                    <h3>검색 시작 인덱스입니다.</h3>
+                    <hr/>
+                    결과 목록 중 start에 입력한 번호의 결과부터 데이터가 나옵니다.<br/>
+                    """)
+            int start,
+            @RequestParam
+            @Schema(description = """
+                    <h3>검색 종료 인덱스입니다.</h3>
+                    <hr/>
+                    end에 입력한 번호까지 데이터가 나옵니다.<br/>
+                    """)
+            int end
+    ){
+        return RsData.success(concertService.autoCompleteSearch(keyword,start,end));
     }
 
 }

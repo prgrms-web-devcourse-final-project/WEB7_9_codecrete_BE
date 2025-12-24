@@ -32,7 +32,6 @@ import java.util.Map;
 @Slf4j
 @Service
 @EnableAsync
-@EnableScheduling
 public class KopisApiService {
     // 공연예술통합 전산망 조회를 위한 서비스 클래스입니다.
     private final ConcertRepository concertRepository;
@@ -174,6 +173,7 @@ public class KopisApiService {
         } catch (Exception e) {
             log.error("개별 공연 세부 내용 저장 도중 오류 발생");
             log.error("오류 내용 : " + e.getMessage());
+            e.printStackTrace();
             return ;
         }
         ConcertUpdateTime concertUpdateTime = new ConcertUpdateTime(now);
@@ -185,10 +185,7 @@ public class KopisApiService {
         concertRedisRepository.unlockSave(key);
     }
 
-
-    // 매주 월요일 새벽 2시 기준으로 데이터 갱신
     @Transactional
-    @Scheduled(cron = "0 0 2 * * Mon")
     public SetResultResponse updateConcertData() throws InterruptedException {
         String key = "init";
         String value = concertRedisRepository.lockGet(key);
