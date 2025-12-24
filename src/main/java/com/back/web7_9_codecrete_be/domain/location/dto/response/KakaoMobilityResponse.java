@@ -6,7 +6,7 @@ import lombok.Getter;
 import java.util.List;
 @Getter
 @AllArgsConstructor
-public class KakaoMobilityResponse {
+public class KakaoMobilityResponse {        //Kakao mobility api에서 전체 response 구조
 
 
     private List<Route> routes;

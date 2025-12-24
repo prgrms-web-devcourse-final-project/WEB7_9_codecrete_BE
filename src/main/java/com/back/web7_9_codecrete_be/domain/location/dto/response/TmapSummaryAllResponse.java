@@ -4,24 +4,21 @@ import lombok.Getter;
 
 import java.util.List;
 @Getter
-public class TmapSummaryAllResponse {
+public class TmapSummaryAllResponse {           // Tmap 대중교통 요약 api response dto
 
     private MetaData metaData;
 
-    // ===================== metaData =====================
     @Getter
     public static class MetaData {
         private Plan plan;
         private RequestParameters requestParameters;
     }
 
-    // ===================== plan =====================
     @Getter
     public static class Plan {
         private List<Itinerary> itineraries;
     }
 
-    // ===================== itineraries =====================
     @Getter
     public static class Itinerary {
 
@@ -35,20 +32,17 @@ public class TmapSummaryAllResponse {
         private Fare fare;                  // 요금 정보
     }
 
-    // ===================== fare =====================
     @Getter
     public static class Fare {
         private Regular regular;
     }
 
-    // ===================== regular =====================
     @Getter
     public static class Regular {
         private Currency currency;
         private int totalFare;              // 대중교통 요금
     }
 
-    // ===================== currency =====================
     @Getter
     public static class Currency {
         private String symbol;              // ￦
@@ -56,11 +50,10 @@ public class TmapSummaryAllResponse {
         private String currencyCode;        // KRW
     }
 
-    // ===================== requestParameters =====================
     @Getter
     public static class RequestParameters {
 
-        private String reqDttm;              // 요청 시각 (yyyymmddhhmiss)
+        private String reqDttm;              // 요청 시각
 
         private String startX;               // 출발지 경도
         private String startY;               // 출발지 위도

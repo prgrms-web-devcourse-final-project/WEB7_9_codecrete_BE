@@ -3,13 +3,14 @@ package com.back.web7_9_codecrete_be.domain.location.service;
 import com.back.web7_9_codecrete_be.domain.location.dto.KakaoCoordinateResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoLocalResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoMobilityResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.request.KakaoRouteTransitRequest;
+//import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoRouteTransitFeResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoRouteTransitResponse;
 import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 
@@ -20,6 +21,7 @@ public class KakaoLocalService {
     private final RestClient kakaoRestClient;
     private final RestClient kakaoMobilityClient;
 
+    // 해당 좌표의 1km 근방에 존재하는 음식점를 거리순으로 나타냄
     public List<KakaoLocalResponse.Document> searchNearbyRestaurants(double lat, double lng) {
 
         return kakaoRestClient.get()
@@ -37,6 +39,8 @@ public class KakaoLocalService {
                 .body(KakaoLocalResponse.class)
                 .getDocuments();
     }
+
+    // 해당 좌표의 1km 근방에 존재하는 카페를 거리순으로 나타냄
     public List<KakaoLocalResponse.Document> searchNearbyCafes(double lat, double lng) {
 
         return kakaoRestClient.get()
@@ -55,6 +59,7 @@ public class KakaoLocalService {
                 .getDocuments();
     }
 
+    //좌표를 주소로 변환해주는 api 연동
     public String coordinateToAddressName(double lat, double lng) {
 
         KakaoCoordinateResponse response = kakaoRestClient.get()
@@ -87,6 +92,7 @@ public class KakaoLocalService {
         return addressName;
     }
 
+    //카카오 모빌리티에서 전체 응답값 가져오기
     public KakaoMobilityResponse NaviSearch(double startX, double startY, double endX, double endY) {
 
         KakaoMobilityResponse response = kakaoMobilityClient.get()
@@ -109,6 +115,7 @@ public class KakaoLocalService {
         return response;
     }
 
+    //카카오 자동차에서 summary부분만 가져오기
     public KakaoMobilityResponse NaviSearchSummary(double startX, double startY, double endX, double endY) {
 
         KakaoMobilityResponse response = kakaoMobilityClient.get()
@@ -131,20 +138,27 @@ public class KakaoLocalService {
         return response;
     }
 
-    public KakaoRouteTransitResponse NaviSearchTransit(double startX, double startY
-    , double endX, double endY, double wayX, double wayY){
+
+    //Kakao mobility api에서 경유지가 있을때
+    public KakaoRouteTransitResponse NaviSearchTransit(KakaoRouteTransitRequest transitRequest){
+
+
+        //카카오가 원하는 요청값을 만들어주고 보내야함 (필수값들)
+        KakaoRouteTransitRequest transit = new KakaoRouteTransitRequest();
+        transit.setOrigin(transitRequest.getOrigin());
+        transit.setDestination(transitRequest.getDestination());
+        transit.setWaypoints(transitRequest.getWaypoints());
+
+        transit.setPriority("TIME");
+        transit.setSummary(false);
+        transit.setCar_fuel("GASOLINE");
+        transit.setCar_hipass(false);
+
         KakaoRouteTransitResponse response = kakaoMobilityClient.post()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/v1/waypoints/directions")
-                        .queryParam("origin", startX + "," + startY)
-                        .queryParam("destination", endX + "," + endY)
-                        .queryParam("waypoints", wayX + "," + wayY)
-                        .queryParam("priority", "TIME")
-                        .queryParam("summary", "false")
-                        .build()
-                )
+                .uri("/v1/waypoints/directions")
+                .body(transit)
                 .retrieve()
-                .body(KakaoRouteTransitResponse.class);
+                .body(KakaoRouteTransitResponse.class);     //KakaoRouteTransitResponse로 카카오 자동차 api에서 주는 응답값
         return response;
     }
 }

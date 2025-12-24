@@ -1,7 +1,10 @@
 package com.back.web7_9_codecrete_be.domain.location.controller;
 
+import com.back.web7_9_codecrete_be.domain.location.dto.KakaoRouteFeResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.KakaoRouteSectionFeResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoLocalResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoMobilityResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.request.KakaoRouteTransitRequest;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoRouteTransitResponse;
 import com.back.web7_9_codecrete_be.domain.location.service.KakaoLocalService;
 import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
@@ -16,6 +19,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Tag(name = "Location - Kakao", description = "카카오 로컬 API 연동(주변 음식점 조회, 좌표→주소 변환) 관련 엔드포인트")
@@ -97,6 +101,8 @@ public class KakaoApiController {
                 .flatMap(section -> section.getGuides().stream())
                 .toList();
     }
+
+
     @GetMapping("/navigate/summary")
     public KakaoMobilityResponse.Summary navigateSummary(
             @RequestParam double startX,
@@ -119,27 +125,53 @@ public class KakaoApiController {
 
     }
 
+    //카카오 자동차 api인데, 경유지가 존재하는 경우에 사용
     @PostMapping("/navigate/onlyguide")
-    public List<KakaoRouteTransitResponse.Guide> navigateOnlyGuides(
-            @RequestParam double startX,
-            @RequestParam double startY,
-            @RequestParam double endX,
-            @RequestParam double endY,
-            @RequestParam double wayX,
-            @RequestParam double wayY
+    public KakaoRouteSectionFeResponse navigateOnlyGuides(@RequestBody KakaoRouteTransitRequest req
     ) {
-        KakaoRouteTransitResponse res = kakaoLocalService.NaviSearchTransit(startX, startY, endX, endY, wayX, wayY);
 
-        if (res == null || res.getRoutes() == null || res.getRoutes().isEmpty()) {
-            return List.of();
+        KakaoRouteTransitResponse res = kakaoLocalService.NaviSearchTransit(req);
+        KakaoRouteTransitResponse.Route route = res.getRoutes().get(0);
+
+        KakaoRouteTransitResponse.Summary summary = route.getSummary();
+
+        List<Object> points = new ArrayList<>();        // 출발지, 경유지, 목적지 좌표를 저장
+
+        points.add(summary.getOrigin());
+        points.addAll(summary.getWaypoints());      // Waypoints는 배열이니까 addAll 사용
+        points.add(summary.getDestination());
+
+
+        // 구간별 좌표, Distance, Duration 표현
+        List<KakaoRouteFeResponse> sections = new ArrayList<>();
+
+        for (int i = 0; i < route.getSections().size(); i++) {
+            KakaoRouteTransitResponse.Section section = route.getSections().get(i);
+
+            sections.add(new KakaoRouteFeResponse(          //sections 리스트에 각각의 section 정보들을 추가
+                    i,
+                    section.getDistance(),
+                    section.getDuration(),
+                    points.get(i),     //  출발지
+                    points.get(i + 1)  //  목적지
+            ));
         }
 
-        KakaoRouteTransitResponse.Route route0 = res.getRoutes().get(0);
+        //  distance전체 합계
+        int totalDistance = route.getSections().stream()
+                .mapToInt(KakaoRouteTransitResponse.Section::getDistance)
+                .sum();
 
-        return route0.getSections().stream()
-                .filter(section -> section.getGuides() != null && !section.getGuides().isEmpty())
-                .flatMap(section -> section.getGuides().stream())
-                .toList();
+        // duration 전체 합계
+        int totalDuration = route.getSections().stream()
+                .mapToInt(KakaoRouteTransitResponse.Section::getDuration)
+                .sum();
+
+        return new KakaoRouteSectionFeResponse(
+                totalDistance,
+                totalDuration,
+                sections
+        );
     }
 }
 
