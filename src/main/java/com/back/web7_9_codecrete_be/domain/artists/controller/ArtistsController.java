@@ -15,7 +15,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -54,15 +53,6 @@ public class ArtistsController {
         return RsData.success("MusicBrainz ID 수집 성공", updated);
     }
 
-    @Operation(summary = "아티스트 생성", description = "아티스트를 등록합니다.")
-    @PostMapping()
-    public RsData<Void> create(
-            @Valid @RequestBody CreateRequest reqBody
-    ) {
-        artistService.createArtist(reqBody.spotifyID(), reqBody.artistName(), reqBody.artistGroup(), reqBody.artistType(), reqBody.genreName());
-        return RsData.success("아티스트 생성이 완료되었습니다.", null);
-    }
-
     @Operation(summary = "아티스트 목록 조회",
             description = "아티스트 전체 목록을 조회합니다(NAME: 이름순 / LIKE: 인기순 (좋아요 많은 순)")
     @GetMapping()
@@ -80,27 +70,7 @@ public class ArtistsController {
     public RsData<ArtistDetailResponse> artist(
             @PathVariable Long id
     ) {
-        User user = rq.getUserOrNull(); // 로그인하지 않은 경우 null
-        return RsData.success("아티스트 상세 조회를 성공했습니다.", artistService.getArtistDetail(id, user));
-    }
-
-    @Operation(summary = "아티스트 정보 수정", description = "아티스트 정보를 수정합니다.")
-    @PatchMapping("/{id}")
-    public RsData<Void> update(
-            @PathVariable Long id,
-            @Valid @RequestBody UpdateRequest reqBody
-    ) {
-        artistService.updateArtist(id, reqBody);
-        return RsData.success("아티스트 정보 수정을 완료했습니다.", null);
-    }
-
-    @Operation(summary = "아티스트 정보 삭제", description = "아티스트 정보를 삭제합니다.")
-    @DeleteMapping("/{id}")
-    public RsData<Void> delete(
-            @PathVariable Long id
-    ) {
-        artistService.delete(id);
-        return RsData.success("아티스트 정보를 삭제했습니다.", null);
+        return RsData.success("아티스트 상세 조회를 성공했습니다.", artistService.getArtistDetail(id));
     }
 
     @Operation(summary = "아티스트 검색",
@@ -149,6 +119,7 @@ public class ArtistsController {
         return RsData.success("찜한 아티스트 공연 리스트 조회 성공", artistService.getConcertList(user.getId()));
     }
 
+    @Operation(summary = "유저가 찜한 아티스트 목록", description = "유저 Id 를 통해 해당 유저가 찜한 아티스트 목록을 조회합니다.")
     @GetMapping("/likes")
     public RsData<List<LikeArtistResponse>> findLikeArtists() {
         User user = rq.getUser();

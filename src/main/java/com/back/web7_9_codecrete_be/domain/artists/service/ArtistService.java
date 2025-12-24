@@ -95,7 +95,7 @@ public class ArtistService {
     }
 
     @Transactional(readOnly = true)
-    public ArtistDetailResponse getArtistDetail(Long artistId, User user) {
+    public ArtistDetailResponse getArtistDetail(Long artistId) {
         Artist artist = artistRepository.findById(artistId)
                 .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
 
