@@ -6,8 +6,8 @@ import java.time.LocalDateTime;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
-import com.back.web7_9_codecrete_be.domain.chats.dto.ChatMessageRequest;
-import com.back.web7_9_codecrete_be.domain.chats.dto.ChatMessageResponse;
+import com.back.web7_9_codecrete_be.domain.chats.dto.request.ChatMessageRequest;
+import com.back.web7_9_codecrete_be.domain.chats.dto.response.ChatMessageResponse;
 import com.back.web7_9_codecrete_be.domain.chats.repository.ChatStreamRepository;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;

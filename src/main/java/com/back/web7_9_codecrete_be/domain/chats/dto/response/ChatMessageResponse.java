@@ -1,4 +1,4 @@
-package com.back.web7_9_codecrete_be.domain.chats.dto;
+package com.back.web7_9_codecrete_be.domain.chats.dto.response;
 
 import java.time.LocalDateTime;
 
