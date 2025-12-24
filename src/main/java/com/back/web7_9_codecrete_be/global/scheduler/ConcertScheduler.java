@@ -18,7 +18,7 @@ public class ConcertScheduler {
     private final ConcertNotifyService concertNotifyService;
 
     // 공연 데이터 업데이트를 진행합니다.
-    @Scheduled(cron = "0 0 2 * * *")
+    @Scheduled(cron = "0 0 2 * * MON")
     public void concertUpdateSchedule() throws InterruptedException {
         kopisApiService.updateConcertData();
     }
