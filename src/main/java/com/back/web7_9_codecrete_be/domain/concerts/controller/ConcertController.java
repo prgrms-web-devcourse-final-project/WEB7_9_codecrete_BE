@@ -223,7 +223,7 @@ public class ConcertController {
                     """)
             int end
     ){
-        return RsData.success(concertService.autoCompleteSerch(keyword,start,end));
+        return RsData.success(concertService.autoCompleteSearch(keyword,start,end));
     }
 
 }
