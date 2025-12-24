@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.HashSet;
+import java.util.Set;
+
 
 @Entity
 @Getter
@@ -28,9 +31,6 @@ public class Artist {
     @Column(name = "artist_type")
     private ArtistType artistType;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    private Genre genre;
-
     @Column(name = "spotify_artist_id", unique = true)
     private String spotifyArtistId;
 
@@ -46,19 +46,25 @@ public class Artist {
     @Column(name = "image_url")
     private String imageUrl;
 
+    @OneToMany(mappedBy = "artist", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ArtistGenre> artistGenres = new HashSet<>();
+
     public Artist(String spotifyArtistId, String artistName, String artistGroup, ArtistType artistType, Genre genre) {
         this.spotifyArtistId = spotifyArtistId;
         this.artistName = artistName;
         this.artistGroup = artistGroup; // 옵션 B: seed에서는 null
         this.artistType = artistType;   // 옵션 B: seed에서는 "SINGER"
-        this.genre = genre;
+        if (genre != null) {
+            addGenre(genre);
+        }
     }
 
-    public Artist(String artistName, String artistGroup, ArtistType artistType, Genre genre) {
+    // 장르 없이 생성하는 생성자 (시드 데이터용)
+    public Artist(String spotifyArtistId, String artistName, String artistGroup, ArtistType artistType) {
+        this.spotifyArtistId = spotifyArtistId;
         this.artistName = artistName;
         this.artistGroup = artistGroup;
         this.artistType = artistType;
-        this.genre = genre;
     }
 
     public void updateProfile(String nameKo, String artistGroup, ArtistType artistType) {
@@ -79,10 +85,6 @@ public class Artist {
         this.artistType = type;
     }
 
-    public void changeGenre(Genre genre) {
-        this.genre = genre;
-    }
-
     public void increaseLikeCount() {
         this.likeCount++;
     }
@@ -96,4 +98,16 @@ public class Artist {
     public void setMusicBrainzId(String musicBrainzId) {
         this.musicBrainzId = musicBrainzId;
     }
+
+    public void addGenre(Genre genre) {
+        this.artistGenres.add(new ArtistGenre(this, genre));
+    }
+
+    public void replaceGenres(Set<Genre> genres) {
+        this.artistGenres.clear(); // orphanRemoval=true라 매핑 row 삭제됨
+        for (Genre genre : genres) {
+            this.artistGenres.add(new ArtistGenre(this, genre));
+        }
+    }
+
 }

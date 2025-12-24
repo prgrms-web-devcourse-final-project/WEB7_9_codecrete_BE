@@ -5,6 +5,7 @@ import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResp
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.RelatedArtistResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.TopTrackResponse;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
+import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistGenre;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Genre;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
@@ -25,9 +26,8 @@ import se.michaelthelin.spotify.model_objects.specification.Image;
 import se.michaelthelin.spotify.model_objects.specification.Paging;
 import se.michaelthelin.spotify.model_objects.specification.Track;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -48,8 +48,9 @@ public class SpotifyService {
 
             final int targetCount = 300;
             final int limit = 50;
-            int totalSaved = 0;
-
+            
+            // 1단계: Spotify에서 아티스트 300명 조회 (spotifyArtistId, 이름, genres[] 포함)
+            List<ArtistData> artistDataList = new ArrayList<>();
             List<String> queries = List.of(
                     "k-pop", "korean pop",
                     "BTS", "BLACKPINK", "NewJeans", "LE SSERAFIM", "aespa", "IVE", "NCT",
@@ -59,11 +60,11 @@ public class SpotifyService {
             );
 
             for (String q : queries) {
-                if (totalSaved >= targetCount) break;
+                if (artistDataList.size() >= targetCount) break;
 
                 int offset = 0;
 
-                while (totalSaved < targetCount) {
+                while (artistDataList.size() < targetCount) {
                     Paging<se.michaelthelin.spotify.model_objects.specification.Artist> paging = api.searchArtists(q)
                                     .limit(limit)
                                     .offset(offset)
@@ -74,35 +75,25 @@ public class SpotifyService {
                     if (items == null || items.length == 0) break;
 
                     for (var spotifyArtist : items) {
-                        if (totalSaved >= targetCount) break;
+                        if (artistDataList.size() >= targetCount) break;
 
                         String spotifyId = spotifyArtist.getId();
                         String name = spotifyArtist.getName();
+                        String[] genres = spotifyArtist.getGenres();
 
                         if (spotifyId == null || name == null || name.isBlank()) continue;
-                        if (artistRepository.existsBySpotifyArtistId(spotifyId)) continue;
                         if (!isLikelyKoreanMusic(spotifyArtist)) continue;
-
-                        String mainGenreName = pickMainGenreName(spotifyArtist);
-                        Genre genre = findOrCreateGenreByName(mainGenreName, null);
 
                         String artistTypeStr = inferArtistType(spotifyArtist);
                         ArtistType artistType = ArtistType.valueOf(artistTypeStr);
-
-                        // Spotify에서 이미지 URL 가져오기
                         String imageUrl = pickImageUrl(spotifyArtist.getImages());
 
-                        Artist artistEntity = new Artist(
-                                spotifyId,
-                                name.trim(),
-                                null,        // artistGroup
-                                artistType,
-                                genre
-                        );
-                        artistEntity.setImageUrl(imageUrl);
+                        // genres 배열을 List로 변환 (null 제거)
+                        List<String> genreList = genres != null 
+                                ? Arrays.stream(genres).filter(Objects::nonNull).filter(g -> !g.isBlank()).collect(toList())
+                                : List.of();
 
-                        artistRepository.save(artistEntity);
-                        totalSaved++;
+                        artistDataList.add(new ArtistData(spotifyId, name.trim(), artistType, imageUrl, genreList));
                     }
 
                     offset += limit;
@@ -112,16 +103,130 @@ public class SpotifyService {
                 }
             }
 
-            if (totalSaved == 0) {
+            if (artistDataList.isEmpty()) {
                 throw new BusinessException(ArtistErrorCode.ARTIST_SEED_FAILED);
             }
 
-            return totalSaved;
+            // 2단계: 각 아티스트를 DB에 upsert (spotifyArtistId 기준으로 있으면 업데이트, 없으면 생성)
+            Map<String, Artist> artistMap = new HashMap<>(); // spotifyId -> Artist 매핑
+            for (ArtistData data : artistDataList) {
+                Optional<Artist> existingArtistOpt = artistRepository.findBySpotifyArtistId(data.spotifyId);
+                
+                Artist artist;
+                if (existingArtistOpt.isPresent()) {
+                    // 업데이트
+                    artist = existingArtistOpt.get();
+                    artist.setArtistName(data.name);
+                    artist.setArtistType(data.artistType);
+                    artist.setImageUrl(data.imageUrl);
+                    // 기존 장르 관계 제거
+                    artist.getArtistGenres().clear();
+                } else {
+                    // 생성
+                    artist = new Artist(data.spotifyId, data.name, null, data.artistType);
+                    artist.setImageUrl(data.imageUrl);
+                }
+                
+                artistRepository.save(artist);
+                artistMap.put(data.spotifyId, artist);
+            }
+
+            // 3단계: 모든 genres[]를 모아서 Set으로 중복 제거
+            Set<String> allGenreNames = artistDataList.stream()
+                    .flatMap(data -> data.genres.stream())
+                    .filter(Objects::nonNull)
+                    .filter(g -> !g.isBlank())
+                    .collect(Collectors.toSet());
+
+            if (allGenreNames.isEmpty()) {
+                log.warn("수집된 장르가 없습니다.");
+                return artistDataList.size();
+            }
+
+            // 4단계: DB에서 genre_name in (...)으로 기존 장르 한 번에 조회
+            List<Genre> existingGenres = genreRepository.findByGenreNameIn(new ArrayList<>(allGenreNames));
+            Set<String> existingGenreNames = existingGenres.stream()
+                    .map(Genre::getGenreName)
+                    .collect(Collectors.toSet());
+
+            // 5단계: 없는 장르만 insert
+            List<String> newGenreNames = allGenreNames.stream()
+                    .filter(name -> !existingGenreNames.contains(name))
+                    .collect(toList());
+
+            if (!newGenreNames.isEmpty()) {
+                List<Genre> newGenres = newGenreNames.stream()
+                        .map(Genre::new)
+                        .collect(toList());
+                genreRepository.saveAll(newGenres);
+                existingGenres.addAll(newGenres);
+                log.info("새로운 장르 {}개 생성: {}", newGenres.size(), newGenreNames);
+            }
+
+            // Genre Map 생성 (genreName -> Genre)
+            Map<String, Genre> genreMap = existingGenres.stream()
+                    .collect(Collectors.toMap(Genre::getGenreName, g -> g, (g1, g2) -> g1));
+
+            // 6단계: 각 아티스트별로 genres[]를 돌면서 artist_genre에 매핑 insert
+            int totalMappings = 0;
+            for (ArtistData data : artistDataList) {
+                Artist artist = artistMap.get(data.spotifyId);
+                if (artist == null) {
+                    log.warn("아티스트를 찾을 수 없음: spotifyId={}", data.spotifyId);
+                    continue;
+                }
+
+                for (String genreName : data.genres) {
+                    if (genreName == null || genreName.isBlank()) continue;
+                    
+                    Genre genre = genreMap.get(genreName);
+                    if (genre == null) {
+                        log.warn("장르를 찾을 수 없음: genreName={}, spotifyId={}", genreName, data.spotifyId);
+                        continue;
+                    }
+
+                    // 중복 방지는 UNIQUE(artist_id, genre_id)로 해결
+                    // 이미 존재하는지 확인
+                    boolean alreadyExists = artist.getArtistGenres().stream()
+                            .anyMatch(ag -> ag.getGenre().getId() == genre.getId());
+                    
+                    if (!alreadyExists) {
+                        ArtistGenre artistGenre = new ArtistGenre(artist, genre);
+                        artist.getArtistGenres().add(artistGenre);
+                        totalMappings++;
+                    }
+                }
+                
+                artistRepository.save(artist);
+            }
+
+            log.info("아티스트 시드 완료: 아티스트 {}명, 장르 {}개, 매핑 {}개", 
+                    artistDataList.size(), genreMap.size(), totalMappings);
+
+            return artistDataList.size();
 
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
+            log.error("아티스트 시드 실패", e);
             throw new BusinessException(ArtistErrorCode.SPOTIFY_API_ERROR);
+        }
+    }
+
+    // 아티스트 데이터 임시 저장용 클래스
+    private static class ArtistData {
+        final String spotifyId;
+        final String name;
+        final ArtistType artistType;
+        final String imageUrl;
+        final List<String> genres;
+
+        ArtistData(String spotifyId, String name, ArtistType artistType, String imageUrl, List<String> genres) {
+            this.spotifyId = spotifyId;
+            this.name = name;
+            this.artistType = artistType;
+            this.imageUrl = imageUrl;
+            this.genres = genres;
         }
     }
 
@@ -178,10 +283,6 @@ public class SpotifyService {
         return "SOLO";
     }
 
-    private Genre findOrCreateGenreByName(String genreName, String genreGroup) {
-        return genreRepository.findByGenreName(genreName)
-                .orElseGet(() -> genreRepository.save(new Genre(genreName, genreGroup, null)));
-    }
 
     @Transactional(readOnly = true)
     public ArtistDetailResponse getArtistDetail(
@@ -304,7 +405,8 @@ public class SpotifyService {
                         .toList();
             }
             if (genreId != null) {
-                return artistRepository.findTop5ByGenreIdAndIdNot(genreId, artistId).stream()
+                return artistRepository.findTop5ByGenreIdAndIdNot(genreId, artistId, 
+                        org.springframework.data.domain.PageRequest.of(0, 5)).stream()
                         .map(a -> new RelatedArtistResponse(
                                 a.getArtistName(),
                                 null,
