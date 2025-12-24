@@ -1,11 +1,11 @@
 package com.back.web7_9_codecrete_be.domain.location.controller;
 
-import com.back.web7_9_codecrete_be.domain.location.dto.KakaoRouteFeResponse;
-import com.back.web7_9_codecrete_be.domain.location.dto.KakaoRouteSectionFeResponse;
-import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoLocalResponse;
-import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoMobilityResponse;
-import com.back.web7_9_codecrete_be.domain.location.dto.request.KakaoRouteTransitRequest;
-import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoRouteTransitResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.fe.KakaoRouteFeResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.fe.KakaoRouteSectionFeResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.kakao.KakaoLocalResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.kakao.KakaoMobilityResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.request.kakao.KakaoRouteTransitRequest;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.kakao.KakaoRouteTransitResponse;
 import com.back.web7_9_codecrete_be.domain.location.service.KakaoLocalService;
 import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;

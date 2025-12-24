@@ -1,4 +1,4 @@
-package com.back.web7_9_codecrete_be.domain.location.dto.response;
+package com.back.web7_9_codecrete_be.domain.location.dto.response.kakao;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;

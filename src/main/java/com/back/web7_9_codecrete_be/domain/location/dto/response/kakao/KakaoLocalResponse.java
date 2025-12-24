@@ -1,4 +1,4 @@
-package com.back.web7_9_codecrete_be.domain.location.dto.response;
+package com.back.web7_9_codecrete_be.domain.location.dto.response.kakao;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
