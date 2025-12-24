@@ -108,15 +108,12 @@ public class ConcertService {
             for(ConcertImage concertImage : concertImages){
                 concertImageUrls.add(concertImage.getImageUrl());
             }
-
             concertRepository.concertViewCountUp(concertId);
             concertDetailResponse.setConcertImageUrls(concertImageUrls);
-            concertDetailResponse.setViewCount(concertDetailResponse.getViewCount() + 1);
-            concertRedisRepository.saveConcertDetail(concertId, concertDetailResponse);
-        } else{
-            concertDetailResponse.setViewCount(concertDetailResponse.getViewCount() + 1);
-            concertRedisRepository.saveConcertDetail(concertId, concertDetailResponse);
         }
+        // 조회수 1 증가하고 해당 데이터를 캐시에 저장.
+        concertDetailResponse.setViewCount(concertDetailResponse.getViewCount() + 1);
+        concertRedisRepository.saveConcertDetail(concertId, concertDetailResponse);
         return concertDetailResponse;
     }
 
