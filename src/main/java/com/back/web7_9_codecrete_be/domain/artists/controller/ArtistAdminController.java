@@ -5,6 +5,7 @@ import com.back.web7_9_codecrete_be.domain.artists.dto.request.UpdateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistService;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/admin/artists")
 @RequiredArgsConstructor
+@Tag(name = "ArtistAdmin", description = "아티스트 관리자 API 입니다.")
 public class ArtistAdminController {
 
     private final ArtistService artistService;
