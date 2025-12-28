@@ -48,4 +48,8 @@ public class ChatUserCacheService {
 
 		return cache;
 	}
+
+	public void removeChatUserCache(String email) {
+		redisTemplate.delete(cacheKey(email));
+	}
 }
