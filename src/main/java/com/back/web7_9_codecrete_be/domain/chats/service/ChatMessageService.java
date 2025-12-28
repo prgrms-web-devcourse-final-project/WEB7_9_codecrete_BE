@@ -8,11 +8,8 @@ import org.springframework.stereotype.Service;
 
 import com.back.web7_9_codecrete_be.domain.chats.dto.request.ChatMessageRequest;
 import com.back.web7_9_codecrete_be.domain.chats.dto.response.ChatMessageResponse;
+import com.back.web7_9_codecrete_be.domain.chats.dto.response.ChatUserCache;
 import com.back.web7_9_codecrete_be.domain.chats.repository.ChatStreamRepository;
-import com.back.web7_9_codecrete_be.domain.users.entity.User;
-import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
-import com.back.web7_9_codecrete_be.global.error.code.AuthErrorCode;
-import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,28 +19,25 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class ChatMessageService {
 
-	private final UserRepository userRepository;
 	private final SimpMessagingTemplate messagingTemplate;
 	private final ChatStreamRepository chatStreamRepository;
-	private final ChatPolicyService chatPolicyService;
+	private final ChatUserCacheService chatUserCacheService;
 
 	public void sendMessage(ChatMessageRequest request, Principal principal) {
 
 		String email = principal.getName();
 
-		// TODO: 캐싱처리
-		User user = userRepository.findByEmail(email)
-			.orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
+		ChatUserCache chatUser = chatUserCacheService.getChatUser(email);
 
 		ChatMessageResponse response = new ChatMessageResponse(
 			request.getConcertId(),
-			user.getId(),
-			user.getNickname(),
+			chatUser.getUserId(),
+			chatUser.getNickname(),
 			request.getContent(),
 			LocalDateTime.now()
 		);
 
-		log.info("[SEND MESSAGE] From User ID: {}, Content: {}", user.getId(), request.getContent());
+		log.info("[SEND MESSAGE] From User ID: {}, Content: {}", chatUser.getUserId(), request.getContent());
 
 		chatStreamRepository.save(response);
 
