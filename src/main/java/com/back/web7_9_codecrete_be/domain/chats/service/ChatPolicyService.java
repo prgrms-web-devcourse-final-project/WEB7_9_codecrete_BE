@@ -86,7 +86,7 @@ public class ChatPolicyService {
 
 		LocalDateTime ticketTime = concert.getTicketTime();
 		if (ticketTime == null) {
-			return Duration.ofMinutes(0);
+			return Duration.ofMinutes(10);
 		}
 
 		LocalDateTime now = LocalDateTime.now();
@@ -96,7 +96,7 @@ public class ChatPolicyService {
 			.atTime(LocalTime.MAX);
 
 		if (now.isAfter(policyEnd)) {
-			return Duration.ofMinutes(0);
+			return Duration.ofMinutes(10);
 		}
 
 		return Duration.between(now, policyEnd);
