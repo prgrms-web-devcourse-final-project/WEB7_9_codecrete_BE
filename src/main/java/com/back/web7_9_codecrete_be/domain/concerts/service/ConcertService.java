@@ -108,7 +108,6 @@ public class ConcertService {
             for(ConcertImage concertImage : concertImages){
                 concertImageUrls.add(concertImage.getImageUrl());
             }
-            concertRepository.concertViewCountUp(concertId);
             concertDetailResponse.setConcertImageUrls(concertImageUrls);
         }
         // 조회수 1 증가하고 해당 데이터를 캐시에 저장.
@@ -263,6 +262,17 @@ public class ConcertService {
     private Concert findConcertByConcertId(long concertId) {
         return concertRepository.findById(concertId).orElseThrow(
                 () -> new BusinessException(ConcertErrorCode.CONCERT_NOT_FOUND)
+        );
+    }
+
+    // 공연 추천
+    public List<ConcertItem> recommendSimilarConcerts(long concertId) {
+        Concert concert = findConcertByConcertId(concertId);
+        return concertRepository.getSimilarConcerts(
+                concertId,
+                concert.getConcertPlace().getConcertPlaceId(),
+                concert.getStartDate(),
+                concert.getStartDate().plusDays(60)
         );
     }
 
