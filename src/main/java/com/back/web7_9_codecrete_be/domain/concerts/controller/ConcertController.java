@@ -231,7 +231,7 @@ public class ConcertController {
         return RsData.success(concertService.autoCompleteSearch(keyword,start,end));
     }
 
-    @Operation(summary = "유사 공연 추천",description = """
+    @Operation(summary = "유사 공연 목록",description = """
             현재 검색한 공연과 유사한 공연을 추천합니다.<br/>
             같은 공연장을 기준으로 30일 이내의 유사한 가격을 가진 공연을 추천합니다.
             """)
