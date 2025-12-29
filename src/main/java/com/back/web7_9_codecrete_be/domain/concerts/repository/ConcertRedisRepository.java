@@ -187,6 +187,14 @@ public class ConcertRedisRepository {
         redisTemplate.delete(CONCERTS_COUNT_PREFIX + sort.name());
     }
 
+    // 캐시된 공연의 좋아요 정보 수정 -?
+    public void upCountConcertLikeCountInConcertDetail(Long concertId) {
+        ConcertDetailResponse concertDetailResponse = (ConcertDetailResponse)objectRedisTemplate.opsForValue().get(CONCERT_DETAIL_PREFIX + concertId.toString());
+        if (concertDetailResponse == null) return;
+        else  concertDetailResponse.setLikeCount(concertDetailResponse.getLikeCount()+1);
+        objectRedisTemplate.opsForValue().set(CONCERT_DETAIL_PREFIX + concertId.toString(), concertDetailResponse);
+    }
+
     // 사용자가 좋아요를 누른 공연의 개수 조회(임시 캐시 느낌으로 짧게 저장, 조회시 시간 갱신 ~1일
     public Long getUserLikedCount(User user) {
         String raw = redisTemplate.opsForValue().get(CONCERTS_COUNT_PREFIX + user.getId());
