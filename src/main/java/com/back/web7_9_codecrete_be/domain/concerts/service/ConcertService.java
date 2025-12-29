@@ -77,7 +77,7 @@ public class ConcertService {
         return concertRepository.getConcertItemsByKeyword(keyword, pageable);
     }
 
-    // 자동완성
+    // 검색어 자동 완성
     public List<AutoCompleteItem> autoCompleteSearch(String keyword, int start, int end) {
         return concertSearchRedisTemplate.getAutoCompleteWord(keyword, start, end);
     }

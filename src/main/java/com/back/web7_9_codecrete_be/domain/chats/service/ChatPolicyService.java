@@ -79,4 +79,28 @@ public class ChatPolicyService {
 		// 정책 기간 종료 후
 		return Duration.ofMinutes(10);
 	}
+
+	public Duration calculateChatRemainingTtl(Long concertId) {
+
+		Concert concert = concertRepository.getReferenceById(concertId);
+
+		LocalDateTime ticketTime = concert.getTicketTime();
+		if (ticketTime == null) {
+			return Duration.ofMinutes(10);
+		}
+
+		LocalDateTime now = LocalDateTime.now();
+
+		LocalDateTime policyEnd = ticketTime.toLocalDate()
+			.plusDays(3)
+			.atTime(LocalTime.MAX);
+
+		if (now.isAfter(policyEnd)) {
+			return Duration.ofMinutes(10);
+		}
+
+		return Duration.between(now, policyEnd);
+	}
+
+
 }

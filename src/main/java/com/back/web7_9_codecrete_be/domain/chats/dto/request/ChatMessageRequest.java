@@ -1,4 +1,4 @@
-package com.back.web7_9_codecrete_be.domain.chats.dto;
+package com.back.web7_9_codecrete_be.domain.chats.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
