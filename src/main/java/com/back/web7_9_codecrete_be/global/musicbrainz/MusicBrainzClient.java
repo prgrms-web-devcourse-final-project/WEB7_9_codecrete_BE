@@ -13,6 +13,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -25,6 +27,28 @@ public class MusicBrainzClient {
 
     private static final String MUSICBRAINZ_API_BASE = "https://musicbrainz.org/ws/2";
     private static final String USER_AGENT = "CodecreteBE/1.0 (Educational Project; +https://github.com/your-repo)";
+
+    // 소속사, 출연 프로그램, 레이블 등 아티스트가 아닌 엔티티 필터링 키워드
+    private static final List<String> EXCLUDED_KEYWORDS = Arrays.asList(
+            // 소속사/레이블
+            "smtown", "sm entertainment", "yg entertainment", "jyp entertainment", "jyp",
+            "hybe", "big hit", "bighit", "cube entertainment", "cube",
+            "fnc entertainment", "fnc", "dsp media", "dsp",
+            "starship entertainment", "starship", "rbw", "rainbow bridge world",
+            "wm entertainment", "wm", "pledis entertainment", "pledis",
+            "source music", "wakeone", "cj enm", "mnet", "kbs", "mbc", "sbs",
+            "loen entertainment", "loen", "kakao m", "genie music", "genie",
+            "melon", "bugs", "flo", "vibe",
+            // 출연 프로그램
+            "produce 101", "produce", "show me the money", "k-pop star", "kpop star",
+            "superstar k", "the voice", "masked singer", "king of masked singer",
+            "sugar man", "immortal songs", "fantastic duo", "hidden singer",
+            "i can see your voice", "queendom", "kingdom", "girls planet",
+            "boys planet", "unpretty rapstar", "good girl", "show me the money",
+            // 기타
+            "music bank", "music core", "inkigayo", "show champion", "m countdown",
+            "the show", "music show", "award", "festival", "concert"
+    );
 
     // 아티스트 이름으로 MusicBrainz에서 아티스트 정보 검색
     public Optional<ArtistInfo> searchArtist(String artistName) {
@@ -81,6 +105,13 @@ public class MusicBrainzClient {
                         continue;
                     }
                     
+                    // 소속사/출연 프로그램 등 아티스트가 아닌 엔티티 필터링
+                    if (isExcludedEntity(mbName)) {
+                        log.debug("MusicBrainz 검색 결과 제외 (소속사/프로그램 등): name={}, 검색어={}", 
+                                mbName, artistName);
+                        continue;
+                    }
+                    
                     String normalizedMbName = normalizeName(mbName);
                     String normalizedMbNameForComparison = normalizeNameForComparison(mbName);
                     
@@ -119,7 +150,14 @@ public class MusicBrainzClient {
                 String bestMatchName = null;
                 for (JsonNode artist : artists) {
                     String mbName = artist.path("name").asText();
-                    if (mbName != null) {
+                    if (mbName != null && !mbName.isBlank()) {
+                        // 소속사/출연 프로그램 등 아티스트가 아닌 엔티티 필터링
+                        if (isExcludedEntity(mbName)) {
+                            log.debug("MusicBrainz 검색 결과 제외 (소속사/프로그램 등): name={}, 검색어={}", 
+                                    mbName, artistName);
+                            continue;
+                        }
+                        
                         // 정규화된 이름이 완전히 일치하지 않더라도, 첫 번째 결과를 사용
                         // (이미 정규화된 비교를 시도했으므로, 첫 번째가 가장 관련성 높은 결과)
                         if (bestMatch == null) {
@@ -317,6 +355,12 @@ public class MusicBrainzClient {
                     
                     String groupName = group.path("name").asText();
                     if (groupName != null && !groupName.isBlank()) {
+                        // 소속사, 출연 프로그램, 이벤트성 그룹 필터링
+                        if (isExcludedGroupName(groupName)) {
+                            log.debug("소속 그룹 제외 (소속사/프로그램/이벤트): groupName={}", groupName);
+                            continue;
+                        }
+                        
                         log.debug("소속 그룹 추출 성공: groupName={}, relation.type={}, artist.type={}", 
                                 groupName, type, groupType);
                         return groupName;
@@ -326,6 +370,47 @@ public class MusicBrainzClient {
         }
         
         return null;
+    }
+    
+    /**
+     * 그룹명이 소속사, 출연 프로그램, 이벤트성 그룹인지 확인
+     * @param groupName 그룹명
+     * @return 제외해야 할 그룹명이면 true
+     */
+    private boolean isExcludedGroupName(String groupName) {
+        if (groupName == null || groupName.isBlank()) {
+            return false;
+        }
+        
+        String normalizedName = normalizeName(groupName);
+        String lowerName = normalizedName.toLowerCase();
+        
+        // 제외 키워드 목록과 비교
+        for (String keyword : EXCLUDED_KEYWORDS) {
+            if (normalizedName.equals(keyword) || 
+                lowerName.contains(keyword)) {
+                return true;
+            }
+        }
+        
+        // 추가 이벤트성 그룹 키워드
+        String[] eventKeywords = {
+            "collaboration", "collab", "special stage", "special unit",
+            "project group", "temporary", "one-time", "event",
+            "collaboration stage", "collab stage", "special collaboration"
+        };
+        for (String keyword : eventKeywords) {
+            if (lowerName.contains(keyword)) {
+                return true;
+            }
+        }
+        
+        // 숫자만 있는 경우
+        if (normalizedName.matches("^\\d+$")) {
+            return true;
+        }
+        
+        return false;
     }
 
     // 아티스트 타입 추출 (type 필드: Person -> SOLO, Group -> GROUP)
@@ -394,6 +479,37 @@ public class MusicBrainzClient {
         return normalizeName(name)
                 // 하이픈 제거 (예: "g-dragon" → "gdragon")
                 .replaceAll("-", "");
+    }
+
+    /**
+     * 소속사, 출연 프로그램, 레이블 등 아티스트가 아닌 엔티티인지 확인
+     * @param name MusicBrainz에서 반환된 이름
+     * @return 제외해야 할 엔티티면 true
+     */
+    private boolean isExcludedEntity(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        
+        String normalizedName = normalizeName(name);
+        
+        // 제외 키워드 목록과 비교
+        for (String keyword : EXCLUDED_KEYWORDS) {
+            // 정확히 일치하거나, 이름이 키워드로 시작하는 경우 제외
+            if (normalizedName.equals(keyword) || 
+                normalizedName.startsWith(keyword + " ") ||
+                normalizedName.startsWith(keyword + "(") ||
+                normalizedName.startsWith(keyword + "-")) {
+                return true;
+            }
+        }
+        
+        // 추가 패턴 체크: 숫자만 있는 경우 (예: "101", "2020" 등)
+        if (normalizedName.matches("^\\d+$")) {
+            return true;
+        }
+        
+        return false;
     }
 
     public static class ArtistInfo {

@@ -64,8 +64,15 @@ public class ArtistEnrichService {
                 artist.setMusicBrainzId(mbid);
                 
                 Optional<MusicBrainzClient.ArtistInfo> mbDetailOpt = musicBrainzClient.getArtistByMbid(mbid);
-                if (mbDetailOpt.isPresent() && mbDetailOpt.get().getArtistGroup() != null && !mbDetailOpt.get().getArtistGroup().isBlank()) {
-                    artist.setArtistGroup(mbDetailOpt.get().getArtistGroup());
+                if (mbDetailOpt.isPresent()) {
+                    String artistGroup = mbDetailOpt.get().getArtistGroup();
+                    if (artistGroup != null && !artistGroup.isBlank()) {
+                        // 소속사, 출연 프로그램, 이벤트성 그룹 필터링
+                        String validatedGroup = groupValidator.validate(artistGroup, artist.getArtistName(), artist.getNameKo());
+                        if (validatedGroup != null) {
+                            artist.setArtistGroup(validatedGroup);
+                        }
+                    }
                 }
                 
                 artistRepository.save(artist);
