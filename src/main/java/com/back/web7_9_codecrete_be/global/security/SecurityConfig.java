@@ -59,7 +59,8 @@ public class SecurityConfig {
 					"/api/v1/location/**",      //location 정보 조회 도메인(임시)
 					"/api/v1/concerts/**",     // concert 정보 조회 도메인
 					"/api/v1/artists/**",    // artist 정보 저장 도메인(임시)
-          			"/api/v1/users/**"
+          			"/api/v1/users/**",
+					"/api/v1/chats/**"
 				).permitAll()
 
 				// ADMIN 전용

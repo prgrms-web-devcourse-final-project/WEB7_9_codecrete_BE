@@ -5,7 +5,7 @@ import java.security.Principal;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.stereotype.Controller;
 
-import com.back.web7_9_codecrete_be.domain.chats.dto.ChatMessageRequest;
+import com.back.web7_9_codecrete_be.domain.chats.dto.request.ChatMessageRequest;
 import com.back.web7_9_codecrete_be.domain.chats.service.ChatMessageService;
 
 import lombok.RequiredArgsConstructor;
