@@ -123,7 +123,8 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
                 c.ticketTime IS NULL
                 ORDER BY 
                 c.startDate
-                DESC
+                DESC,
+                c.concertId
             """)
     List<ConcertItem> getNoTicketTimeConcertList(
             Pageable pageable
