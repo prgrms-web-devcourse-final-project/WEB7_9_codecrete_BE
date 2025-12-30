@@ -103,6 +103,32 @@ public class ConcertServiceTest {
     }
 
 
+    @Test
+    @Transactional
+    void t4_concertLikeListTest(){
+
+    }
+
+    @Test
+    @Transactional
+    void t5_getNoTicketTimeConcertListTest(){
+        Pageable pageable = PageRequest.of(0, 3);
+        List<ConcertItem> concertItemList = concertService.getNoTicketTimeConcertsList(pageable);
+        assertThat(concertItemList).isNotEmpty();
+        assertThat(concertItemList.size()).isEqualTo(3);
+        assertThat(concertItemList.get(0)).isNotNull();
+        assertThat(concertItemList.get(0)).isInstanceOf(ConcertItem.class);
+        assertThat(concertItemList.get(0).getTicketTime()).isNull();
+        assertThat(concertItemList.get(0).getTicketEndTime()).isNull();
+        assertThat(concertItemList.get(1).getTicketTime()).isNull();
+        assertThat(concertItemList.get(1).getTicketEndTime()).isNull();
+        assertThat(concertItemList.get(2).getTicketTime()).isNull();
+        assertThat(concertItemList.get(2).getTicketEndTime()).isNull();
+    }
+
+
+
+
 
 
 }
