@@ -75,7 +75,7 @@ public class Post {
     }
 
     public static Post create(Long userId, String nickname, String title, String content, PostCategory category) {
-        return com.back.web7_9_codecrete_be.domain.community.post.entity.Post.builder()
+        return Post.builder()
                 .userId(userId)
                 .nickname(nickname)
                 .title(title)
