@@ -15,11 +15,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/docs/chat")
-@Tag(name = "Chat STOMP", description = "WebSocket / STOMP 채팅 프로토콜 문서. 문서용 API. 사용X")
+@Tag(name = "Chat")
 public class ChatStompDocsController {
 
 	@Operation(
-		summary = "채팅 메시지 전송 (STOMP)",
+		summary = "채팅 메시지 전송 (WebSocket / STOMP 채팅 프로토콜 문서. 문서용 API. 사용X)",
 		description = """
         ### 📡 WebSocket STOMP 채팅 메시지 전송
 
@@ -64,7 +64,7 @@ public class ChatStompDocsController {
 	public void stompChatGuide() {}
 
 	@Operation(
-		summary = "STOMP 채팅 메시지 전송 규격",
+		summary = "STOMP 채팅 메시지 전송 규격(문서용 API. 사용X)",
 		description = """
         WebSocket + STOMP 기반 채팅 메시지 전송 규격입니다.
 
