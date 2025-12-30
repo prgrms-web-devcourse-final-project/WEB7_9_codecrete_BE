@@ -4,8 +4,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.back.web7_9_codecrete_be.domain.chats.dto.ChatMessageRequest;
-import com.back.web7_9_codecrete_be.domain.chats.dto.ChatMessageResponse;
+import com.back.web7_9_codecrete_be.domain.chats.dto.request.ChatMessageRequest;
+import com.back.web7_9_codecrete_be.domain.chats.dto.response.ChatMessageResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -27,7 +27,7 @@ public class ChatStompDocsController {
         ```
         ws://localhost:8080/ws-chat
         or
-        wss://www.naeconcertbutakhae.shop/ws-chat
+        wss://api.naeconcertbutakhae.shop/ws-chat
         ```
 
         #### 2️⃣ SEND Destination

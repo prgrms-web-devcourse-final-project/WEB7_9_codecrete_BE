@@ -51,7 +51,8 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
                 c.concertPlace cp
                 ORDER BY
                 c.viewCount
-                DESC
+                DESC,
+                c.concertId
             """)
         // 조회수 기준 내림차순
     List<ConcertItem> getConcertItemsOrderByViewCountDesc(Pageable pageable);
@@ -65,7 +66,8 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
                 c.concertPlace cp
                 ORDER BY
                 c.likeCount
-                desc
+                desc,
+                c.concertId
             """)
         // 좋아요 기준 내림차순
     List<ConcertItem> getConcertItemsOrderByLikeCountDesc(Pageable pageable);
@@ -82,7 +84,8 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
                 c.startDate >= :fromDate
                 ORDER BY 
                 c.startDate
-                asc
+                asc,
+                c.concertId
             """)
     List<ConcertItem> getUpComingConcertItemsFromDateASC(
             Pageable pageable,
@@ -120,7 +123,8 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
                 c.ticketTime IS NULL
                 ORDER BY 
                 c.startDate
-                DESC
+                DESC,
+                c.concertId
             """)
     List<ConcertItem> getNoTicketTimeConcertList(
             Pageable pageable
@@ -258,4 +262,5 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     );
 
 
+    Integer countConcertsByNameContaining(String name);
 }

@@ -108,6 +108,10 @@ public class User {
         this.profileImage = profileImage;
     }
 
+    public void updateBirth(LocalDate birth) {
+        this.birth = birth;
+    }
+
     public void softDelete() {
         this.isDeleted = true;
         this.status = UserStatus.DELETED;

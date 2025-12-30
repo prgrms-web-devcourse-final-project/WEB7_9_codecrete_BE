@@ -2,6 +2,7 @@ package com.back.web7_9_codecrete_be.domain.users.controller;
 
 import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserSettingUpdateRequest;
+import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdateBirthRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdateNicknameRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdatePasswordRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.response.UserResponse;
@@ -43,6 +44,16 @@ public class UserController {
         User user = rq.getUser();
         UserResponse response = userService.updateNickname(user, req);
         return RsData.success("사용자 닉네임 변경 완료", response);
+    }
+
+    @Operation(summary = "내 생일 수정", description = "로그인한 사용자의 생일을 수정합니다.")
+    @PatchMapping("/birth")
+    public RsData<?> updateBirth(
+            @Valid @RequestBody UserUpdateBirthRequest req
+    ) {
+        User user = rq.getUser();
+        UserResponse response = userService.updateBirth(user, req);
+        return RsData.success("생일이 수정되었습니다.", response);
     }
 
     @Operation(summary = "내 프로필 이미지 수정", description = "프로필 이미지를 multipart/form-data 형식으로 업로드하여 수정합니다.")

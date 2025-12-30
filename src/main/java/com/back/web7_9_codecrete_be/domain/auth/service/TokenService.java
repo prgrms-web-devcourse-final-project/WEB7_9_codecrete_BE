@@ -73,7 +73,8 @@ public class TokenService {
 
         String newAccess = jwtTokenProvider.generateAccessToken(email);
 
-        rq.setCookie("ACCESS_TOKEN", newAccess, jwtProperties.getAccessTokenExpiration());
+        // ACCESSTOKEN 재발급 시 setCookie 미사용
+//        rq.setCookie("ACCESS_TOKEN", newAccess, jwtProperties.getAccessTokenExpiration());
 
         return new TokenResponse(newAccess);
     }

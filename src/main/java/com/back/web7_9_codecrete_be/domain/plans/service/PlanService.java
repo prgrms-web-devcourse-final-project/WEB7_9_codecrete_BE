@@ -726,6 +726,32 @@ public class PlanService {
     }
 
     /**
+     * 공유 링크 재생성 (재발급)
+     * 이전 링크는 무효화되고 새로운 링크가 생성됩니다.
+     * OWNER만 가능합니다.
+     *
+     * @param planId 계획 ID
+     * @param user 현재 로그인한 사용자 (권한 체크용)
+     * @return 공유 링크 응답 DTO
+     * @throws BusinessException 계획을 찾을 수 없거나 OWNER가 아닌 경우
+     */
+    @Transactional
+    public PlanShareLinkResponse regenerateShareLink(Long planId, User user) {
+        // 권한 체크 (OWNER만 가능)
+        Plan plan = findPlanWithOwnerCheck(planId, user);
+
+        // 기존 토큰을 무효화하고 새로운 토큰 생성 (이전 링크 무효화)
+        plan.generateShareToken();
+        planRepository.save(plan);
+
+        return PlanShareLinkResponse.builder()
+                .planId(plan.getPlanId())
+                .shareToken(plan.getShareToken())
+                .shareLink("/plans/share/" + plan.getShareToken())
+                .build();
+    }
+
+    /**
      * 공유 링크로 플랜 조회 (참가자 생성 없이 조회만)
      *
      * @param shareToken 공유 토큰 (UUID 기반 13자)
@@ -820,7 +846,142 @@ public class PlanService {
         planRepository.save(plan);
     }
 
-    // 계획 공유 거절
-    // 계획 공유 인원 추방
-    // 계획 공유 나가기
+    /**
+     * 초대 거절
+     * 공유 링크를 통해 받은 초대를 거절합니다.
+     *
+     * @param shareToken 공유 토큰
+     * @param user 현재 로그인한 사용자
+     * @throws BusinessException 공유 링크가 유효하지 않거나 참가자가 아닌 경우
+     */
+    @Transactional
+    public void declinePlanInvitation(String shareToken, User user) {
+        // shareToken으로 Plan 찾기
+        Plan plan = planRepository.findByShareToken(shareToken)
+                .orElseThrow(() -> new BusinessException(PlanErrorCode.INVALID_SHARE_TOKEN));
+
+        // 만료 시간 검증
+        if (plan.isShareTokenExpired()) {
+            throw new BusinessException(PlanErrorCode.SHARE_TOKEN_EXPIRED);
+        }
+
+        // 자기 자신의 플랜은 거절할 수 없음
+        if (plan.getUserId().equals(user.getId())) {
+            throw new BusinessException(PlanErrorCode.USER_ALREADY_PARTICIPANT);
+        }
+
+        // 참가자 조회
+        PlanParticipant participant = planParticipantRepository
+                .findByUser_IdAndPlan_PlanId(user.getId(), plan.getPlanId())
+                .orElseThrow(() -> new BusinessException(PlanErrorCode.PARTICIPANT_NOT_FOUND));
+
+        // 상태를 DECLINED로 변경
+        participant.updateInviteStatus(PlanParticipant.InviteStatus.DECLINED);
+        planParticipantRepository.save(participant);
+    }
+
+    /**
+     * 참가자 강퇴
+     * OWNER 또는 EDITOR 권한이 있는 사용자가 다른 참가자를 강퇴합니다.
+     *
+     * @param planId 계획 ID
+     * @param participantId 참가자 ID
+     * @param user 현재 로그인한 사용자 (권한 체크용)
+     * @throws BusinessException 계획을 찾을 수 없거나 권한이 없거나 소유자는 강퇴할 수 없는 경우
+     */
+    @Transactional
+    public void kickParticipant(Long planId, Long participantId, User user) {
+        // 권한 체크 (수정 권한 확인: OWNER 또는 EDITOR)
+        Plan plan = findPlanWithEditPermissionCheck(planId, user);
+
+        // 참가자 조회
+        PlanParticipant participant = planParticipantRepository.findById(participantId)
+                .orElseThrow(() -> new BusinessException(PlanErrorCode.PARTICIPANT_NOT_FOUND));
+
+        // 참가자가 해당 Plan에 속해있는지 확인
+        if (!participant.getPlan().getPlanId().equals(planId)) {
+            throw new BusinessException(PlanErrorCode.PARTICIPANT_NOT_FOUND);
+        }
+
+        // 소유자는 강퇴할 수 없음
+        if (participant.getRole() == PlanParticipant.ParticipantRole.OWNER ||
+            plan.getUserId().equals(participant.getUserId())) {
+            throw new BusinessException(PlanErrorCode.CANNOT_REMOVE_OWNER);
+        }
+
+        // 상태를 REMOVED로 변경
+        participant.updateInviteStatus(PlanParticipant.InviteStatus.REMOVED);
+        planParticipantRepository.save(participant);
+    }
+
+    /**
+     * 자진 나가기
+     * 참가자가 계획에서 스스로 나갑니다.
+     *
+     * @param planId 계획 ID
+     * @param user 현재 로그인한 사용자
+     * @throws BusinessException 계획을 찾을 수 없거나 소유자는 나갈 수 없는 경우
+     */
+    @Transactional
+    public void quitPlan(Long planId, User user) {
+        Plan plan = planRepository.findById(planId)
+                .orElseThrow(() -> new BusinessException(PlanErrorCode.PLAN_NOT_FOUND));
+
+        // 소유자는 나갈 수 없음
+        if (plan.getUserId().equals(user.getId())) {
+            throw new BusinessException(PlanErrorCode.CANNOT_LEAVE_OWNER);
+        }
+
+        // 참가자 조회
+        PlanParticipant participant = planParticipantRepository
+                .findByUser_IdAndPlan_PlanId(user.getId(), planId)
+                .orElseThrow(() -> new BusinessException(PlanErrorCode.PARTICIPANT_NOT_FOUND));
+
+        // 상태를 LEFT로 변경
+        participant.updateInviteStatus(PlanParticipant.InviteStatus.LEFT);
+        planParticipantRepository.save(participant);
+    }
+
+    /**
+     * 참가자 목록 조회
+     * 계획의 참가자 목록을 조회합니다. 상태별 필터링이 가능합니다.
+     *
+     * @param planId 계획 ID
+     * @param user 현재 로그인한 사용자 (권한 체크용)
+     * @param inviteStatus 필터링할 초대 상태 (선택적, null이면 모든 상태)
+     * @return 참가자 목록
+     * @throws BusinessException 계획을 찾을 수 없거나 권한이 없는 경우
+     */
+    public PlanParticipantListResponse getParticipantList(Long planId, User user, PlanParticipant.InviteStatus inviteStatus) {
+        // 권한 체크 (참가자 여부 확인)
+        findPlanWithParticipantCheck(planId, user);
+
+        // 참가자 목록 조회 (User 정보 포함)
+        List<PlanParticipant> participants = planParticipantRepository.findByPlan_PlanId(planId);
+
+        // 상태별 필터링
+        if (inviteStatus != null) {
+            participants = participants.stream()
+                    .filter(p -> p.getInviteStatus() == inviteStatus)
+                    .collect(Collectors.toList());
+        }
+
+        // DTO 변환
+        List<PlanParticipantListResponse.ParticipantDetailInfo> participantInfos = participants.stream()
+                .map(participant -> PlanParticipantListResponse.ParticipantDetailInfo.builder()
+                        .participantId(participant.getParticipantId())
+                        .userId(participant.getUserId())
+                        .nickname(participant.getUser().getNickname())
+                        .email(participant.getUser().getEmail())
+                        .profileImage(participant.getUser().getProfileImage())
+                        .inviteStatus(participant.getInviteStatus())
+                        .role(participant.getRole())
+                        .build())
+                .collect(Collectors.toList());
+
+        return PlanParticipantListResponse.builder()
+                .planId(planId)
+                .participants(participantInfos)
+                .build();
+    }
 }

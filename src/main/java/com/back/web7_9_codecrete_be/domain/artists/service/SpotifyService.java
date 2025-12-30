@@ -1036,6 +1036,7 @@ public class SpotifyService {
             if (artistGroup != null && !artistGroup.isBlank()) {
                 return artistRepository.findTop5ByArtistGroupAndIdNot(artistGroup, artistId).stream()
                         .map(a -> new RelatedArtistResponse(
+                                a.getId(),
                                 a.getArtistName(),
                                 a.getNameKo(),
                                 a.getImageUrl(),
@@ -1047,6 +1048,7 @@ public class SpotifyService {
                 return artistRepository.findTop5ByGenreIdAndIdNot(genreId, artistId, 
                         org.springframework.data.domain.PageRequest.of(0, 5)).stream()
                         .map(a -> new RelatedArtistResponse(
+                                a.getId(),
                                 a.getArtistName(),
                                 a.getNameKo(),
                                 a.getImageUrl(),
@@ -1114,13 +1116,16 @@ public class SpotifyService {
         return Stream.of(artists)
                 .filter(Objects::nonNull)
                 .map(a -> {
-                    // DB에서 아티스트 정보 조회하여 nameKo 가져오기
+                    // DB에서 아티스트 정보 조회하여 id와 nameKo 가져오기
+                    Long artistId = null;
                     String nameKo = null;
                     Optional<Artist> dbArtist = artistRepository.findBySpotifyArtistId(a.getId());
                     if (dbArtist.isPresent()) {
+                        artistId = dbArtist.get().getId();
                         nameKo = dbArtist.get().getNameKo();
                     }
                     return new RelatedArtistResponse(
+                            artistId,
                             a.getName(),
                             nameKo,
                             pickImageUrl(a.getImages()),
