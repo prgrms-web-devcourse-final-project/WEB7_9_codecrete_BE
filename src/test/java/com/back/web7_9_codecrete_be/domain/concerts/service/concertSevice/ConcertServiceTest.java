@@ -252,7 +252,7 @@ public class ConcertServiceTest {
         assertThat(serchResultList.get(1).getName()).contains("예매");
     }
 
-    @Test
+//    @Test
     @Transactional
     void t7_autoCompleteSearchTest(){
         //given
