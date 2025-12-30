@@ -1,9 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.concerts.service.concertSevice;
 
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.AutoCompleteItem;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
-import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ListSort;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.*;
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concertPlace.PlaceDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertPlace;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertLikeRepository;
@@ -114,8 +112,8 @@ public class ConcertServiceTest {
                         place,
                         "예매일 없는 공연",
                         "예매일이 없는 공연",
-                        LocalDate.now().minusDays(10),
-                        LocalDate.now().minusDays(7),
+                        LocalDate.now().plusDays(3),
+                        LocalDate.now().plusDays(6),
                         null,
                         null,
                         100000,
@@ -362,9 +360,66 @@ public class ConcertServiceTest {
         assertThat(concertRedisRepository.getUserLikedCount(user)).isEqualTo(initialDbCount);
     }
 
+    @Test
+    @Transactional
+    void t13_setConcertTicketingTimeTest(){
+        // given
+        Concert concert = concertRepository.getConcertByApiConcertId("test-concert-2");
+        ConcertTicketTimeSetRequest concertTicketTimeSetRequest = new ConcertTicketTimeSetRequest(
+                concert.getConcertId(),
+                LocalDateTime.now().minusDays(5),
+                LocalDateTime.now().minusDays(4)
+        );
 
+        // when
+        concertService.setConcertTicketingTime(concertTicketTimeSetRequest);
+        entityManager.flush();
+        entityManager.clear();
 
+        // then
+        Concert result = concertRepository.getConcertByApiConcertId("test-concert-2");
+        ConcertDetailResponse concertDetailResponse = concertService.getConcertDetail(result.getConcertId());
 
+        assertThat(concertDetailResponse).isNotNull();
+        assertThat(concertDetailResponse.getConcertId()).isEqualTo(concert.getConcertId());
+        assertThat(concertDetailResponse.getTicketTime()).isNotNull();
+        assertThat(concertDetailResponse.getTicketEndTime()).isNotNull();
+
+        assertThat(result).isNotNull();
+        assertThat(result.getConcertId()).isEqualTo(concert.getConcertId());
+        assertThat(result.getTicketTime()).isNotNull();
+        assertThat(result.getTicketEndTime()).isNotNull();
+    }
+
+    @Test
+    void t14_getConcertDetailResponseTest(){
+        // given
+        ConcertPlace place = concertPlaceRepository.findAll().stream()
+                .findFirst()
+                .orElseGet(() ->
+                        concertPlaceRepository.save(
+                                new ConcertPlace(
+                                        "테스트 공연장",
+                                        "서울특별시 중구 테스트로 123",
+                                        37.5665,
+                                        126.9780,
+                                        5000,
+                                        "API-CONCERT-PLACE-1"
+                                )
+                        )
+                );
+        Concert concert = concertRepository.getConcertByApiConcertId("test-concert-1");
+
+        // when
+        PlaceDetailResponse placeDetailResponse = concertService.getConcertPlaceDetail(concert.getConcertId());
+
+        // then
+        assertThat(placeDetailResponse).isNotNull();
+        assertThat(placeDetailResponse.getPlaceName()).isEqualTo(place.getPlaceName());
+        assertThat(placeDetailResponse.getPlaceAddress()).isEqualTo(place.getAddress());
+        assertThat(placeDetailResponse.getLat()).isEqualTo(place.getLat());
+        assertThat(placeDetailResponse.getLon()).isEqualTo(place.getLon());
+    }
 
 
 }
