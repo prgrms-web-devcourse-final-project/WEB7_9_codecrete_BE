@@ -707,6 +707,401 @@ public class WikidataClient {
         }
     }
 
+    /**
+     * Spotify ID로 실명(birth name) 조회 - 한국어만
+     * P1477 = birth name (실명)의 한국어 버전만 반환
+     * @param spotifyId Spotify Artist ID
+     * @return 실명 (birth name@ko만 반환)
+     */
+    public Optional<String> getRealNameKoBySpotifyId(String spotifyId) {
+        try {
+            // 1. Spotify ID로 QID 찾기
+            Optional<String> qidOpt = searchWikidataIdBySpotifyId(spotifyId);
+            if (qidOpt.isEmpty()) {
+                log.debug("Spotify ID로 Wikidata QID를 찾을 수 없음: spotifyId={}", spotifyId);
+                return Optional.empty();
+            }
+            
+            String qid = qidOpt.get();
+            
+            // 2. Entity 정보 가져오기
+            Optional<JsonNode> entityOpt = getEntityInfo(qid);
+            if (entityOpt.isEmpty()) {
+                log.debug("Wikidata Entity 정보를 가져올 수 없음: qid={}", qid);
+                return Optional.empty();
+            }
+            
+            JsonNode entity = entityOpt.get();
+            
+            // 3. P1477 = birth name (실명) - 한국어만 확인
+            Optional<String> birthNameKoOpt = getBirthNameByLanguage(entity, "P1477", "ko");
+            if (birthNameKoOpt.isPresent()) {
+                String realName = birthNameKoOpt.get();
+                if (realName != null && !realName.isBlank()) {
+                    log.info("Wikidata에서 birth name@ko 찾음: spotifyId={}, qid={}, realName={}", 
+                            spotifyId, qid, realName);
+                    return Optional.of(realName);
+                }
+            }
+            
+            log.debug("Wikidata에서 birth name@ko를 찾을 수 없음: spotifyId={}, qid={}", spotifyId, qid);
+            return Optional.empty();
+            
+        } catch (Exception e) {
+            log.warn("Spotify ID로 실명(ko) 조회 실패: spotifyId={}", spotifyId, e);
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * Spotify ID로 실명(birth name) 조회 - 영어만
+     * P1477 = birth name (실명)의 영어 버전만 반환
+     * @param spotifyId Spotify Artist ID
+     * @return 실명 (birth name@en만 반환)
+     */
+    public Optional<String> getRealNameEnBySpotifyId(String spotifyId) {
+        try {
+            // 1. Spotify ID로 QID 찾기
+            Optional<String> qidOpt = searchWikidataIdBySpotifyId(spotifyId);
+            if (qidOpt.isEmpty()) {
+                log.debug("Spotify ID로 Wikidata QID를 찾을 수 없음: spotifyId={}", spotifyId);
+                return Optional.empty();
+            }
+            
+            String qid = qidOpt.get();
+            
+            // 2. Entity 정보 가져오기
+            Optional<JsonNode> entityOpt = getEntityInfo(qid);
+            if (entityOpt.isEmpty()) {
+                log.debug("Wikidata Entity 정보를 가져올 수 없음: qid={}", qid);
+                return Optional.empty();
+            }
+            
+            JsonNode entity = entityOpt.get();
+            
+            // 3. P1477 = birth name (실명) - 영어만 확인
+            Optional<String> birthNameEnOpt = getBirthNameByLanguage(entity, "P1477", "en");
+            if (birthNameEnOpt.isPresent()) {
+                String realName = birthNameEnOpt.get();
+                if (realName != null && !realName.isBlank()) {
+                    log.info("Wikidata에서 birth name@en 찾음: spotifyId={}, qid={}, realName={}", 
+                            spotifyId, qid, realName);
+                    return Optional.of(realName);
+                }
+            }
+            
+            log.debug("Wikidata에서 birth name@en을 찾을 수 없음: spotifyId={}, qid={}", spotifyId, qid);
+            return Optional.empty();
+            
+        } catch (Exception e) {
+            log.warn("Spotify ID로 실명(en) 조회 실패: spotifyId={}", spotifyId, e);
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * P1477 (birth name)을 특정 언어로 조회
+     * @param entity Wikidata entity JSON
+     * @param propertyId Property ID (P1477)
+     * @param language 언어 코드 (ko, en 등)
+     * @return 실명 (지정된 언어의 birth name)
+     */
+    private Optional<String> getBirthNameByLanguage(JsonNode entity, String propertyId, String language) {
+        try {
+            JsonNode claims = entity.path("claims").path(propertyId);
+            if (!claims.isArray() || claims.isEmpty()) {
+                return Optional.empty();
+            }
+            
+            // 모든 claim을 순회하며 지정된 언어 확인
+            for (JsonNode claim : claims) {
+                JsonNode mainsnak = claim.path("mainsnak");
+                JsonNode datavalue = mainsnak.path("datavalue");
+                JsonNode value = datavalue.path("value");
+                
+                if (value.isMissingNode()) {
+                    continue;
+                }
+                
+                String name = null;
+                String claimLanguage = null;
+                
+                // monolingual text 타입인 경우 (language 필드가 있음)
+                JsonNode languageNode = value.path("language");
+                if (!languageNode.isMissingNode()) {
+                    claimLanguage = languageNode.asText();
+                    JsonNode textNode = value.path("text");
+                    if (!textNode.isMissingNode()) {
+                        name = textNode.asText();
+                    }
+                } else {
+                    // 일반 string 타입인 경우 (언어 정보 없음)
+                    name = value.asText();
+                }
+                
+                if (name == null || name.isBlank()) {
+                    continue;
+                }
+                
+                // 지정된 언어와 일치하는 경우만 반환
+                if (language.equals(claimLanguage)) {
+                    log.debug("Wikidata birth name ({}) 찾음: {}", language, name);
+                    return Optional.of(name);
+                }
+            }
+            
+            return Optional.empty();
+        } catch (Exception e) {
+            log.debug("Birth name 언어별 조회 실패: propertyId={}, language={}", propertyId, language, e);
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * Entity ID 타입 claim에서 label 가져오기 (국적 등)
+     * @param entity Wikidata entity JSON
+     * @param propertyId Property ID (예: "P27")
+     * @return Label 값 (예: "South Korea")
+     */
+    private Optional<String> getCountryLabelFromEntityId(JsonNode entity, String propertyId) {
+        try {
+            JsonNode claims = entity.path("claims").path(propertyId);
+            if (!claims.isArray() || claims.isEmpty()) {
+                return Optional.empty();
+            }
+            
+            // 첫 번째 claim의 값 가져오기
+            JsonNode value = claims.get(0)
+                    .path("mainsnak")
+                    .path("datavalue")
+                    .path("value");
+            
+            JsonNode idNode = value.path("id");
+            if (idNode.isMissingNode() || idNode.asText().isBlank()) {
+                return Optional.empty();
+            }
+            
+            String qid = idNode.asText();
+            
+            // QID로 직접 entity 조회하여 label 가져오기
+            Optional<JsonNode> countryEntityOpt = getEntityInfo(qid);
+            if (countryEntityOpt.isPresent()) {
+                JsonNode countryEntity = countryEntityOpt.get();
+                JsonNode countryLabels = countryEntity.path("labels");
+                
+                // 한국어 우선
+                JsonNode koLabel = countryLabels.path("ko");
+                if (!koLabel.isMissingNode()) {
+                    String label = koLabel.path("value").asText();
+                    if (label != null && !label.isBlank()) {
+                        return Optional.of(label);
+                    }
+                }
+                
+                // 영어
+                JsonNode enLabel = countryLabels.path("en");
+                if (!enLabel.isMissingNode()) {
+                    String label = enLabel.path("value").asText();
+                    if (label != null && !label.isBlank()) {
+                        return Optional.of(label);
+                    }
+                }
+            }
+            
+            return Optional.empty();
+        } catch (Exception e) {
+            log.debug("Country label 가져오기 실패: propertyId={}", propertyId, e);
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * String 타입 claim 값 가져오기
+     * @param entity Wikidata entity JSON
+     * @param propertyId Property ID (예: "P1477")
+     * @return String 값
+     */
+    private Optional<String> getStringClaim(JsonNode entity, String propertyId) {
+        try {
+            JsonNode claims = entity.path("claims").path(propertyId);
+            if (!claims.isArray() || claims.isEmpty()) {
+                return Optional.empty();
+            }
+            
+            // 첫 번째 claim의 값 가져오기
+            JsonNode value = claims.get(0)
+                    .path("mainsnak")
+                    .path("datavalue")
+                    .path("value");
+            
+            if (!value.isMissingNode() && !value.asText().isBlank()) {
+                return Optional.of(value.asText());
+            }
+            
+            return Optional.empty();
+        } catch (Exception e) {
+            log.debug("String claim 가져오기 실패: propertyId={}", propertyId, e);
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * Time 타입 claim 값 가져오기 (P569 = date of birth 등)
+     * @param entity Wikidata entity JSON
+     * @param propertyId Property ID (예: "P569")
+     * @return Time 값 (예: "+1990-01-01T00:00:00Z")
+     */
+    private Optional<String> getTimeClaim(JsonNode entity, String propertyId) {
+        try {
+            JsonNode claims = entity.path("claims").path(propertyId);
+            if (!claims.isArray() || claims.isEmpty()) {
+                return Optional.empty();
+            }
+            
+            // 첫 번째 claim의 값 가져오기
+            JsonNode value = claims.get(0)
+                    .path("mainsnak")
+                    .path("datavalue")
+                    .path("value");
+            
+            if (value.isMissingNode()) {
+                return Optional.empty();
+            }
+            
+            // time 필드 확인
+            JsonNode time = value.path("time");
+            if (!time.isMissingNode() && !time.asText().isBlank()) {
+                // "+1990-01-01T00:00:00Z" 형식에서 날짜만 추출
+                String timeStr = time.asText();
+                // "+1990-01-01T00:00:00Z" -> "1990-01-01"
+                if (timeStr.startsWith("+") || timeStr.startsWith("-")) {
+                    timeStr = timeStr.substring(1);
+                }
+                if (timeStr.contains("T")) {
+                    timeStr = timeStr.split("T")[0];
+                }
+                return Optional.of(timeStr);
+            }
+            
+            return Optional.empty();
+        } catch (Exception e) {
+            log.debug("Time claim 가져오기 실패: propertyId={}", propertyId, e);
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * Entity ID 타입 claim에서 label 가져오기 (P735, P734 등)
+     * @param entity Wikidata entity JSON
+     * @param propertyId Property ID (예: "P735")
+     * @return Label 값 (한국어 우선, 없으면 영어)
+     */
+    private Optional<String> getEntityLabelClaim(JsonNode entity, String propertyId) {
+        try {
+            JsonNode claims = entity.path("claims").path(propertyId);
+            if (!claims.isArray() || claims.isEmpty()) {
+                return Optional.empty();
+            }
+            
+            // 첫 번째 claim의 값 가져오기
+            JsonNode value = claims.get(0)
+                    .path("mainsnak")
+                    .path("datavalue")
+                    .path("value");
+            
+            JsonNode idNode = value.path("id");
+            if (idNode.isMissingNode() || idNode.asText().isBlank()) {
+                return Optional.empty();
+            }
+            
+            String qid = idNode.asText();
+            
+            // 현재 entity의 labels에서 확인 (aliases 등에 포함될 수 있음)
+            JsonNode labels = entity.path("labels");
+            
+            // 한국어 label 확인
+            JsonNode koLabel = labels.path("ko");
+            if (!koLabel.isMissingNode()) {
+                String label = koLabel.path("value").asText();
+                if (label != null && !label.isBlank()) {
+                    return Optional.of(label);
+                }
+            }
+            
+            // 영어 label 확인
+            JsonNode enLabel = labels.path("en");
+            if (!enLabel.isMissingNode()) {
+                String label = enLabel.path("value").asText();
+                if (label != null && !label.isBlank()) {
+                    return Optional.of(label);
+                }
+            }
+            
+            // QID로 직접 entity 조회하여 label 가져오기
+            Optional<JsonNode> nameEntityOpt = getEntityInfo(qid);
+            if (nameEntityOpt.isPresent()) {
+                JsonNode nameEntity = nameEntityOpt.get();
+                JsonNode nameLabels = nameEntity.path("labels");
+                
+                // 한국어 우선
+                JsonNode koLabel2 = nameLabels.path("ko");
+                if (!koLabel2.isMissingNode()) {
+                    String label = koLabel2.path("value").asText();
+                    if (label != null && !label.isBlank()) {
+                        return Optional.of(label);
+                    }
+                }
+                
+                // 영어
+                JsonNode enLabel2 = nameLabels.path("en");
+                if (!enLabel2.isMissingNode()) {
+                    String label = enLabel2.path("value").asText();
+                    if (label != null && !label.isBlank()) {
+                        return Optional.of(label);
+                    }
+                }
+            }
+            
+            return Optional.empty();
+        } catch (Exception e) {
+            log.debug("Entity label claim 가져오기 실패: propertyId={}", propertyId, e);
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * 실명 정보 클래스
+     */
+    public static class RealNameInfo {
+        private final String realName;
+        private final String nameKo;
+        private final String birthDate;
+        private final String nationality;
+        
+        public RealNameInfo(String realName, String nameKo, String birthDate, String nationality) {
+            this.realName = realName;
+            this.nameKo = nameKo;
+            this.birthDate = birthDate;
+            this.nationality = nationality;
+        }
+        
+        public String getRealName() {
+            return realName;
+        }
+        
+        public String getNameKo() {
+            return nameKo;
+        }
+        
+        public String getBirthDate() {
+            return birthDate;
+        }
+        
+        public String getNationality() {
+            return nationality;
+        }
+    }
+
     private String buildQueryString(Map<String, String> params) {
         StringBuilder sb = new StringBuilder();
         for (Map.Entry<String, String> entry : params.entrySet()) {
