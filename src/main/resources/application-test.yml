@@ -11,7 +11,7 @@ spring:
   data:
     redis:
       host: localhost
-      port: 58091
+      port: 6379
 
 spotify:
   client-id: test-id

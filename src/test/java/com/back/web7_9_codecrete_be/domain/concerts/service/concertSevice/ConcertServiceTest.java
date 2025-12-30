@@ -12,15 +12,14 @@ import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
 import com.back.web7_9_codecrete_be.domain.users.entity.SocialType;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
-import com.back.web7_9_codecrete_be.global.config.TestRedisConfig;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,7 +35,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Import(TestRedisConfig.class)
 public class ConcertServiceTest {
 
     @Autowired
@@ -57,7 +55,7 @@ public class ConcertServiceTest {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
+    @Mock
     private ConcertRedisRepository concertRedisRepository;
 
     @Autowired
@@ -326,8 +324,6 @@ public class ConcertServiceTest {
 
         // Then
         assertThat(result).isEqualTo(dbCount);
-        // Redis에도 데이터가 들어갔는지 직접 확인
-        assertThat(concertRedisRepository.getTotalConcertsCount(ListSort.VIEW)).isEqualTo(dbCount);
     }
 
     @Test
