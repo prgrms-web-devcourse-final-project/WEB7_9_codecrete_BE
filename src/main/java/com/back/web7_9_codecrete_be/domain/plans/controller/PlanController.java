@@ -283,11 +283,25 @@ public class PlanController {
      * @return 공유 링크 정보 (200 OK)
      */
     @PostMapping("/{planId}/share/link")
-    @Operation(summary = "공유 링크 생성", description = "플랜 공유를 위한 UUID 기반 13자 토큰 링크를 생성합니다. 계획의 소유자 또는 편집 권한이 있는 사용자만 링크를 생성할 수 있습니다.")
+    @Operation(summary = "공유 링크 생성", description = "플랜 공유를 위한 UUID 기반 13자 토큰 링크를 생성합니다. 계획의 소유자만 링크를 생성할 수 있습니다.")
     public RsData<PlanShareLinkResponse> generateShareLink(@PathVariable Long planId) {
         User user = rq.getUser();
         PlanShareLinkResponse response = planService.generateShareLink(planId, user);
         return RsData.success("공유 링크 생성 성공", response);
+    }
+
+    /**
+     * 공유 링크 조회
+     *
+     * @param planId 계획 ID
+     * @return 공유 링크 정보 (200 OK)
+     */
+    @GetMapping("/{planId}/share/link")
+    @Operation(summary = "공유 링크 조회", description = "생성된 공유 링크를 조회합니다. 계획의 소유자만 링크를 조회할 수 있습니다. 공유 링크가 생성되지 않았거나 만료된 경우 에러가 발생합니다.")
+    public RsData<PlanShareLinkResponse> getShareLink(@PathVariable Long planId) {
+        User user = rq.getUser();
+        PlanShareLinkResponse response = planService.getShareLink(planId, user);
+        return RsData.success("공유 링크 조회 성공", response);
     }
 
     /**
@@ -339,7 +353,7 @@ public class PlanController {
      * @return 성공 메시지 (200 OK)
      */
     @DeleteMapping("/{planId}/share/link")
-    @Operation(summary = "공유 링크 삭제", description = "생성된 공유 링크를 삭제합니다. 계획의 소유자 또는 편집 권한이 있는 사용자만 링크를 삭제할 수 있습니다.")
+    @Operation(summary = "공유 링크 삭제", description = "생성된 공유 링크를 삭제합니다. 계획의 소유자만 링크를 삭제할 수 있습니다.")
     public RsData<Void> deleteShareLink(@PathVariable Long planId) {
         User user = rq.getUser();
         planService.deleteShareLink(planId, user);
