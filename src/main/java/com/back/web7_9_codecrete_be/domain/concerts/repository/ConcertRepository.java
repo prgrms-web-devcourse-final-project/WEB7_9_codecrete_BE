@@ -258,4 +258,5 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     );
 
 
+    Integer countConcertsByNameContaining(String name);
 }

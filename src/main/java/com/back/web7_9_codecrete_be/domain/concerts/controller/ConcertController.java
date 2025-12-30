@@ -182,6 +182,20 @@ public class ConcertController {
         return RsData.success(concertService.getConcertListByKeyword(keyword, pageable));
     }
 
+    @Operation(summary = "공연 검색 결과 개수" , description = "키워드를 포함하고 있는 공연의 총 개수를 반환합니다.")
+    @GetMapping("searchCount")
+    public RsData<Integer> getConcertSearchCount(
+            @Schema(description = """
+                    <h3>검색어가 되는 Keyword입니다.</h3>
+                    <hr/>
+                    <b>?keyword={keyword}</b> 로 값을 넘기시면 됩니다.<br/>
+                    DB에서 해당 문자열을 가지고 있는 모든 결과값을 반환합니다.
+                    """)
+            @RequestParam String keyword
+    ){
+        return  RsData.success(concertService.getConcertSearchCountByKeyword(keyword));
+    }
+
     @Operation(summary = "공연의 공연장소 상세 조회", description = "해당 공연의 공연장의 상세 정보를 표시합니다.")
     @GetMapping("placeDetail")
     public RsData<PlaceDetailResponse> placeDetail(
