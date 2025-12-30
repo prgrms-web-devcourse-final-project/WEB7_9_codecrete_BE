@@ -45,7 +45,7 @@ public class ChatMessageReadController {
 
 		@Parameter(
 			description = """
-				조회 기준 cursor (Redis Stream ID).
+				조회 기준 cursor (messageId).
 				해당 값이 주어지면, 그 이전의 채팅 메시지를 조회합니다.
 				""",
 			example = "1734940012345-0",
