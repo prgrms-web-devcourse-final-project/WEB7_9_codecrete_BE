@@ -51,6 +51,20 @@ public class Post {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>();
 
+    @OneToOne(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private ReviewPost reviewPost;
+
+    public void addReviewPost(ReviewPost reviewPost) {
+        this.reviewPost = reviewPost;
+    }
+
+    @OneToOne(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private JoinPost joinPost;
+
+    public void addJoinPost(JoinPost joinPost) {
+        this.joinPost = joinPost;
+    }
+
     @Builder
     private Post(Long userId, String nickname, String title, String content, PostCategory category) {
         this.userId = userId;
@@ -61,7 +75,7 @@ public class Post {
     }
 
     public static Post create(Long userId, String nickname, String title, String content, PostCategory category) {
-        return Post.builder()
+        return com.back.web7_9_codecrete_be.domain.community.post.entity.Post.builder()
                 .userId(userId)
                 .nickname(nickname)
                 .title(title)
