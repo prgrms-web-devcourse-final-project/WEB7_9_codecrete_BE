@@ -173,7 +173,7 @@ public class ConcertController {
                     <h3>검색어가 되는 Keyword입니다.</h3>
                     <hr/>
                     <b>?keyword={keyword}</b> 로 값을 넘기시면 됩니다.<br/>
-                    DB에서 해당 문자열을 가지고 있는 모든 결과값을 반환합니다.
+                    DB에서 해당 문자열을 가지고 있는 모든 결과값을 페이징 된 만큼 반환합니다.
                     """)
             @RequestParam String keyword,
             @Schema(description = "페이징 처리 또는 무한 스크롤 구현에 쓸 Pageable 객체입니다.")
@@ -189,7 +189,7 @@ public class ConcertController {
                     <h3>검색어가 되는 Keyword입니다.</h3>
                     <hr/>
                     <b>?keyword={keyword}</b> 로 값을 넘기시면 됩니다.<br/>
-                    DB에서 해당 문자열을 가지고 있는 모든 결과값을 반환합니다.
+                    DB에서 해당 문자열을 가지고 있는 모든 제목의 개수를 반환합니다.
                     """)
             @RequestParam String keyword
     ){
