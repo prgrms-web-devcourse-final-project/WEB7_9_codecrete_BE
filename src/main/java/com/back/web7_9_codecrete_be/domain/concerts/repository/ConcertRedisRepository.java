@@ -128,6 +128,11 @@ public class ConcertRedisRepository {
         return viewCount;
     }
 
+    // 캐시된 조회수 삭제
+    public void deleteViewCount(Long concertId) {
+        redisTemplate.opsForHash().delete(CONCERTS_VIEW_COUNTS, concertId.toString());
+    }
+
     // 공연에 예매시작, 종료일자 추가
     public void updateCachedTickingDate(Long concertId, LocalDateTime TicketTime, LocalDateTime TicketEndTime) {
         ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(concertId);

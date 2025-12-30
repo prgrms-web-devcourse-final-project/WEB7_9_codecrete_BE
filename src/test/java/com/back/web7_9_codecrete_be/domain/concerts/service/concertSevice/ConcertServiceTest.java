@@ -1,22 +1,23 @@
 package com.back.web7_9_codecrete_be.domain.concerts.service.concertSevice;
 
+import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.AutoCompleteItem;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ListSort;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertPlace;
+import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertLikeRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertPlaceRepository;
+import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRedisRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
 import com.back.web7_9_codecrete_be.domain.users.entity.SocialType;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
-import com.back.web7_9_codecrete_be.domain.users.service.UserService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,7 +30,6 @@ import java.time.LocalTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static reactor.netty.http.HttpConnectionLiveness.log;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -48,7 +48,13 @@ public class ConcertServiceTest {
     private ConcertPlaceRepository concertPlaceRepository;
 
     @Autowired
+    private ConcertLikeRepository concertLikeRepository;
+
+    @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private ConcertRedisRepository concertRedisRepository;
 
     @Autowired
     private EntityManager entityManager;
@@ -125,6 +131,7 @@ public class ConcertServiceTest {
         userRepository.deleteAll();
         concertRepository.deleteAll();
         concertPlaceRepository.deleteAll();
+        concertRedisRepository.deleteAllCachedConcertDetail();
     }
 
     @Test
@@ -241,9 +248,119 @@ public class ConcertServiceTest {
         assertThat(serchResultList.get(0).getName()).contains("예매");
         assertThat(serchResultList.get(1)).isInstanceOf(ConcertItem.class);
         assertThat(serchResultList.get(1).getName()).contains("예매");
-
     }
 
+    @Test
+    @Transactional
+    void t7_autoCompleteSearchTest(){
+        //given
+        concertService.setAutoComplete();
+        String keyword = "예매";
+
+        //when
+        List<AutoCompleteItem> searchResult = concertService.autoCompleteSearch(keyword,0,5);
+
+        //then
+        assertThat(searchResult).isNotEmpty();
+        assertThat(searchResult.size()).isEqualTo(2);
+        assertThat(searchResult.get(0)).isNotNull();
+        assertThat(searchResult.get(0)).isInstanceOf(AutoCompleteItem.class);
+        assertThat(searchResult.get(0).getName()).contains(keyword);
+        assertThat(searchResult.get(1)).isNotNull();
+        assertThat(searchResult.get(1)).isInstanceOf(AutoCompleteItem.class);
+        assertThat(searchResult.get(1).getName()).contains(keyword);
+
+        concertService.resetAutoComplete();
+    }
+
+    @Test
+    @Transactional
+    void t8_getConcertDetailTest(){
+        // given
+        Concert concert = concertRepository.getConcertByApiConcertId("test-concert-1");
+
+        // when
+        ConcertDetailResponse concertDetailResponse = concertService.getConcertDetail(concert.getConcertId());
+
+        // then
+        assertThat(concertDetailResponse).isNotNull();
+        assertThat(concertDetailResponse.getConcertId()).isEqualTo(concert.getConcertId());
+        assertThat(concertDetailResponse.getViewCount()).isEqualTo(concert.getViewCount()+1);
+        concertRedisRepository.deleteViewCount(concert.getConcertId());
+    }
+
+
+    @Test
+    @Transactional
+    void t9_viewCountUpdateTest(){
+        // given
+        Concert concert = concertRepository.getConcertByApiConcertId("test-concert-1");
+
+        // when
+        ConcertDetailResponse concertDetailResponse = concertService.getConcertDetail(concert.getConcertId());
+        concertService.viewCountUpdate();
+        entityManager.flush();
+        entityManager.clear();
+
+        // then
+        Concert afterConcert = concertRepository.getConcertByApiConcertId("test-concert-1");
+
+        assertThat(afterConcert).isNotNull();
+        assertThat(concert).isNotNull();
+        assertThat(afterConcert.getConcertId()).isEqualTo(concert.getConcertId());
+        assertThat(afterConcert.getViewCount()).isEqualTo(concert.getViewCount()+1);
+        concertRedisRepository.deleteViewCount(concert.getConcertId());
+    }
+
+    @Test
+    void t10_getTotalConcertsCountTest(){
+        // Given: DB에 공연 데이터가 있다고 가정
+        long dbCount = concertRepository.count();
+
+        // When
+        Long result = concertService.getTotalConcertsCount();
+
+        // Then
+        assertThat(result).isEqualTo(dbCount);
+        // Redis에도 데이터가 들어갔는지 직접 확인
+        assertThat(concertRedisRepository.getTotalConcertsCount(ListSort.VIEW)).isEqualTo(dbCount);
+    }
+
+    @Test
+    @DisplayName("티켓팅 공연 개수 조회 - 현재 시간 이후의 공연 개수를 반환한다")
+    void t11_getTotalTicketingConcertsCountTest() {
+        // Given: DB 상태 확인
+        long expectedCount = concertRepository.countTicketingConcertsFromLocalDateTime(
+                LocalDateTime.of(LocalDate.now(), LocalTime.MIN)
+        );
+
+        // When
+        Long result = concertService.getTotalTicketingConcertsCount();
+
+        // Then
+        assertThat(result).isEqualTo(expectedCount);
+    }
+
+    @Test
+    @DisplayName("좋아요한 공연 개수 조회 - 유저별 좋아요 개수가 정확히 캐싱되어야 한다")
+    void t12_getTotalLikedConcertsCountTest() {
+        // 1. Given: 테스트 유저 및 좋아요 데이터 준비
+        User user = userRepository.findByEmail("test@test.com").get();
+
+        // 기존 캐시가 방해될 수 있으므로 초기화 (테스트용 메서드 혹은 Redis 직접 삭제)
+        // concertRedisRepository.deleteUserLikedCount(user);
+
+        long initialDbCount = concertLikeRepository.countByUser(user);
+
+        // 2. When
+        Long result = concertService.getTotalLikedConcertsCount(user);
+
+        // 3. Then
+        assertThat(result).isEqualTo(initialDbCount);
+
+        // Redis에 저장된 값도 동일한지 확인
+        assertThat(concertRedisRepository.getUserLikedCount(user)).isEqualTo(initialDbCount);
+    }
 
 
 
