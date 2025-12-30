@@ -291,6 +291,20 @@ public class PlanController {
     }
 
     /**
+     * 공유 링크 재생성 (재발급)
+     *
+     * @param planId 계획 ID
+     * @return 공유 링크 정보 (200 OK)
+     */
+    @PostMapping("/{planId}/share/link/regenerate")
+    @Operation(summary = "공유 링크 재생성", description = "기존 공유 링크를 무효화하고 새로운 링크를 재발급합니다. 이전 링크는 더 이상 접근할 수 없습니다. 계획의 소유자만 링크를 재생성할 수 있습니다.")
+    public RsData<PlanShareLinkResponse> regenerateShareLink(@PathVariable Long planId) {
+        User user = rq.getUser();
+        PlanShareLinkResponse response = planService.regenerateShareLink(planId, user);
+        return RsData.success("공유 링크 재생성 성공", response);
+    }
+
+    /**
      * 공유 링크로 플랜 조회 (참가자 생성 없이 조회만)
      *
      * @param shareToken 공유 토큰 (UUID 기반 13자)
