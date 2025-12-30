@@ -1,19 +1,11 @@
 package com.back.web7_9_codecrete_be.domain.users.service;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.UUID;
-
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
 import com.back.web7_9_codecrete_be.domain.auth.dto.request.SignupRequest;
 import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
 import com.back.web7_9_codecrete_be.domain.chats.service.ChatUserCacheService;
 import com.back.web7_9_codecrete_be.domain.email.service.EmailService;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserSettingUpdateRequest;
+import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdateBirthRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdateNicknameRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdatePasswordRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.response.UserResponse;
@@ -27,9 +19,16 @@ import com.back.web7_9_codecrete_be.global.error.code.UserErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import com.back.web7_9_codecrete_be.global.storage.FileStorageService;
 import com.back.web7_9_codecrete_be.global.storage.ImageFileValidator;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -185,6 +184,14 @@ public class UserService {
 
         // 비밀번호 변경 시 로그아웃 처리
         tokenService.removeTokens(user);
+    }
+
+    @Transactional
+    public UserResponse updateBirth(User user, UserUpdateBirthRequest req) {
+        validateActiveUser(user);
+        user.updateBirth(req.getBirth());
+        userRepository.save(user);
+        return UserResponse.from(user);
     }
 
     public void sendRestoreLink(String email) {

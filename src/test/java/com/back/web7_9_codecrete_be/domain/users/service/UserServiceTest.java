@@ -1,6 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.users.service;
 
 import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
+import com.back.web7_9_codecrete_be.domain.chats.service.ChatUserCacheService;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdateNicknameRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdatePasswordRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.response.UserResponse;
@@ -37,6 +38,7 @@ class UserServiceTest {
     @Mock private TokenService tokenService;
     @Mock private FileStorageService fileStorageService;
     @Mock private ImageFileValidator imageFileValidator;
+    @Mock private ChatUserCacheService chatUserCacheService;
 
     private User user;
 
@@ -83,6 +85,7 @@ class UserServiceTest {
 
         assertThat(response.getNickname()).isEqualTo("newNick");
         verify(userRepository).save(user);
+        verify(chatUserCacheService).removeChatUserCache(user.getEmail());
     }
 
     @Test

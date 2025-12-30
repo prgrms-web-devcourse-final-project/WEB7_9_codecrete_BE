@@ -726,6 +726,32 @@ public class PlanService {
     }
 
     /**
+     * 공유 링크 재생성 (재발급)
+     * 이전 링크는 무효화되고 새로운 링크가 생성됩니다.
+     * OWNER만 가능합니다.
+     *
+     * @param planId 계획 ID
+     * @param user 현재 로그인한 사용자 (권한 체크용)
+     * @return 공유 링크 응답 DTO
+     * @throws BusinessException 계획을 찾을 수 없거나 OWNER가 아닌 경우
+     */
+    @Transactional
+    public PlanShareLinkResponse regenerateShareLink(Long planId, User user) {
+        // 권한 체크 (OWNER만 가능)
+        Plan plan = findPlanWithOwnerCheck(planId, user);
+
+        // 기존 토큰을 무효화하고 새로운 토큰 생성 (이전 링크 무효화)
+        plan.generateShareToken();
+        planRepository.save(plan);
+
+        return PlanShareLinkResponse.builder()
+                .planId(plan.getPlanId())
+                .shareToken(plan.getShareToken())
+                .shareLink("/plans/share/" + plan.getShareToken())
+                .build();
+    }
+
+    /**
      * 공유 링크로 플랜 조회 (참가자 생성 없이 조회만)
      *
      * @param shareToken 공유 토큰 (UUID 기반 13자)

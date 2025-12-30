@@ -52,13 +52,13 @@ public class ConcertRedisRepository {
 
     // 공연 목록 캐싱
     public void saveConcertsList(ListSort sort, Pageable pageable, List<ConcertItem> list) {
-        String key = CONCERT_LIST_PREFIX + sort.name() + pageable.getPageNumber();
+        String key = CONCERT_LIST_PREFIX + sort.name() + pageable.getPageNumber() + "S" + pageable.getPageSize();
         objectRedisTemplate.opsForValue().set(key, list, HOUR, TimeUnit.SECONDS);
     }
 
     // 공연 목록 가져오기
     public List<ConcertItem> getConcertsList(Pageable pageable, ListSort sort) {
-        String key = CONCERT_LIST_PREFIX + sort.name() + pageable.getPageNumber();
+        String key = CONCERT_LIST_PREFIX + sort.name() + pageable.getPageNumber()+ "S" + pageable.getPageSize();
         Object object = objectRedisTemplate.opsForValue().get(key);
         List<ConcertItem> list = (List<ConcertItem>) object;
         if (list == null || list.isEmpty()) return List.of(); // null 이 아닌 empty 값 반환

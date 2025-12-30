@@ -77,6 +77,14 @@ public class ConcertService {
         return concertRepository.getConcertItemsByKeyword(keyword, pageable);
     }
 
+    // 키워드 통한 공연 제목 검색 결과 개수
+    public Integer getConcertSearchCountByKeyword(String keyword) {
+        if(keyword == null || keyword.isEmpty()){
+            throw new BusinessException(ConcertErrorCode.KEYWORD_IS_NULL);
+        }
+        return concertRepository.countConcertsByNameContaining(keyword);
+    }
+
     // 검색어 자동 완성
     public List<AutoCompleteItem> autoCompleteSearch(String keyword, int start, int end) {
         return concertSearchRedisTemplate.getAutoCompleteWord(keyword, start, end);
@@ -259,6 +267,7 @@ public class ConcertService {
         return new PlaceDetailResponse(concertPlace);
     }
 
+    // 공연 정보 조회
     private Concert findConcertByConcertId(long concertId) {
         return concertRepository.findById(concertId).orElseThrow(
                 () -> new BusinessException(ConcertErrorCode.CONCERT_NOT_FOUND)

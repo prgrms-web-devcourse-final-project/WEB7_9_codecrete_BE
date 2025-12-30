@@ -278,4 +278,6 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
             @Param("startDate") LocalDate rangeStartDate,
             @Param("endDate") LocalDate rangeEndDate
     );
+
+    Integer countConcertsByNameContaining(String name);
 }
