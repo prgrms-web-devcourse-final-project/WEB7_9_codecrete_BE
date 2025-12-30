@@ -52,7 +52,7 @@ public class ConcertSearchRedisTemplate {
     }
 
     public List<AutoCompleteItem> getAutoCompleteWord(String keyword, int start, int end) {
-        Set<String> results = redisTemplate.opsForZSet().reverseRange(INDEX_KEY + keyword, 0, 9);
+        Set<String> results = redisTemplate.opsForZSet().reverseRange(INDEX_KEY + keyword, start, end);
         List<String> resultList = new ArrayList<>(results);
         return resultList.stream().map(name ->{
             Long id = Long.valueOf(redisTemplate.opsForValue().get(CONCERT_ID_KEY + name));
