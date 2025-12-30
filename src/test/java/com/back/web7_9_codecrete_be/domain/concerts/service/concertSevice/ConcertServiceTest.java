@@ -12,10 +12,15 @@ import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
 import com.back.web7_9_codecrete_be.domain.users.entity.SocialType;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
+import com.back.web7_9_codecrete_be.global.config.TestRedisConfig;
 import jakarta.persistence.EntityManager;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@Import(TestRedisConfig.class)
 public class ConcertServiceTest {
 
     @Autowired

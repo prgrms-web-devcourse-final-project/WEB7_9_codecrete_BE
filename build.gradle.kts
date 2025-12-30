@@ -1,10 +1,9 @@
 plugins {
-    java
+    id("java")
     id("org.springframework.boot") version "3.5.8"
     id("io.spring.dependency-management") version "1.1.7"
-    jacoco
+    id("jacoco")
 }
-
 group = "com.back"
 version = "0.0.1-SNAPSHOT"
 description = "WEB7_9_codecrete_BE"
@@ -62,6 +61,7 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("com.squareup.okhttp3:mockwebserver:3.14.9")     //외부 api 서버 테스트용
+    testImplementation("com.github.codemonstur:embedded-redis:1.4.3")
 
     // 스프링 문서화
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13")
@@ -71,7 +71,7 @@ dependencies {
 
     // 정적 HTML 문서 기준 크롤링
     implementation("org.jsoup:jsoup:1.21.2")
-   
+
     // Spotify
     implementation("se.michaelthelin.spotify:spotify-web-api-java:8.4.1")
 
@@ -81,7 +81,7 @@ dependencies {
 
     // Apache Tika
     implementation("org.apache.tika:tika-core:2.9.0")
-    
+
     // 서버 정상 작동 확인용
     implementation("org.springframework.boot:spring-boot-starter-actuator")
 }
@@ -89,7 +89,6 @@ dependencies {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
-
 
 
 /** -----------------------------
