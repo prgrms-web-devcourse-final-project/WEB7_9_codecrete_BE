@@ -190,6 +190,7 @@ public class UserService {
     public UserResponse updateBirth(User user, UserUpdateBirthRequest req) {
         validateActiveUser(user);
         user.updateBirth(req.getBirth());
+        userRepository.save(user);
         return UserResponse.from(user);
     }
 
