@@ -128,6 +128,11 @@ public class ConcertRedisRepository {
         return viewCount;
     }
 
+    // 캐시된 조회수 삭제
+    public void deleteViewCount(Long concertId) {
+        redisTemplate.opsForHash().delete(CONCERTS_VIEW_COUNTS, concertId.toString());
+    }
+
     // 공연에 예매시작, 종료일자 추가
     public void updateCachedTickingDate(Long concertId, LocalDateTime TicketTime, LocalDateTime TicketEndTime) {
         ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(concertId);
@@ -185,6 +190,14 @@ public class ConcertRedisRepository {
     // 총 공연의 개수 삭제
     public void deleteTotalConcertsCount(ListSort sort) {
         redisTemplate.delete(CONCERTS_COUNT_PREFIX + sort.name());
+    }
+
+    // 캐시된 공연의 좋아요 정보 수정 -?
+    public void upCountConcertLikeCountInConcertDetail(Long concertId) {
+        ConcertDetailResponse concertDetailResponse = (ConcertDetailResponse)objectRedisTemplate.opsForValue().get(CONCERT_DETAIL_PREFIX + concertId.toString());
+        if (concertDetailResponse == null) return;
+        else  concertDetailResponse.setLikeCount(concertDetailResponse.getLikeCount()+1);
+        objectRedisTemplate.opsForValue().set(CONCERT_DETAIL_PREFIX + concertId.toString(), concertDetailResponse);
     }
 
     // 사용자가 좋아요를 누른 공연의 개수 조회(임시 캐시 느낌으로 짧게 저장, 조회시 시간 갱신 ~1일
