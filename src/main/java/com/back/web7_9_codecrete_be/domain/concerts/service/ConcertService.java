@@ -306,8 +306,7 @@ public class ConcertService {
             idList.add(item.getId());
         }
 
-        List<ConcertItem> titleConcerts = concertRepository.getConcertItemsInIdList(idList,LocalDate.now());
-        return titleConcerts;
+        return concertRepository.getConcertItemsInIdList(idList,LocalDate.now());
     }
 
 
