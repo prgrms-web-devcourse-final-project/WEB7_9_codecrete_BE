@@ -280,4 +280,23 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     );
 
     Integer countConcertsByNameContaining(String name);
+
+    @Query("""
+            SELECT
+            c
+            FROM
+            Concert c
+            JOIN FETCH
+            c.concertPlace cp
+            WHERE 
+            c.concertId IN :list
+            AND
+            c.startDate > :afterDate
+            ORDER BY 
+            c.startDate
+            asc
+            """)
+    List<ConcertItem> getConcertItemsInIdList(
+            @Param("list") List<Long> idList,
+            @Param("afterDate") LocalDate afterDate);
 }

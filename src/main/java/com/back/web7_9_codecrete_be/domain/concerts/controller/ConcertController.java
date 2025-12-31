@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.repository.query.Param;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -260,5 +259,16 @@ public class ConcertController {
             long concertId
     ){
         return RsData.success(concertService.recommendSimilarConcerts(concertId));
+    }
+
+    @Operation(summary = "제목이 유사한 공연 목록", description = """
+            입력한 공연 ID에 해당하는 공연과 유사한 글자를 가지는 공연들을 검색합니다.<br/>
+            """)
+    @GetMapping("similarTitleConcerts")
+    public RsData<List<ConcertItem>> getSimilarTitleConcert(
+            @RequestParam
+            long concertId
+    ){
+        return RsData.success(concertService.recommendSimilarTitleConcerts(concertId));
     }
 }

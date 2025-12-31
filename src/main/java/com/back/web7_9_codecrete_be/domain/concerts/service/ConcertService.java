@@ -274,7 +274,7 @@ public class ConcertService {
         );
     }
 
-    // 공연 추천
+    // 같은 위치에 시작하는 공연
     public List<ConcertItem> recommendSimilarConcerts(long concertId) {
         Concert concert = findConcertByConcertId(concertId);
         return concertRepository.getSimilarConcerts(
@@ -284,5 +284,32 @@ public class ConcertService {
                 concert.getStartDate().plusDays(60)
         );
     }
+
+    // 유사한 제목을 가지는 공연 추천
+    public List<ConcertItem> recommendSimilarTitleConcerts(long concertId) {
+        Concert concert = findConcertByConcertId(concertId);
+        String name = concert.getName();
+        String match = "[^ㄱ-ㅎㅏ-ㅣ가-힣a-zA-Z0-9\\s]";
+        name = name.replaceAll(match, "");
+        log.info("name: " + name);
+        String[] words = name.split(" ");
+        List<AutoCompleteItem> result = new ArrayList<>();
+
+        for (String word : words) {
+            if(word.isEmpty()) continue;
+            log.info("word: " + word);
+            result.addAll(concertSearchRedisTemplate.getAutoCompleteWord(word,0,5));
+        }
+
+        List<Long> idList = new ArrayList<>();
+        for (AutoCompleteItem item : result) {
+            idList.add(item.getId());
+        }
+
+        List<ConcertItem> titleConcerts = concertRepository.getConcertItemsInIdList(idList,LocalDate.now());
+        return titleConcerts;
+    }
+
+
 
 }
