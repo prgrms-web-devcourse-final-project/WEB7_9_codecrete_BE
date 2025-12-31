@@ -20,9 +20,7 @@ public class EnrichStepExecutor {
     private final WikidataClient wikidataClient;
     private final WikidataEnrichHelper wikidataHelper;
 
-    /**
-     * -1단계: MusicBrainz ID로 직접 Wikidata 검색
-     */
+    // MusicBrainz ID로 직접 Wikidata 검색
     public EnrichStepResult executeStepMinusOne(Artist artist, String currentArtistType, String currentArtistGroup) {
         if (artist.getMusicBrainzId() == null || artist.getMusicBrainzId().isBlank()) {
             return new EnrichStepResult(null, null, null, null);
@@ -82,9 +80,7 @@ public class EnrichStepExecutor {
         }
     }
 
-    /**
-     * 0단계: Spotify ID 기반 검색
-     */
+    // Spotify ID 기반 검색
     public EnrichStepResult executeStepZero(Artist artist, String currentArtistType, String currentArtistGroup, String currentNameKo) {
         if (artist.getSpotifyArtistId() == null || artist.getSpotifyArtistId().isBlank()) {
             return new EnrichStepResult(null, null, null, null);
@@ -164,9 +160,7 @@ public class EnrichStepExecutor {
         }
     }
 
-    /**
-     * 0.5단계: Spotify URL로 MusicBrainz ID 검색
-     */
+    // 0.5단계: Spotify URL로 MusicBrainz ID 검색
     private EnrichStepResult executeStepZeroPointFive(Artist artist, String currentArtistType, String currentArtistGroup) {
         try {
             Optional<String> mbidOpt = musicBrainzClient.searchMbidBySpotifyUrl(artist.getSpotifyArtistId());
@@ -200,9 +194,7 @@ public class EnrichStepExecutor {
         }
     }
 
-    /**
-     * 1단계: FLO Client로 한국어 이름 가져오기
-     */
+    // FLO Client로 한국어 이름 가져오기
     public EnrichStepResult executeStepOne(Artist artist) {
         try {
             Optional<FloClient.ArtistInfo> floInfoOpt = floClient.searchArtist(artist.getArtistName());
@@ -215,9 +207,8 @@ public class EnrichStepExecutor {
         return new EnrichStepResult(null, null, null, null);
     }
 
-    /**
-     * 2단계: nameKo 기반 MusicBrainz 검색
-     */
+    // nameKo 기반 MusicBrainz 검색
+
     public EnrichStepResult executeStepTwo(String nameKo, String currentArtistType) {
         if (nameKo == null || nameKo.isBlank() || currentArtistType != null) {
             return new EnrichStepResult(null, null, null, null);
@@ -238,9 +229,6 @@ public class EnrichStepExecutor {
         return new EnrichStepResult(null, null, null, null);
     }
 
-    /**
-     * 타입 합의 로직 (Wikidata와 MusicBrainz 타입 비교)
-     */
     private String resolveTypeConsensus(String wdType, String mbType, String currentSource) {
         if (mbType == null || mbType.isBlank()) {
             return wdType;
@@ -255,9 +243,6 @@ public class EnrichStepExecutor {
         }
     }
 
-    /**
-     * 단계 실행 결과
-     */
     public static class EnrichStepResult {
         final String nameKo;
         final String artistGroup;

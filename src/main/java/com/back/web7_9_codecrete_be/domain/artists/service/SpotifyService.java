@@ -10,25 +10,29 @@ import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Genre;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.GenreRepository;
+import com.back.web7_9_codecrete_be.domain.artists.service.seed.ArtistData;
+import com.back.web7_9_codecrete_be.domain.artists.service.seed.CategoryConfig;
+import com.back.web7_9_codecrete_be.domain.artists.service.seed.SimpleRateLimiter;
+import com.back.web7_9_codecrete_be.domain.artists.service.seed.SpotifyRateLimitHandler;
 import com.back.web7_9_codecrete_be.global.error.code.ArtistErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
+import com.back.web7_9_codecrete_be.global.musicbrainz.MusicBrainzClient;
 import com.back.web7_9_codecrete_be.global.spotify.SpotifyClient;
+import com.back.web7_9_codecrete_be.global.wikidata.WikidataClient;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.neovisionaries.i18n.CountryCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import se.michaelthelin.spotify.SpotifyApi;
 import se.michaelthelin.spotify.enums.AlbumType;
-import se.michaelthelin.spotify.exceptions.detailed.NotFoundException;
 import se.michaelthelin.spotify.model_objects.specification.AlbumSimplified;
 import se.michaelthelin.spotify.model_objects.specification.Image;
 import se.michaelthelin.spotify.model_objects.specification.Paging;
 import se.michaelthelin.spotify.model_objects.specification.Track;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -43,230 +47,93 @@ public class SpotifyService {
     private final ArtistRepository artistRepository;
     private final GenreRepository genreRepository;
     private final SpotifyClient spotifyClient;
+    private final MusicBrainzClient musicBrainzClient;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final WikidataClient wikidataClient;
+    private final SpotifyRateLimitHandler rateLimitHandler;
     
-    // Rate Limiter: 모든 Spotify API 호출 전에 최소 간격 보장 (200ms)
-    private final SimpleRateLimiter rateLimiter = new SimpleRateLimiter(200);
+    // Rate Limiter 설정
+    private static final long SPOTIFY_RATE_LIMIT_INTERVAL_MS = 500; // 초당 2회
+    private static final long MUSICBRAINZ_RATE_LIMIT_INTERVAL_MS = 1000; // 초당 1회
+    
+    // 아티스트 시드 설정
+    private static final int SEARCH_LIMIT = 50;
+    private static final int TARGET_CANDIDATES = 1500; // 전체 후보 목표 수
+    private static final int MAX_PAGES_PER_KEYWORD = 3; // 키워드당 최대 페이지 수
+    private static final int MAX_SEED_COUNT = 300; // 최종 저장할 아티스트 수
+    private static final int API_CALL_DELAY_MS = 200; // API 호출 간 대기 시간
+    
+    // 필터링 기준
+    private static final int MIN_POPULARITY_KOREAN = 20;
+    private static final int MIN_POPULARITY_GLOBAL = 15;
+    private static final int MIN_FOLLOWERS_DEFAULT = 1000;
+    private static final int MIN_FOLLOWERS_RELAXED_50 = 500;
+    private static final int MIN_FOLLOWERS_RELAXED_30 = 100;
+    private static final double TARGET_CANDIDATES_THRESHOLD_50 = 0.5;
+    private static final double TARGET_CANDIDATES_THRESHOLD_30 = 0.3;
+    
+    // 대중성 점수 기준
+    private static final int UNCONDITIONAL_POPULARITY = 65;
+    private static final int UNCONDITIONAL_FOLLOWERS = 1_000_000;
+    private static final int KOREAN_LEGACY_POPULARITY = 40;
+    private static final int KOREAN_LEGACY_FOLLOWERS = 300_000;
+    private static final int GLOBAL_LEGACY_POPULARITY = 30;
+    private static final int GLOBAL_LEGACY_FOLLOWERS = 200_000;
+    private static final int MB_FAILED_MIN_POPULARITY = 20;
+    private static final int MB_FAILED_MIN_FOLLOWERS = 5000;
+    
+    // Rate Limiter 인스턴스
+    private final SimpleRateLimiter spotifyRateLimiter = new SimpleRateLimiter(SPOTIFY_RATE_LIMIT_INTERVAL_MS);
+    private final SimpleRateLimiter musicBrainzRateLimiter = new SimpleRateLimiter(MUSICBRAINZ_RATE_LIMIT_INTERVAL_MS);
+    
+    private static final List<String> KOREAN_GENRE_HINTS = List.of(
+            "k-pop", "korean", "trot",
+            "k-hip hop", "k-rap", "k-ballad", "k-r&b", "k-indie", "k-rock",
+            "korean hip hop", "korean r&b", "korean ballad", "korean ost",
+            "korean indie", "korean rock"
+    );
+    
+    private static final List<String> SURVIVAL_PROGRAM_KEYWORDS = List.of(
+            "produce 101", "produce 48", "produce x 101", "produce x",
+            "girls planet", "boys planet", "girls planet 999", "boys planet 999",
+            "queendom puzzle", "queendom",
+            "universe ticket", "universe",
+            "r u next", "runext",
+            "dream academy", "dreamacademy",
+            "i-land", "iland",
+            "wild idol", "wildidol",
+            "my teenage girl", "teenage girl",
+            "peak time", "peaktime",
+            "show me the money", "showmethemoney",
+            "mixnine", "mix nine",
+            "the unit", "theunit",
+            "under nineteen", "under19",
+            "idol school", "idolschool",
+            "k-pop star", "kpop star",
+            "superstar k", "superstark"
+    );
+    
+    private static final List<String> COMPILATION_KEYWORDS = List.of(
+            "가수들", "싱어들", "아티스트들", "밴드들", "그룹들",
+            "singers", "artists", "bands", "groups",
+            "모음", "베스트", "best of", "collection", "compilation",
+            "발라드 싱어", "발라드 가수", "발라드 아티스트",
+            "ballad singer", "ballad singers", "ballad artists",
+            "힙합 아티스트", "인디 밴드", "록 밴드",
+            "hip hop artists", "indie bands", "rock bands"
+    );
 
     @Transactional
     public int seedKoreanArtists300() {
         try {
             SpotifyApi api = spotifyClient.getAuthorizedApi();
-
-            final int limit = 50;
+            Map<String, CategoryConfig> categoryConfigs = createCategoryConfigs();
             
-            // 카테고리별 키워드 및 목표 수 정의
-            Map<String, CategoryConfig> categoryConfigs = Map.of(
-                    "K-POP/대중", new CategoryConfig(List.of(
-                            "k-pop", "k-pop girl group", "k-pop boy group", 
-                            "k-pop solo", "k-pop ost"
-                    ), 200, true), // 한국 음악 필터링 적용
-                    "국내 힙합/R&B", new CategoryConfig(List.of(
-                            "k-rap", "korean hip hop", "k-r&b", "korean r&b"
-                    ), 60, true), // 한국 음악 필터링 적용
-                    "국내 인디/밴드", new CategoryConfig(List.of(
-                            "k-indie", "korean indie", "korean indie rock", 
-                            "korean rock", "korean band"
-                    ), 70, true), // 한국 음악 필터링 적용
-                    "발라드/OST", new CategoryConfig(List.of(
-                            "k-ballad", "korean ballad", "k-ost", "korean ost"
-                    ), 40, true), // 한국 음악 필터링 적용
-                    "글로벌", new CategoryConfig(List.of(
-                            "pop", "hip hop", "r&b", "rock", "alternative rock", 
-                            "edm", "indie pop", "j-pop"
-                    ), 30, false) // 한국 음악 필터링 미적용
-            );
+            List<ArtistData> artistDataList = collectArtistsRoundRobin(api, categoryConfigs);
+            List<ArtistData> finalArtists = applyFilteringPipeline(artistDataList);
             
-            // 1단계: 카테고리별로 아티스트 수집
-            List<ArtistData> artistDataList = new ArrayList<>();
-            Set<String> collectedSpotifyIds = new HashSet<>(); // 전체 중복 방지를 위한 Set
+            return saveArtistsToDatabase(finalArtists);
             
-            for (Map.Entry<String, CategoryConfig> entry : categoryConfigs.entrySet()) {
-                String categoryName = entry.getKey();
-                CategoryConfig config = entry.getValue();
-                int targetCount = config.targetCount;
-                int collected = 0;
-                
-                log.info("카테고리 '{}' 수집 시작 (목표: {}명)", categoryName, targetCount);
-                
-                for (String query : config.keywords) {
-                    if (collected >= targetCount) break;
-                    
-                    int offset = 0;
-                    
-                    while (collected < targetCount) {
-                        rateLimiter.acquire();
-                        Paging<se.michaelthelin.spotify.model_objects.specification.Artist> paging = api.searchArtists(query)
-                                        .limit(limit)
-                                        .offset(offset)
-                                        .build()
-                                        .execute();
-
-                        var items = paging.getItems();
-                        if (items == null || items.length == 0) break;
-
-                        for (var spotifyArtist : items) {
-                            if (collected >= targetCount) break;
-
-                            String spotifyId = spotifyArtist.getId();
-                            String name = spotifyArtist.getName();
-                            String[] genres = spotifyArtist.getGenres();
-
-                            if (spotifyId == null || name == null || name.isBlank()) continue;
-                            if (collectedSpotifyIds.contains(spotifyId)) continue; // 전체 중복 체크
-                            
-                            // 한국 음악 필터링 (글로벌은 제외)
-                            if (config.requireKorean && !isLikelyKoreanMusic(spotifyArtist)) continue;
-
-                            String artistTypeStr = inferArtistType(spotifyArtist);
-                            ArtistType artistType = ArtistType.valueOf(artistTypeStr);
-                            String imageUrl = pickImageUrl(spotifyArtist.getImages());
-                            Integer popularity = spotifyArtist.getPopularity(); // Spotify 인기도
-
-                            // genres 배열을 List로 변환 (null 제거)
-                            List<String> genreList = genres != null 
-                                    ? Arrays.stream(genres).filter(Objects::nonNull).filter(g -> !g.isBlank()).collect(toList())
-                                    : List.of();
-
-                            artistDataList.add(new ArtistData(spotifyId, name.trim(), artistType, imageUrl, genreList, popularity));
-                            collectedSpotifyIds.add(spotifyId); // 수집된 spotifyId 추가
-                            collected++;
-                        }
-
-                        offset += limit;
-                        if (offset >= paging.getTotal()) break;
-
-                        Thread.sleep(200);
-                    }
-                }
-                
-                log.info("카테고리 '{}' 수집 완료: {}명 (목표: {}명)", categoryName, collected, targetCount);
-            }
-
-            if (artistDataList.isEmpty()) {
-                throw new BusinessException(ArtistErrorCode.ARTIST_SEED_FAILED);
-            }
-
-            log.info("아티스트 후보 수집 완료: {}명", artistDataList.size());
-
-            // 2단계: 인기도 기준으로 상위 300명 선택
-            final int maxSeedCount = 300;
-            List<ArtistData> finalArtists = artistDataList;
-            
-            if (artistDataList.size() > maxSeedCount) {
-                log.info("아티스트가 {}명으로 제한치({}명)를 초과합니다. 인기도 기준으로 상위 {}명만 선택합니다.", 
-                        artistDataList.size(), maxSeedCount, maxSeedCount);
-                
-                finalArtists = artistDataList.stream()
-                        .sorted((a1, a2) -> {
-                            // popularity가 null인 경우 가장 낮은 우선순위
-                            Integer p1 = a1.popularity != null ? a1.popularity : -1;
-                            Integer p2 = a2.popularity != null ? a2.popularity : -1;
-                            return Integer.compare(p2, p1); // 내림차순 정렬 (높은 인기도가 먼저)
-                        })
-                        .limit(maxSeedCount)
-                        .collect(toList());
-                
-                log.info("인기도 기준 정렬 완료: 상위 {}명 선택", finalArtists.size());
-            }
-
-            // 4단계: 각 아티스트를 DB에 upsert (spotifyArtistId 기준으로 있으면 업데이트, 없으면 생성)
-            Map<String, Artist> artistMap = new HashMap<>(); // spotifyId -> Artist 매핑
-            for (ArtistData data : finalArtists) {
-                Optional<Artist> existingArtistOpt = artistRepository.findBySpotifyArtistId(data.spotifyId);
-                
-                Artist artist;
-                if (existingArtistOpt.isPresent()) {
-                    // 업데이트
-                    artist = existingArtistOpt.get();
-                    artist.setArtistName(data.name);
-                    artist.setArtistType(data.artistType);
-                    artist.setImageUrl(data.imageUrl);
-                    // 기존 장르 관계 제거
-                    artist.getArtistGenres().clear();
-                } else {
-                    // 생성
-                    artist = new Artist(data.spotifyId, data.name, null, data.artistType);
-                    artist.setImageUrl(data.imageUrl);
-                }
-                
-                artistRepository.save(artist);
-                artistMap.put(data.spotifyId, artist);
-            }
-
-            // 5단계: 모든 genres[]를 모아서 Set으로 중복 제거
-            Set<String> allGenreNames = finalArtists.stream()
-                    .flatMap(data -> data.genres.stream())
-                    .filter(Objects::nonNull)
-                    .filter(g -> !g.isBlank())
-                    .collect(Collectors.toSet());
-
-            if (allGenreNames.isEmpty()) {
-                log.warn("수집된 장르가 없습니다.");
-                return artistDataList.size();
-            }
-
-            // 6단계: DB에서 genre_name in (...)으로 기존 장르 한 번에 조회
-            List<Genre> existingGenres = genreRepository.findByGenreNameIn(new ArrayList<>(allGenreNames));
-            Set<String> existingGenreNames = existingGenres.stream()
-                    .map(Genre::getGenreName)
-                    .collect(Collectors.toSet());
-
-            // 7단계: 없는 장르만 insert
-            List<String> newGenreNames = allGenreNames.stream()
-                    .filter(name -> !existingGenreNames.contains(name))
-                    .collect(toList());
-
-            if (!newGenreNames.isEmpty()) {
-                List<Genre> newGenres = newGenreNames.stream()
-                        .map(Genre::new)
-                        .collect(toList());
-                genreRepository.saveAll(newGenres);
-                existingGenres.addAll(newGenres);
-                log.info("새로운 장르 {}개 생성: {}", newGenres.size(), newGenreNames);
-            }
-
-            // Genre Map 생성 (genreName -> Genre)
-            Map<String, Genre> genreMap = existingGenres.stream()
-                    .collect(Collectors.toMap(Genre::getGenreName, g -> g, (g1, g2) -> g1));
-
-            // 8단계: 각 아티스트별로 genres[]를 돌면서 artist_genre에 매핑 insert
-            int totalMappings = 0;
-            for (ArtistData data : finalArtists) {
-                Artist artist = artistMap.get(data.spotifyId);
-                if (artist == null) {
-                    log.warn("아티스트를 찾을 수 없음: spotifyId={}", data.spotifyId);
-                    continue;
-                }
-
-                for (String genreName : data.genres) {
-                    if (genreName == null || genreName.isBlank()) continue;
-                    
-                    Genre genre = genreMap.get(genreName);
-                    if (genre == null) {
-                        log.warn("장르를 찾을 수 없음: genreName={}, spotifyId={}", genreName, data.spotifyId);
-                        continue;
-                    }
-
-                    // 중복 방지는 UNIQUE(artist_id, genre_id)로 해결
-                    // 이미 존재하는지 확인
-                    boolean alreadyExists = artist.getArtistGenres().stream()
-                            .anyMatch(ag -> ag.getGenre().getId() == genre.getId());
-                    
-                    if (!alreadyExists) {
-                        ArtistGenre artistGenre = new ArtistGenre(artist, genre);
-                        artist.getArtistGenres().add(artistGenre);
-                        totalMappings++;
-                    }
-                }
-                
-                artistRepository.save(artist);
-            }
-
-            log.info("아티스트 시드 완료: 아티스트 {}명, 장르 {}개, 매핑 {}개", 
-                    finalArtists.size(), genreMap.size(), totalMappings);
-
-            return finalArtists.size();
-
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
@@ -274,45 +141,308 @@ public class SpotifyService {
             throw new BusinessException(ArtistErrorCode.SPOTIFY_API_ERROR);
         }
     }
-
-    // 카테고리 설정 클래스
-    private static class CategoryConfig {
-        final List<String> keywords;
-        final int targetCount;
-        final boolean requireKorean; // 한국 음악 필터링 필요 여부
-
-        CategoryConfig(List<String> keywords, int targetCount, boolean requireKorean) {
-            this.keywords = keywords;
-            this.targetCount = targetCount;
-            this.requireKorean = requireKorean;
-        }
+    
+    private Map<String, CategoryConfig> createCategoryConfigs() {
+        Map<String, CategoryConfig> categoryConfigs = new LinkedHashMap<>();
+        categoryConfigs.put("아이돌(걸그룹/보이그룹)", new CategoryConfig(List.of(
+                "k-pop girl group", "k-pop boy group", "k-pop group",
+                "k-pop idol", "korean idol", "k-pop"
+        ), 180, true));
+        categoryConfigs.put("유명 솔로", new CategoryConfig(List.of(
+                "k-pop solo", "korean solo", "k-pop singer",
+                "korean ballad", "k-ballad"
+        ), 100, true));
+        categoryConfigs.put("밴드", new CategoryConfig(List.of(
+                "korean band", "korean rock band", "k-indie band",
+                "korean rock", "korean alternative", "korean punk",
+                "korean indie rock"
+        ), 80, true));
+        categoryConfigs.put("힙합/인디/R&B", new CategoryConfig(List.of(
+                "k-rap", "korean hip hop", "k-r&b", "korean r&b",
+                "k-indie", "korean indie"
+        ), 50, true));
+        categoryConfigs.put("발라드/OST", new CategoryConfig(List.of(
+                "k-ost", "korean ost"
+        ), 40, true));
+        categoryConfigs.put("글로벌", new CategoryConfig(List.of(
+                "pop", "hip hop", "r&b", "rock", "alternative rock", 
+                "rock band", "indie rock", "punk rock",
+                "edm", "indie pop", "j-pop", "j-rock"
+        ), 40, false));
+        return categoryConfigs;
     }
 
-    // 아티스트 데이터 임시 저장용 클래스
-    private static class ArtistData {
-        final String spotifyId;
-        final String name;
-        final ArtistType artistType;
-        final String imageUrl;
-        final List<String> genres;
-        final Integer popularity; // Spotify 인기도 (0-100)
-
-        ArtistData(String spotifyId, String name, ArtistType artistType, String imageUrl, List<String> genres, Integer popularity) {
-            this.spotifyId = spotifyId;
-            this.name = name;
-            this.artistType = artistType;
-            this.imageUrl = imageUrl;
-            this.genres = genres;
-            this.popularity = popularity;
+    private List<ArtistData> collectArtistsRoundRobin(SpotifyApi api, Map<String, CategoryConfig> categoryConfigs) {
+        List<ArtistData> artistDataList = new ArrayList<>();
+        Set<String> collectedSpotifyIds = new HashSet<>();
+        
+        Map<String, Integer> categoryCollected = initializeCategoryTracking(categoryConfigs);
+        Map<String, Integer> categoryKeywordIndex = initializeCategoryTracking(categoryConfigs);
+        Map<String, Map<String, Integer>> categoryKeywordPageIndex = initializeCategoryPageTracking(categoryConfigs);
+        
+        boolean shouldContinue = true;
+        while (shouldContinue && artistDataList.size() < TARGET_CANDIDATES) {
+            boolean anyProgress = false;
+            
+            for (Map.Entry<String, CategoryConfig> entry : categoryConfigs.entrySet()) {
+                String categoryName = entry.getKey();
+                CategoryConfig config = entry.getValue();
+                int cap = config.targetCount;
+                int collected = categoryCollected.get(categoryName);
+                
+                if (collected >= cap || artistDataList.size() >= TARGET_CANDIDATES) {
+                    if (artistDataList.size() >= TARGET_CANDIDATES) {
+                        shouldContinue = false;
+                    }
+                    continue;
+                }
+                
+                int keywordIndex = categoryKeywordIndex.get(categoryName);
+                if (keywordIndex >= config.keywords.size()) {
+                    continue;
+                }
+                
+                String query = config.keywords.get(keywordIndex);
+                Map<String, Integer> keywordPageIndex = categoryKeywordPageIndex.get(categoryName);
+                int currentPage = keywordPageIndex.getOrDefault(query, 0);
+                
+                if (currentPage >= MAX_PAGES_PER_KEYWORD) {
+                    categoryKeywordIndex.put(categoryName, keywordIndex + 1);
+                    continue;
+                }
+                
+                try {
+                    boolean progress = processSearchPage(api, query, currentPage, config, categoryName,
+                            artistDataList, collectedSpotifyIds, categoryCollected, categoryKeywordIndex,
+                            categoryKeywordPageIndex, keywordPageIndex);
+                    if (progress) {
+                        anyProgress = true;
+                    }
+                } catch (Exception e) {
+                    categoryKeywordIndex.put(categoryName, keywordIndex + 1);
+                }
+            }
+            
+            if (!anyProgress) {
+                break;
+            }
         }
+        
+        if (artistDataList.isEmpty()) {
+            throw new BusinessException(ArtistErrorCode.ARTIST_SEED_FAILED);
+        }
+        return artistDataList;
     }
 
-    private static final List<String> KOREAN_GENRE_HINTS = List.of(
-            "k-pop", "korean", "trot",
-            "k-hip hop", "k-rap", "k-ballad", "k-r&b", "k-indie", "k-rock",
-            "korean hip hop", "korean r&b", "korean ballad", "korean ost",
-            "korean indie", "korean rock"
-    );
+    private Map<String, Integer> initializeCategoryTracking(Map<String, CategoryConfig> categoryConfigs) {
+        Map<String, Integer> tracking = new HashMap<>();
+        for (String categoryName : categoryConfigs.keySet()) {
+            tracking.put(categoryName, 0);
+        }
+        return tracking;
+    }
+
+    private Map<String, Map<String, Integer>> initializeCategoryPageTracking(Map<String, CategoryConfig> categoryConfigs) {
+        Map<String, Map<String, Integer>> pageTracking = new HashMap<>();
+        for (String categoryName : categoryConfigs.keySet()) {
+            pageTracking.put(categoryName, new HashMap<>());
+        }
+        return pageTracking;
+    }
+
+    private boolean processSearchPage(SpotifyApi api, String query, int currentPage, CategoryConfig config,
+                                     String categoryName, List<ArtistData> artistDataList,
+                                     Set<String> collectedSpotifyIds, Map<String, Integer> categoryCollected,
+                                     Map<String, Integer> categoryKeywordIndex,
+                                     Map<String, Map<String, Integer>> categoryKeywordPageIndex,
+                                     Map<String, Integer> keywordPageIndex) throws Exception {
+        spotifyRateLimiter.acquire();
+        int offset = currentPage * SEARCH_LIMIT;
+        
+        Paging<se.michaelthelin.spotify.model_objects.specification.Artist> paging = api.searchArtists(query)
+                .limit(SEARCH_LIMIT)
+                .offset(offset)
+                .build()
+                .execute();
+
+        var items = paging.getItems();
+        if (items == null || items.length == 0) {
+            categoryKeywordIndex.put(categoryName, categoryKeywordIndex.get(categoryName) + 1);
+            return false;
+        }
+        
+        int collected = categoryCollected.get(categoryName);
+        int cap = config.targetCount;
+        boolean anyProgress = false;
+
+        for (var spotifyArtist : items) {
+            if (collected >= cap || artistDataList.size() >= TARGET_CANDIDATES) {
+                break;
+            }
+            
+            if (!shouldAddArtist(spotifyArtist, config, collectedSpotifyIds, artistDataList.size())) {
+                continue;
+            }
+            
+            ArtistData artistData = createArtistData(spotifyArtist);
+            artistDataList.add(artistData);
+            collectedSpotifyIds.add(artistData.spotifyId);
+            collected++;
+            anyProgress = true;
+        }
+        
+        keywordPageIndex.put(query, currentPage + 1);
+        if (items.length < SEARCH_LIMIT || offset + SEARCH_LIMIT >= paging.getTotal()) {
+            categoryKeywordIndex.put(categoryName, categoryKeywordIndex.get(categoryName) + 1);
+        }
+        
+        categoryCollected.put(categoryName, collected);
+        Thread.sleep(API_CALL_DELAY_MS);
+        
+        return anyProgress;
+    }
+
+    private boolean shouldAddArtist(se.michaelthelin.spotify.model_objects.specification.Artist spotifyArtist,
+                                   CategoryConfig config, Set<String> collectedSpotifyIds, int currentSize) {
+        String spotifyId = spotifyArtist.getId();
+        String name = spotifyArtist.getName();
+        
+        if (spotifyId == null || name == null || name.isBlank() || collectedSpotifyIds.contains(spotifyId)) {
+            return false;
+        }
+        
+        if (isSurvivalProgramGroup(name) || isCompilationArtist(name)) {
+            return false;
+        }
+        
+        if (config.requireKorean && !isLikelyKoreanMusic(spotifyArtist)) {
+            return false;
+        }
+        
+        Integer popularity = spotifyArtist.getPopularity();
+        Integer followers = spotifyArtist.getFollowers() != null 
+                ? spotifyArtist.getFollowers().getTotal() 
+                : null;
+        
+        String[] genres = spotifyArtist.getGenres();
+        boolean isKorean = genres != null && Arrays.stream(genres)
+                .anyMatch(g -> g != null && (g.toLowerCase().contains("k-pop") || 
+                        g.toLowerCase().contains("korean")));
+        int minPopularity = isKorean ? MIN_POPULARITY_KOREAN : MIN_POPULARITY_GLOBAL;
+        
+        if (popularity == null || popularity < minPopularity) {
+            return false;
+        }
+        
+        int minFollowers = calculateMinFollowers(currentSize);
+        if (followers != null && followers < minFollowers) {
+            return false;
+        }
+        
+        String imageUrl = pickImageUrl(spotifyArtist.getImages());
+        return imageUrl != null && !imageUrl.isBlank();
+    }
+
+    private int calculateMinFollowers(int currentSize) {
+        if (currentSize < TARGET_CANDIDATES * TARGET_CANDIDATES_THRESHOLD_30) {
+            return MIN_FOLLOWERS_RELAXED_30;
+        } else if (currentSize < TARGET_CANDIDATES * TARGET_CANDIDATES_THRESHOLD_50) {
+            return MIN_FOLLOWERS_RELAXED_50;
+        }
+        return MIN_FOLLOWERS_DEFAULT;
+    }
+
+    private ArtistData createArtistData(se.michaelthelin.spotify.model_objects.specification.Artist spotifyArtist) {
+        String spotifyId = spotifyArtist.getId();
+        String name = spotifyArtist.getName();
+        String[] genres = spotifyArtist.getGenres();
+        Integer popularity = spotifyArtist.getPopularity();
+        Integer followers = spotifyArtist.getFollowers() != null 
+                ? spotifyArtist.getFollowers().getTotal() 
+                : null;
+        String imageUrl = pickImageUrl(spotifyArtist.getImages());
+        String artistTypeStr = inferArtistType(spotifyArtist);
+        ArtistType artistType = ArtistType.valueOf(artistTypeStr);
+
+        List<String> genreList = genres != null 
+                ? Arrays.stream(genres).filter(Objects::nonNull).filter(g -> !g.isBlank()).collect(toList())
+                : List.of();
+
+        return new ArtistData(spotifyId, name.trim(), artistType, imageUrl, genreList, popularity, followers);
+    }
+
+    private boolean isSurvivalProgramGroup(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        
+        String lowerName = name.toLowerCase();
+        
+        for (String keyword : SURVIVAL_PROGRAM_KEYWORDS) {
+            if (lowerName.contains(keyword)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    private boolean isCompilationArtist(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        
+        String lowerName = name.toLowerCase();
+        String trimmedName = name.trim();
+        String normalizedName = trimmedName.replaceAll("\\s+", "");
+        
+        for (String keyword : COMPILATION_KEYWORDS) {
+            if (lowerName.contains(keyword.toLowerCase())) {
+                return true;
+            }
+        }
+        
+        if (trimmedName.matches(".*[가-힣]+\\s+(가수들|싱어들|아티스트들|밴드들|그룹들)$")) {
+            return true;
+        }
+        
+        String[] genreKeywords = {"발라드", "힙합", "인디", "록", "팝", "k-pop", "kpop", "k-rap", "krap", "r&b", "rnb"};
+        String[] artistSuffixes = {"싱어", "가수", "아티스트", "밴드", "그룹"};
+        
+        for (String genre : genreKeywords) {
+            for (String suffix : artistSuffixes) {
+                if (normalizedName.contains(genre.toLowerCase() + suffix) || 
+                    normalizedName.contains(genre + suffix)) {
+                    if (trimmedName.length() <= 20) {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        if (lowerName.matches(".*\\s+(singers|artists|bands|groups)$")) {
+            String[] genrePrefixes = {"ballad", "hip hop", "hip-hop", "r&b", "rnb", "indie", "rock", "pop", "k-pop", "korean"};
+            for (String prefix : genrePrefixes) {
+                if (lowerName.startsWith(prefix + " ") && lowerName.endsWith("s")) {
+                    return true;
+                }
+            }
+        }
+        
+        String[] englishGenrePrefixes = {"ballad", "hiphop", "hip-hop", "r&b", "rnb", "indie", "rock", "pop", "kpop", "korean"};
+        String[] englishSuffixes = {"singer", "singers", "artist", "artists", "band", "bands", "group", "groups"};
+        String normalizedLower = lowerName.replaceAll("\\s+", "");
+        
+        for (String prefix : englishGenrePrefixes) {
+            for (String suffix : englishSuffixes) {
+                if (normalizedLower.contains(prefix + suffix) && trimmedName.length() <= 30) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
 
     private boolean isLikelyKoreanMusic(se.michaelthelin.spotify.model_objects.specification.Artist a) {
         String[] genres = a.getGenres();
@@ -329,25 +459,6 @@ public class SpotifyService {
         return name != null && name.matches(".*[가-힣].*");
     }
 
-    private String pickMainGenreName(se.michaelthelin.spotify.model_objects.specification.Artist a) {
-        String[] genres = a.getGenres();
-        if (genres == null || genres.length == 0) return "k-pop";
-
-        for (String g : genres) {
-            if (g == null) continue;
-            String s = g.toLowerCase();
-            if (s.contains("trot")) return "trot";
-            if (s.contains("ballad")) return "ballad";
-            if (s.contains("hip hop")) return "hiphop";
-            if (s.contains("r&b") || s.contains("rb")) return "rnb";
-            if (s.contains("ost")) return "ost";
-            if (s.contains("rock")) return "rock";
-            if (s.contains("indie")) return "indie";
-            if (s.contains("k-pop") || s.contains("korean")) return "k-pop";
-        }
-        return "k-pop";
-    }
-
     private String inferArtistType(se.michaelthelin.spotify.model_objects.specification.Artist a) {
         String[] genres = a.getGenres();
         if (genres != null) {
@@ -360,558 +471,421 @@ public class SpotifyService {
         return "SOLO";
     }
 
-    /**
-     * Rate Limit 재시도 로직 (429 에러 처리)
-     * 429면 Retry-After 헤더 확인 후 대기하고 재시도 (최대 3회)
-     * 
-     * @param supplier API 호출 함수
-     * @param context 컨텍스트 정보 (로깅용)
-     * @return API 호출 결과
-     * @throws RuntimeException 재시도 모두 실패 시
-     */
-    private <T> T callWithRateLimitRetry(java.util.function.Supplier<T> supplier, String context) {
-        final int maxRetry = 3;
+    private List<ArtistData> applyFilteringPipeline(List<ArtistData> artistDataList) {
+        List<ArtistData> filteredByDb = filterByDbInfo(artistDataList);
+        List<ArtistData> filteredByUnit = filterUnitExclude(filteredByDb);
+        MusicBrainzFilterResult mbResult = filterByMusicBrainzEnded(filteredByUnit);
+        List<ArtistData> filteredByWikidata = filterByWikidataDissolved(mbResult.getMbFailedArtists());
         
-        for (int attempt = 1; attempt <= maxRetry; attempt++) {
-            try {
-                return supplier.get();
-            } catch (Exception e) {
-                // 원본 예외 확인 (래핑된 경우 cause 확인)
-                Throwable originalException = e;
-                Throwable current = e;
-                
-                // 예외 체인을 따라가며 TooManyRequestsException 찾기
-                while (current != null) {
-                    String currentClassName = current.getClass().getSimpleName();
-                    if (currentClassName.contains("TooManyRequests")) {
-                        originalException = current;
-                        break;
-                    }
-                    current = current.getCause();
+        List<ArtistData> afterFiltering = new ArrayList<>(mbResult.getActiveArtists());
+        afterFiltering.addAll(filteredByWikidata);
+        
+        return selectTopArtistsByScore(afterFiltering);
+    }
+    
+    private List<ArtistData> selectTopArtistsByScore(List<ArtistData> candidates) {
+        if (candidates.size() <= MAX_SEED_COUNT) {
+            return candidates;
+        }
+        
+        return candidates.stream()
+                .sorted((a1, a2) -> {
+                    double score1 = calculatePopularityScore(a1.popularity, a1.followers);
+                    double score2 = calculatePopularityScore(a2.popularity, a2.followers);
+                    return Double.compare(score2, score1);
+                })
+                .limit(MAX_SEED_COUNT)
+                .collect(toList());
+    }
+    
+    private int saveArtistsToDatabase(List<ArtistData> finalArtists) {
+        Map<String, Artist> artistMap = upsertArtists(finalArtists);
+        Map<String, Genre> genreMap = processGenres(finalArtists);
+        int totalMappings = createArtistGenreMappings(finalArtists, artistMap, genreMap);
+
+        log.info("아티스트 시드 완료: 아티스트 {}명, 장르 {}개, 매핑 {}개", 
+                finalArtists.size(), genreMap.size(), totalMappings);
+
+        return finalArtists.size();
+    }
+    
+    private Map<String, Artist> upsertArtists(List<ArtistData> finalArtists) {
+        Map<String, Artist> artistMap = new HashMap<>();
+        
+        for (ArtistData data : finalArtists) {
+            Optional<Artist> existingArtistOpt = artistRepository.findBySpotifyArtistId(data.spotifyId);
+            
+            Artist artist;
+            if (existingArtistOpt.isPresent()) {
+                artist = existingArtistOpt.get();
+                artist.setArtistName(data.name);
+                artist.setArtistType(data.artistType);
+                artist.setImageUrl(data.imageUrl);
+                artist.getArtistGenres().clear();
+            } else {
+                artist = new Artist(data.spotifyId, data.name, null, data.artistType);
+                artist.setImageUrl(data.imageUrl);
+            }
+            
+            artistRepository.save(artist);
+            artistMap.put(data.spotifyId, artist);
+        }
+
+        return artistMap;
+    }
+    
+    private Map<String, Genre> processGenres(List<ArtistData> finalArtists) {
+        Set<String> allGenreNames = finalArtists.stream()
+                    .flatMap(data -> data.genres.stream())
+                    .filter(Objects::nonNull)
+                    .filter(g -> !g.isBlank())
+                    .collect(Collectors.toSet());
+
+            if (allGenreNames.isEmpty()) {
+                return new HashMap<>();
+            }
+
+            List<Genre> existingGenres = genreRepository.findByGenreNameIn(new ArrayList<>(allGenreNames));
+            Set<String> existingGenreNames = existingGenres.stream()
+                    .map(Genre::getGenreName)
+                    .collect(Collectors.toSet());
+
+            List<String> newGenreNames = allGenreNames.stream()
+                    .filter(name -> !existingGenreNames.contains(name))
+                    .collect(toList());
+
+            if (!newGenreNames.isEmpty()) {
+                List<Genre> newGenres = newGenreNames.stream()
+                        .map(Genre::new)
+                        .collect(toList());
+                genreRepository.saveAll(newGenres);
+                existingGenres.addAll(newGenres);
+            }
+
+        return existingGenres.stream()
+                    .collect(Collectors.toMap(Genre::getGenreName, g -> g, (g1, g2) -> g1));
+    }
+
+    private int createArtistGenreMappings(List<ArtistData> finalArtists, Map<String, Artist> artistMap,
+                                         Map<String, Genre> genreMap) {
+            int totalMappings = 0;
+        
+        for (ArtistData data : finalArtists) {
+                Artist artist = artistMap.get(data.spotifyId);
+                if (artist == null) {
+                    continue;
                 }
-                
-                // 래핑된 경우 cause 확인
-                if (originalException == e && e instanceof RuntimeException && e.getCause() != null) {
-                    originalException = e.getCause();
+
+                for (String genreName : data.genres) {
+                if (genreName == null || genreName.isBlank()) {
+                    continue;
                 }
-                
-                String className = originalException.getClass().getSimpleName();
-                String errorMsg = originalException.getMessage();
-                String wrapperClassName = e.getClass().getSimpleName();
-                String wrapperErrorMsg = e.getMessage();
-                
-                // 429 에러 확인 (원본 예외와 래핑된 예외 모두 확인)
-                boolean is429 = className.contains("TooManyRequests") || 
-                               (errorMsg != null && (errorMsg.contains("429") || errorMsg.contains("Too Many Requests"))) ||
-                               wrapperClassName.contains("TooManyRequests") ||
-                               (wrapperErrorMsg != null && (wrapperErrorMsg.contains("429") || wrapperErrorMsg.contains("Too Many Requests")));
-                
-                // 예외 체인 전체 확인
-                if (!is429) {
-                    current = e;
-                    while (current != null) {
-                        String currentClassName = current.getClass().getSimpleName();
-                        String currentMsg = current.getMessage();
-                        if (currentClassName.contains("TooManyRequests") || 
-                            (currentMsg != null && (currentMsg.contains("429") || currentMsg.contains("Too Many Requests")))) {
-                            is429 = true;
-                            originalException = current;
-                            break;
-                        }
-                        current = current.getCause();
-                    }
-                }
-                
-                // 디버깅 로그
-                if (is429) {
-                    log.warn("429 에러 감지: attempt={}/{}, className={}, wrapperClassName={}, errorMsg={}", 
-                            attempt, maxRetry, className, wrapperClassName, errorMsg);
-                } else {
-                    log.debug("예외 발생 (429 아님): attempt={}/{}, className={}, wrapperClassName={}, errorMsg={}", 
-                            attempt, maxRetry, className, wrapperClassName, errorMsg);
-                }
-                
-                if (is429 && attempt < maxRetry) {
-                    // Retry-After 헤더는 원본 예외에서 추출
-                    Throwable headerException = originalException;
-                    // Retry-After 헤더 추출 시도
-                    long waitSec = 5; // 기본값 5초 (더 보수적으로)
-                    final long minWaitSec = 3; // 최소 대기 시간 3초
-                    final long bufferSec = 2; // 여유 시간 2초 추가
                     
-                    try {
-                        // Spotify SDK의 예외에서 Retry-After 헤더 추출 시도
-                        // reflection을 통해 헤더 정보 확인 (원본 예외에서)
-                        java.lang.reflect.Method getHeadersMethod = null;
-                        try {
-                            getHeadersMethod = headerException.getClass().getMethod("getResponseHeaders");
-                        } catch (NoSuchMethodException ignored) {
-                            // 메서드가 없으면 기본값 사용
-                        }
-                        
-                        if (getHeadersMethod != null) {
-                            try {
-                                Object headers = getHeadersMethod.invoke(headerException);
-                                if (headers != null && headers instanceof java.util.Map) {
-                                    @SuppressWarnings("unchecked")
-                                    java.util.Map<String, java.util.List<String>> headerMap = 
-                                            (java.util.Map<String, java.util.List<String>>) headers;
-                                    java.util.List<String> retryAfterList = headerMap.get("Retry-After");
-                                    if (retryAfterList != null && !retryAfterList.isEmpty()) {
-                                        try {
-                                            long headerValue = Long.parseLong(retryAfterList.get(0));
-                                            // 헤더 값 + 여유 시간, 최소값 보장
-                                            waitSec = Math.max(minWaitSec, headerValue + bufferSec);
-                                        } catch (NumberFormatException ignored) {
-                                            // 파싱 실패 시 기본값 사용
-                                        }
-                                    }
-                                }
-                            } catch (Exception ignored) {
-                                // 헤더 추출 실패 시 기본값 사용
+                    Genre genre = genreMap.get(genreName);
+                    if (genre == null) {
+                        continue;
+                    }
+
+                    boolean alreadyExists = artist.getArtistGenres().stream()
+                            .anyMatch(ag -> ag.getGenre().getId() == genre.getId());
+                    
+                    if (!alreadyExists) {
+                        ArtistGenre artistGenre = new ArtistGenre(artist, genre);
+                        artist.getArtistGenres().add(artistGenre);
+                        totalMappings++;
+                    }
+                }
+                
+                artistRepository.save(artist);
+            }
+
+        return totalMappings;
+    }
+
+    private List<ArtistData> filterByDbInfo(List<ArtistData> candidates) {
+        return candidates.stream()
+                .filter(data -> {
+                    if (data.name == null || data.name.isBlank()) {
+                        return false;
+                    }
+                    
+                    if (data.imageUrl == null || data.imageUrl.isBlank()) {
+                        return false;
+                    }
+                    
+                    boolean isKorean = data.genres.stream()
+                            .anyMatch(g -> g != null && (g.toLowerCase().contains("k-pop") || 
+                                    g.toLowerCase().contains("korean")));
+                    int minPopularity = isKorean ? MIN_POPULARITY_KOREAN : MIN_POPULARITY_GLOBAL;
+                    
+                    if (data.popularity == null || data.popularity < minPopularity) {
+                        return false;
+                    }
+                    
+                    if (data.followers != null && data.followers < MIN_FOLLOWERS_DEFAULT) {
+                        return false;
+                    }
+                    
+                    return true;
+                })
+                .collect(toList());
+    }
+    
+    private List<ArtistData> filterUnitExclude(List<ArtistData> candidates) {
+        List<ArtistData> activeArtists = new ArrayList<>();
+        
+        for (ArtistData data : candidates) {
+            boolean isUnit = false;
+            
+            if (isUnitNamePattern(data.name)) {
+                isUnit = true;
+            }
+            
+            if (!isUnit) {
+                musicBrainzRateLimiter.acquire();
+                
+                try {
+                    Optional<com.back.web7_9_codecrete_be.global.musicbrainz.MusicBrainzClient.ArtistInfo> artistInfoOpt = 
+                            musicBrainzClient.searchArtist(data.name);
+                    
+                    if (artistInfoOpt.isPresent()) {
+                        String mbid = artistInfoOpt.get().getMbid();
+                        if (mbid != null && !mbid.isBlank()) {
+                            Optional<Boolean> isSubunitOpt = musicBrainzClient.isSubunitOrProjectGroup(mbid);
+                            if (isSubunitOpt.isPresent() && isSubunitOpt.get()) {
+                                isUnit = true;
                             }
                         }
-                    } catch (Exception ignored) {
-                        // reflection 실패 시 기본값 사용
                     }
-                    
-                    log.warn("{}: 429 Too Many Requests. attempt={}/{}. retry-after={}s (헤더값+{}초 여유)", 
-                            context, attempt, maxRetry, waitSec, bufferSec);
-                    
-                    try {
-                        Thread.sleep(waitSec * 1000L);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        throw new RuntimeException(context + ": interrupted during retry wait", ie);
-                    }
-                    
-                    // 재시도
-                    continue;
+                } catch (Exception e) {
+                    // MusicBrainz 조회 실패는 다음 단계로 진행 (보수적 접근)
                 }
-                
-                // 429가 아니거나 재시도 횟수 초과 시 예외 재throw
-                // IOException 등은 그대로 throw (호출부에서 처리)
-                throw e;
+            }
+            
+            if (!isUnit) {
+                activeArtists.add(data);
             }
         }
         
-        throw new RuntimeException(context + ": rate limit retry exhausted");
+        return activeArtists;
     }
     
-    /**
-     * 특정 market으로 앨범 발매일 조회 (1페이지로 최적화)
-     * - limit=50, 1페이지만 조회 (페이지네이션 금지)
-     * - include_groups=album,single (appears_on 제외)
-     * - 본인 명의(primary) 발매만 포함: album.artists[0].id == targetArtistId
-     * - 최신 발매일이 cutoffDate보다 오래되면 바로 제외
-     * @param api Spotify API
-     * @param spotifyId 아티스트 Spotify ID
-     * @param market CountryCode (null이면 market 파라미터 없이 조회)
-     * @param cutoffDate 활동 중 기준일 (이 날짜보다 최신이면 활동 중)
-     * @return 최신 발매일, 없으면 null
-     */
-    private LocalDate getLatestReleaseDateWithMarket(SpotifyApi api, String spotifyId, CountryCode market, LocalDate cutoffDate) {
-        try {
-            // 1페이지로 최적화: limit=50, include_groups=album,single
-            final int limit = 50;
-            
-            // Rate Limit 재시도 로직 적용
-            Paging<AlbumSimplified> paging = callWithRateLimitRetry(() -> {
-                try {
-                    rateLimiter.acquire();
-                    var requestBuilder = api.getArtistsAlbums(spotifyId)
-                            .limit(limit)
-                            .offset(0);
-                    if (market != null) {
-                        requestBuilder = requestBuilder.market(market);
-                    }
-                    return requestBuilder.build().execute();
-                } catch (RuntimeException e) {
-                    // RuntimeException (TooManyRequestsException 포함)은 그대로 throw
-                    // TooManyRequestsException은 RuntimeException의 하위 클래스
-                    throw e;
-                } catch (Exception e) {
-                    // IOException 등 checked exception을 RuntimeException으로 변환
-                    // 단, TooManyRequestsException이 checked exception인 경우를 대비해 cause로 보존
-                    RuntimeException wrapped = new RuntimeException("Exception during API call", e);
-                    // 원본 예외 타입 정보를 메시지에 포함
-                    wrapped.addSuppressed(e);
-                    throw wrapped;
-                }
-            }, "getLatestReleaseDate spotifyId=" + spotifyId);
-            
-            if (paging == null || paging.getItems() == null || paging.getItems().length == 0) {
-                log.debug("아티스트 앨범 없음: spotifyId={}, market={}", spotifyId, market);
-                return null;
-            }
-            
-            // 중복 제거를 위한 Set (albumId 기반)
-            Set<String> seenAlbumIds = new HashSet<>();
-            LocalDate newestDate = null;
-            
-            // 각 앨범을 필터링하고 최신 발매일 찾기
-            for (AlbumSimplified album : paging.getItems()) {
-                // 중복 제거: albumId 기반
-                String albumId = album.getId();
-                if (albumId == null || seenAlbumIds.contains(albumId)) {
-                    continue;
-                }
-                seenAlbumIds.add(albumId);
-                
-                // 1. ALBUM, SINGLE만 포함 (appears_on은 이미 includeGroups로 제외됨)
-                AlbumType albumType = album.getAlbumType();
-                if (albumType != AlbumType.ALBUM && albumType != AlbumType.SINGLE) {
-                    continue;
-                }
-                
-                // 2. 본인 명의(primary) 발매만 포함: album.artists[0].id == targetArtistId
-                if (!isPrimaryArtist(album, spotifyId)) {
-                    continue;
-                }
-                
-                // 3. 발매일 파싱 (release_date_precision 고려)
-                String releaseDate = album.getReleaseDate();
-                if (releaseDate == null || releaseDate.isBlank()) {
-                    continue;
-                }
-                
-                try {
-                    LocalDate date = parseReleaseDateWithPrecision(releaseDate, album);
-                    if (date != null) {
-                        // 최신 발매일 업데이트
-                        if (newestDate == null || date.isAfter(newestDate)) {
-                            newestDate = date;
-                        }
-                        
-                        // 최신 발매일이 cutoffDate보다 최근이면 바로 통과 (더 볼 필요 없음)
-                        if (cutoffDate != null && newestDate.isAfter(cutoffDate)) {
-                            log.debug("최신 발매일 조회 성공 (조기 종료): spotifyId={}, market={}, 최신 발매일={}, 기준일={}", 
-                                    spotifyId, market, newestDate, cutoffDate);
-                            return newestDate;
-                        }
-                    }
-                } catch (Exception e) {
-                    log.debug("발매일 파싱 실패: spotifyId={}, releaseDate={}, error={}", 
-                            spotifyId, releaseDate, e.getMessage());
-                }
-            }
-            
-            if (newestDate == null) {
-                log.debug("유효한 본인 명의 앨범/싱글 없음: spotifyId={}, market={}", spotifyId, market);
-                return null;
-            }
-            
-            LocalDate latestDate = newestDate;
-            
-            // 발매일 검증 및 로깅
-            LocalDate now = LocalDate.now();
-            if (latestDate.isAfter(now)) {
-                log.error("잘못된 발매일 (미래): spotifyId={}, market={}, 최신 발매일={}", 
-                        spotifyId, market, latestDate);
-                return null;
-            } else if (latestDate.isBefore(now.minusYears(10))) {
-                log.warn("의심스러운 발매일 (10년 이상 오래됨): spotifyId={}, market={}, 최신 발매일={}", 
-                        spotifyId, market, latestDate);
-            } else if (latestDate.isBefore(now.minusYears(5))) {
-                log.warn("최신 발매일이 5년 이상 오래됨: spotifyId={}, market={}, 최신 발매일={}", 
-                        spotifyId, market, latestDate);
-            } else {
-                log.debug("최신 발매일 조회 성공: spotifyId={}, market={}, 최신 발매일={}", 
-                        spotifyId, market, latestDate);
-            }
-            
-            return latestDate;
-            
-        } catch (RuntimeException e) {
-            // callWithRateLimitRetry에서 throw한 예외
-            if (e.getMessage() != null && e.getMessage().contains("rate limit retry exhausted")) {
-                log.warn("아티스트 최신 발매일 조회 실패 (재시도 모두 실패): spotifyId={}, market={}", 
-                        spotifyId, market);
-                return null;
-            }
-            // NotFoundException도 RuntimeException으로 처리
-            String className = e.getClass().getSimpleName();
-            if (className.contains("NotFound")) {
-                log.debug("아티스트 앨범 정보 없음 (404): spotifyId={}, market={}", spotifyId, market);
-                return null;
-            }
-            throw e;
-        } catch (Exception e) {
-            // IOException 등 기타 예외
-            String className = e.getClass().getSimpleName();
-            if (className.contains("NotFound")) {
-                log.debug("아티스트 앨범 정보 없음 (404): spotifyId={}, market={}", spotifyId, market);
-                return null;
-            }
-            log.warn("아티스트 최신 발매일 조회 실패: spotifyId={}, market={}, error={}", 
-                    spotifyId, market, e.getMessage());
-            return null;
-        }
-    }
-    
-    /**
-     * 아티스트의 최신 앨범 발매일 조회 (한국 시장 기준)
-     * include_groups=album,single만 조회하여 본인 명의 발매만 확인
-     * 
-     * @param api Spotify API
-     * @param spotifyId 아티스트 Spotify ID
-     * @return 최신 발매일, 없으면 null
-     */
-    private LocalDate getLatestReleaseDate(SpotifyApi api, String spotifyId) {
-        return getLatestReleaseDateWithMarket(api, spotifyId, CountryCode.KR, null);
-    }
-    
-    /**
-     * 앨범이 본인 명의(primary) 발매인지 확인
-     * 조건: album.artists[0].id == targetArtistId
-     * 더 엄격하게: album.artists에 targetArtistId가 있어도 1번이 아니면 제외
-     * 여러 명이면 콜라보일 수 있으니 제외
-     * @param album 앨범
-     * @param targetArtistId 타겟 아티스트 ID
-     * @return 본인 명의 발매면 true
-     */
-    private boolean isPrimaryArtist(AlbumSimplified album, String targetArtistId) {
-        if (album.getArtists() == null || album.getArtists().length == 0) {
+    private boolean isUnitNamePattern(String name) {
+        if (name == null || name.isBlank()) {
             return false;
         }
         
-        // 첫 번째 아티스트가 타겟 아티스트인지 확인
-        var firstArtist = album.getArtists()[0];
-        if (firstArtist == null || firstArtist.getId() == null) {
-            return false;
-        }
+        String normalizedName = name.trim();
+        String lowerName = normalizedName.toLowerCase();
         
-        // album.artists[0].id == targetArtistId
-        boolean isPrimary = targetArtistId.equals(firstArtist.getId());
-        
-        // 더 엄격하게: 여러 명이면 콜라보일 수 있으니 제외
-        if (isPrimary && album.getArtists().length > 1) {
-            log.debug("콜라보 앨범 제외: albumId={}, artists={}", 
-                    album.getId(), Arrays.stream(album.getArtists())
-                            .map(a -> a != null ? a.getName() : null)
-                            .filter(Objects::nonNull)
-                            .collect(Collectors.joining(", ")));
-            return false;
-        }
-        
-        return isPrimary;
-    }
-    
-    /**
-     * 앨범과 발매일을 함께 저장하는 임시 클래스
-     */
-    private static class AlbumWithDate {
-        final AlbumSimplified album;
-        final LocalDate releaseDate;
-        
-        AlbumWithDate(AlbumSimplified album, LocalDate releaseDate) {
-            this.album = album;
-            this.releaseDate = releaseDate;
-        }
-    }
-
-    /**
-     * 아티스트의 본인 명의 발매 수 조회 (ALBUM, SINGLE만 카운트, primary artist만)
-     * @param api Spotify API
-     * @param spotifyId 아티스트 Spotify ID
-     * @return 발매 수
-     */
-    private int getReleaseCount(SpotifyApi api, String spotifyId) {
-        try {
-            // 최대 5페이지까지 조회하여 발매 수 카운트
-            final int limit = 50;
-            final int maxPages = 5;
-            
-            // 중복 제거를 위한 Set (albumId 기반)
-            Set<String> seenAlbumIds = new HashSet<>();
-            int count = 0;
-            
-            for (int page = 0; page < maxPages; page++) {
-                int offset = page * limit;
-                
-                try {
-                    rateLimiter.acquire();
-                    Paging<AlbumSimplified> paging = api.getArtistsAlbums(spotifyId)
-                            .market(CountryCode.KR)
-                            .limit(limit)
-                            .offset(offset)
-                            .build()
-                            .execute();
-                    
-                    if (paging == null || paging.getItems() == null || paging.getItems().length == 0) {
-                        break;
-                    }
-                    
-                    // 본인 명의(primary) ALBUM, SINGLE만 카운트
-                    for (AlbumSimplified album : paging.getItems()) {
-                        // 중복 제거
-                        String albumId = album.getId();
-                        if (albumId == null || seenAlbumIds.contains(albumId)) {
-                            continue;
-                        }
-                        seenAlbumIds.add(albumId);
-                        
-                        // ALBUM, SINGLE만
-                        AlbumType albumType = album.getAlbumType();
-                        if (albumType != AlbumType.ALBUM && albumType != AlbumType.SINGLE) {
-                            continue;
-                        }
-                        
-                        // 본인 명의(primary) 발매만
-                        if (isPrimaryArtist(album, spotifyId)) {
-                            count++;
-                        }
-                    }
-                    
-                    // 더 이상 데이터가 없으면 중단
-                    if (paging.getItems().length < limit) {
-                        break;
-                    }
-                    
-                    // Rate limit은 rateLimiter.acquire()에서 처리됨
-                    
-                } catch (Exception e) {
-                    log.debug("앨범 페이지 조회 실패: spotifyId={}, page={}, error={}", 
-                            spotifyId, page, e.getMessage());
-                    if (page == 0) {
-                        throw e;
-                    }
-                    break;
+        if (normalizedName.contains("-")) {
+            String[] parts = normalizedName.split("-");
+            if (parts.length >= 2) {
+                String suffix = parts[parts.length - 1].trim();
+                if (suffix.length() <= 15 && suffix.matches("[A-Z][A-Za-z0-9!&/\\s]*")) {
+                    return true;
                 }
             }
-            
-            return count;
-            
-        } catch (Exception e) {
-            log.warn("아티스트 발매 수 조회 실패: spotifyId={}, error={}", spotifyId, e.getMessage());
-            return 0;
-        }
-    }
-    
-    /**
-     * 아티스트의 Followers 수 조회
-     * @param api Spotify API
-     * @param spotifyId 아티스트 Spotify ID
-     * @return Followers 수, 없으면 null
-     */
-    private Integer getFollowers(SpotifyApi api, String spotifyId) {
-        try {
-            rateLimiter.acquire();
-            se.michaelthelin.spotify.model_objects.specification.Artist artist = api.getArtist(spotifyId).build().execute();
-            if (artist != null && artist.getFollowers() != null) {
-                return artist.getFollowers().getTotal();
-            }
-            return null;
-        } catch (Exception e) {
-            log.debug("아티스트 Followers 조회 실패: spotifyId={}, error={}", spotifyId, e.getMessage());
-            return null;
-        }
-    }
-    
-    /**
-     * release_date와 release_date_precision을 고려하여 LocalDate로 파싱
-     * release_date_precision: "day", "month", "year"
-     * @param releaseDate 발매일 문자열
-     * @param album 앨범 객체 (release_date_precision 확인용)
-     * @return 파싱된 LocalDate
-     */
-    private LocalDate parseReleaseDateWithPrecision(String releaseDate, AlbumSimplified album) {
-        if (releaseDate == null || releaseDate.isBlank()) {
-            return null;
         }
         
-        try {
-            // release_date_precision 확인 (reflection 사용)
-            String precision = "day"; // 기본값
+        if (normalizedName.contains("(") && normalizedName.contains(")")) {
+            int lastParen = normalizedName.lastIndexOf('(');
+            int lastCloseParen = normalizedName.lastIndexOf(')');
+            if (lastParen > 0 && lastCloseParen > lastParen) {
+                String insideParen = normalizedName.substring(lastParen + 1, lastCloseParen).trim();
+                if (insideParen.length() <= 30 && insideParen.contains(" ")) {
+                    return true;
+                }
+            }
+        }
+        
+        String[] projectKeywords = {
+            "got the beat", "super m", "superm", "k/da", "kda",
+            "k-pop demon hunters cast", "demon hunters cast",
+            "project", "collab", "collaboration", "special unit"
+        };
+        for (String keyword : projectKeywords) {
+            if (lowerName.contains(keyword)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    private static class MusicBrainzFilterResult {
+        private final List<ArtistData> activeArtists;
+        private final List<ArtistData> mbFailedArtists;
+        
+        MusicBrainzFilterResult(List<ArtistData> activeArtists, List<ArtistData> mbFailedArtists) {
+            this.activeArtists = activeArtists;
+            this.mbFailedArtists = mbFailedArtists;
+        }
+        
+        List<ArtistData> getActiveArtists() {
+            return activeArtists;
+        }
+        
+        List<ArtistData> getMbFailedArtists() {
+            return mbFailedArtists;
+        }
+    }
+    
+    private MusicBrainzFilterResult filterByMusicBrainzEnded(List<ArtistData> candidates) {
+        List<ArtistData> activeArtists = new ArrayList<>();
+        List<ArtistData> mbFailedArtists = new ArrayList<>();
+        
+        final double UNCONDITIONAL_SCORE = calculatePopularityScore(UNCONDITIONAL_POPULARITY, UNCONDITIONAL_FOLLOWERS);
+        final double KOREAN_LEGACY_SCORE = calculatePopularityScore(KOREAN_LEGACY_POPULARITY, KOREAN_LEGACY_FOLLOWERS);
+        final double GLOBAL_LEGACY_SCORE = calculatePopularityScore(GLOBAL_LEGACY_POPULARITY, GLOBAL_LEGACY_FOLLOWERS);
+        
+        for (ArtistData data : candidates) {
+            double score = calculatePopularityScore(data.popularity, data.followers);
+            
+            if (score >= UNCONDITIONAL_SCORE) {
+                activeArtists.add(data);
+                continue;
+            }
+            
+            musicBrainzRateLimiter.acquire();
+            
+            Boolean isEnded = null;
+            boolean mbSucceeded = false;
+            
             try {
-                // AlbumSimplified의 releaseDatePrecision 필드 확인
-                java.lang.reflect.Field precisionField = album.getClass().getDeclaredField("releaseDatePrecision");
-                precisionField.setAccessible(true);
-                Object precisionObj = precisionField.get(album);
-                if (precisionObj != null) {
-                    precision = precisionObj.toString().toLowerCase();
+                Optional<com.back.web7_9_codecrete_be.global.musicbrainz.MusicBrainzClient.ArtistInfo> artistInfoOpt = 
+                        musicBrainzClient.searchArtist(data.name);
+                
+                if (artistInfoOpt.isPresent()) {
+                    String mbid = artistInfoOpt.get().getMbid();
+                    if (mbid != null && !mbid.isBlank()) {
+                        Optional<Boolean> endedOpt = musicBrainzClient.isEnded(mbid);
+                        if (endedOpt.isPresent()) {
+                            isEnded = endedOpt.get();
+                            mbSucceeded = true;
+                        }
+                    }
                 }
             } catch (Exception e) {
-                // 필드가 없거나 접근 불가능한 경우 길이로 추정
-                if (releaseDate.length() == 4) {
-                    precision = "year";
-                } else if (releaseDate.length() == 7) {
-                    precision = "month";
-                } else if (releaseDate.length() == 10) {
-                    precision = "day";
+                // MusicBrainz 조회 실패는 Wikidata로 확인 대상에 추가
+            }
+            
+            if (!mbSucceeded) {
+                boolean isVeryLowPopularity = (data.popularity == null || data.popularity < MB_FAILED_MIN_POPULARITY) && 
+                                             (data.followers == null || data.followers < MB_FAILED_MIN_FOLLOWERS);
+                if (!isVeryLowPopularity) {
+                    activeArtists.add(data);
+                } else {
+                    mbFailedArtists.add(data);
                 }
+                continue;
             }
             
-            // precision에 따라 파싱
-            switch (precision) {
-                case "day":
-                    if (releaseDate.length() == 10) {
-                        return LocalDate.parse(releaseDate, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-                    }
-                    break;
-                case "month":
-                    if (releaseDate.length() == 7) {
-                        // 월의 마지막 날로 설정 (더 정확한 비교를 위해)
-                        LocalDate monthDate = LocalDate.parse(releaseDate + "-01", DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-                        return monthDate.withDayOfMonth(monthDate.lengthOfMonth());
-                    }
-                    break;
-                case "year":
-                    if (releaseDate.length() == 4) {
-                        // 연도의 마지막 날로 설정 (더 정확한 비교를 위해)
-                        return LocalDate.parse(releaseDate + "-12-31", DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-                    }
-                    break;
+            if (isEnded != null && !isEnded) {
+                activeArtists.add(data);
+                continue;
             }
             
-            // precision 정보가 없으면 길이로 추정 (기존 로직)
-            if (releaseDate.length() == 10) {
-                return LocalDate.parse(releaseDate, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-            } else if (releaseDate.length() == 7) {
-                LocalDate monthDate = LocalDate.parse(releaseDate + "-01", DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-                return monthDate.withDayOfMonth(monthDate.lengthOfMonth());
-            } else if (releaseDate.length() == 4) {
-                return LocalDate.parse(releaseDate + "-12-31", DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            if (isEnded != null && isEnded) {
+                boolean isKorean = data.genres.stream()
+                        .anyMatch(g -> g != null && (g.toLowerCase().contains("k-pop") || 
+                                g.toLowerCase().contains("korean")));
+                
+                double legacyThreshold = isKorean ? KOREAN_LEGACY_SCORE : GLOBAL_LEGACY_SCORE;
+                
+                if (score >= legacyThreshold) {
+                    activeArtists.add(data);
+                }
+                continue;
             }
             
-        } catch (DateTimeParseException e) {
-            log.debug("발매일 파싱 실패: releaseDate={}, error={}", releaseDate, e.getMessage());
-        } catch (Exception e) {
-            log.debug("발매일 파싱 중 예외: releaseDate={}, error={}", releaseDate, e.getMessage());
+            activeArtists.add(data);
         }
         
-        return null;
+        return new MusicBrainzFilterResult(activeArtists, mbFailedArtists);
     }
     
-    /**
-     * release_date 문자열을 LocalDate로 파싱 (기존 메서드, 호환성 유지)
-     * 지원 형식: "yyyy-MM-dd", "yyyy-MM", "yyyy"
-     */
-    private LocalDate parseReleaseDate(String releaseDate) {
-        if (releaseDate == null || releaseDate.isBlank()) {
-            return null;
+    private double calculatePopularityScore(Integer popularity, Integer followers) {
+        double popularityNorm = (popularity != null && popularity >= 0) ? popularity / 100.0 : 0.0;
+        
+        double followersNorm = 0.0;
+        if (followers != null && followers > 0) {
+            double logFollowers = Math.log10(followers);
+            followersNorm = Math.max(0.0, Math.min(1.0, (logFollowers - 3.0) / 5.0));
         }
         
-        try {
-            // "yyyy-MM-dd" 형식
-            if (releaseDate.length() == 10) {
-                return LocalDate.parse(releaseDate, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-            }
-            // "yyyy-MM" 형식
-            else if (releaseDate.length() == 7) {
-                return LocalDate.parse(releaseDate + "-01", DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-            }
-            // "yyyy" 형식
-            else if (releaseDate.length() == 4) {
-                return LocalDate.parse(releaseDate + "-01-01", DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-            }
-        } catch (DateTimeParseException e) {
-            log.debug("발매일 파싱 실패: releaseDate={}", releaseDate);
-        }
-        
-        return null;
+        return popularityNorm * 0.6 + followersNorm * 0.4;
     }
-
+    
+    private List<ArtistData> filterByWikidataDissolved(List<ArtistData> candidates) {
+        List<ArtistData> activeArtists = new ArrayList<>();
+        
+        for (ArtistData data : candidates) {
+            boolean isDissolved = false;
+            
+            try {
+                Optional<String> qidOpt = wikidataClient.searchWikidataIdBySpotifyId(data.spotifyId);
+                if (qidOpt.isEmpty()) {
+                    activeArtists.add(data);
+                    continue;
+                }
+                
+                String qid = qidOpt.get();
+                
+                Optional<JsonNode> entityOpt = wikidataClient.getEntityInfo(qid);
+                if (entityOpt.isEmpty()) {
+                    activeArtists.add(data);
+                    continue;
+                }
+                
+                JsonNode entity = entityOpt.get();
+                
+                Optional<String> p576Opt = getTimeClaim(entity, "P576");
+                if (p576Opt.isPresent()) {
+                    isDissolved = true;
+                }
+                
+                if (!isDissolved) {
+                    Optional<String> p582Opt = getTimeClaim(entity, "P582");
+                    if (p582Opt.isPresent()) {
+                        isDissolved = true;
+                    }
+                }
+                
+            } catch (Exception e) {
+                // Wikidata 조회 실패는 다음 단계로 진행 (보수적 접근)
+            }
+            
+            if (!isDissolved) {
+                activeArtists.add(data);
+            }
+        }
+        
+        return activeArtists;
+    }
+    
+    private Optional<String> getTimeClaim(JsonNode entity, String propertyId) {
+        try {
+            JsonNode claims = entity.path("claims").path(propertyId);
+            if (!claims.isArray() || claims.isEmpty()) {
+                return Optional.empty();
+            }
+            
+            JsonNode value = claims.get(0)
+                    .path("mainsnak")
+                    .path("datavalue")
+                    .path("value");
+            
+            JsonNode timeNode = value.path("time");
+            if (!timeNode.isMissingNode() && !timeNode.asText().isBlank()) {
+                return Optional.of(timeNode.asText());
+            }
+            
+            return Optional.empty();
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
 
     @Transactional(readOnly = true)
     public ArtistDetailResponse getArtistDetail(
@@ -925,10 +899,17 @@ public class SpotifyService {
         try {
             SpotifyApi api = spotifyClient.getAuthorizedApi();
 
-            rateLimiter.acquire();
-            se.michaelthelin.spotify.model_objects.specification.Artist artist = api.getArtist(spotifyArtistId).build().execute(); // 메인 정보는 실패 시 예외 발생
+            se.michaelthelin.spotify.model_objects.specification.Artist artist = rateLimitHandler.callWithRateLimitRetry(() -> {
+                try {
+                    spotifyRateLimiter.acquire();
+                    return api.getArtist(spotifyArtistId).build().execute();
+                } catch (RuntimeException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new RuntimeException("Exception during getArtist API call", e);
+                }
+            }, "getArtistDetail getArtist spotifyId=" + spotifyArtistId);
 
-            // DB에서 아티스트 정보 조회하여 nameKo 가져오기
             Artist dbArtist = artistRepository.findById(artistId)
                     .orElse(null);
             String nameKo = dbArtist != null ? dbArtist.getNameKo() : null;
@@ -959,6 +940,12 @@ public class SpotifyService {
                     toTopTrackResponses(topTracks),
                     relatedResponses
             );
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().contains("rate limit retry exhausted")) {
+                log.error("Spotify 상세 조회 실패 (재시도 모두 실패): artistId={}", spotifyArtistId);
+                throw new BusinessException(ArtistErrorCode.SPOTIFY_API_ERROR);
+            }
+            throw e;
         } catch (Exception e) {
             log.error("Spotify 상세 조회 실패: artistId={}", spotifyArtistId, e);
             throw new BusinessException(ArtistErrorCode.SPOTIFY_API_ERROR);
@@ -967,32 +954,44 @@ public class SpotifyService {
 
     private Track[] safeGetTopTracks(SpotifyApi api, String artistId) {
         try {
-            rateLimiter.acquire();
-            return api.getArtistsTopTracks(artistId, CountryCode.KR)
-                    .build()
-                    .execute();
-        } catch (NotFoundException nf) {
-            log.warn("Spotify top tracks not found: artistId={}", artistId);
+            return rateLimitHandler.callWithRateLimitRetry(() -> {
+                try {
+                    spotifyRateLimiter.acquire();
+                    return api.getArtistsTopTracks(artistId, CountryCode.KR)
+                            .build()
+                            .execute();
+                } catch (RuntimeException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new RuntimeException("Exception during getArtistsTopTracks API call", e);
+                }
+            }, "safeGetTopTracks artistId=" + artistId);
+        } catch (RuntimeException e) {
             return new Track[0];
         } catch (Exception e) {
-            log.warn("Spotify top tracks fetch error: artistId={}", artistId, e);
             return new Track[0];
         }
     }
 
     private Paging<AlbumSimplified> safeGetAlbums(SpotifyApi api, String artistId) {
         try {
-            rateLimiter.acquire();
-            return api.getArtistsAlbums(artistId)
-                    .market(CountryCode.KR)
-                    .limit(20)
-                    .build()
-                    .execute();
-        } catch (NotFoundException nf) {
-            log.warn("Spotify albums not found: artistId={}", artistId);
+            return rateLimitHandler.callWithRateLimitRetry(() -> {
+                try {
+                    spotifyRateLimiter.acquire();
+                    return api.getArtistsAlbums(artistId)
+                            .market(CountryCode.KR)
+                            .limit(20)
+                            .build()
+                            .execute();
+                } catch (RuntimeException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new RuntimeException("Exception during getArtistsAlbums API call", e);
+                }
+            }, "safeGetAlbums artistId=" + artistId);
+        } catch (RuntimeException e) {
             return null;
         } catch (Exception e) {
-            log.warn("Spotify albums fetch error: artistId={}", artistId, e);
             return null;
         }
     }
@@ -1006,27 +1005,30 @@ public class SpotifyService {
     ) {
         String id = (me == null || me.getId() == null) ? null : me.getId().trim();
         if (id == null || id.isBlank()) {
-            log.warn("Spotify related artists skipped: empty artist id");
             return List.of();
         }
 
         try {
-            rateLimiter.acquire();
-            se.michaelthelin.spotify.model_objects.specification.Artist[] related = api.getArtistsRelatedArtists(id).build().execute();
+            se.michaelthelin.spotify.model_objects.specification.Artist[] related = rateLimitHandler.callWithRateLimitRetry(() -> {
+                try {
+                    spotifyRateLimiter.acquire();
+                    return api.getArtistsRelatedArtists(id).build().execute();
+                } catch (RuntimeException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new RuntimeException("Exception during getArtistsRelatedArtists API call", e);
+                }
+            }, "safeGetRelated artistId=" + id);
+            
             if (related != null && related.length > 0) {
-                log.info("Spotify related artists fetched: size={} spotifyArtistId={}", related.length, id);
                 return toRelatedArtistResponses(related);
             }
 
-            log.info("Spotify related artists empty -> fallback group/genre. spotifyArtistId={}", id);
             return fallbackRelatedFromDb(artistGroup, artistId, genreId);
 
-        } catch (NotFoundException e) {
-            log.warn("Spotify related artists NotFound (404) -> fallback group/genre. spotifyArtistId={}", id);
+        } catch (RuntimeException e) {
             return fallbackRelatedFromDb(artistGroup, artistId, genreId);
-
         } catch (Exception e) {
-            log.error("Spotify related artists fetch error: spotifyArtistId={}", id, e);
             return fallbackRelatedFromDb(artistGroup, artistId, genreId);
         }
     }
@@ -1075,11 +1077,9 @@ public class SpotifyService {
         if (items == null) return List.of();
         return Stream.of(items)
                 .filter(Objects::nonNull)
-                // 앨범 타입 필터: album / single / ep
                 .filter(a -> a.getAlbumType() == AlbumType.ALBUM
                         || a.getAlbumType() == AlbumType.SINGLE
                         || a.getAlbumType() == AlbumType.COMPILATION)
-                // 해당 아티스트가 참여한 앨범만 필터링
                 .filter(a -> {
                     if (a.getArtists() == null) return false;
                     return Arrays.stream(a.getArtists())
@@ -1116,7 +1116,6 @@ public class SpotifyService {
         return Stream.of(artists)
                 .filter(Objects::nonNull)
                 .map(a -> {
-                    // DB에서 아티스트 정보 조회하여 id와 nameKo 가져오기
                     Long artistId = null;
                     String nameKo = null;
                     Optional<Artist> dbArtist = artistRepository.findBySpotifyArtistId(a.getId());
@@ -1133,31 +1132,5 @@ public class SpotifyService {
                     );
                 })
                 .collect(toList());
-    }
-    
-    /**
-     * 간단한 Rate Limiter (토큰 버킷 방식)
-     * 모든 Spotify API 호출 전에 최소 간격을 보장하여 Rate Limit 위반 방지
-     */
-    private static class SimpleRateLimiter {
-        private final long minIntervalMs;
-        private long lastCallAt = 0;
-
-        public SimpleRateLimiter(long minIntervalMs) {
-            this.minIntervalMs = minIntervalMs;
-        }
-
-        public synchronized void acquire() {
-            long now = System.currentTimeMillis();
-            long wait = (lastCallAt + minIntervalMs) - now;
-            if (wait > 0) {
-                try {
-                    Thread.sleep(wait);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-            lastCallAt = System.currentTimeMillis();
-        }
     }
 }

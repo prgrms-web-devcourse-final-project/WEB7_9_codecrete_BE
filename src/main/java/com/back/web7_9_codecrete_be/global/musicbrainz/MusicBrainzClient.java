@@ -235,6 +235,152 @@ public class MusicBrainzClient {
             return Optional.empty();
         }
     }
+    
+    /**
+     * MusicBrainz MBID로 서브 유닛/프로젝트 그룹 여부 확인
+     * @param mbid MusicBrainz Artist ID
+     * @return 서브 유닛/프로젝트 그룹이면 true, 아니면 false, 정보 없으면 empty
+     */
+    public Optional<Boolean> isSubunitOrProjectGroup(String mbid) {
+        try {
+            String url = String.format(
+                    "%s/artist/%s?fmt=json&inc=artist-rels",
+                    MUSICBRAINZ_API_BASE, mbid
+            );
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", USER_AGENT);
+            headers.set("Accept", "application/json");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.debug("MusicBrainz 서브 유닛 조회 API 응답 실패: mbid={}, status={}", mbid, response.getStatusCode());
+                return Optional.empty();
+            }
+
+            JsonNode artist = objectMapper.readTree(response.getBody());
+            
+            // (A) disambiguation에 키워드 포함 확인
+            String disambiguation = artist.path("disambiguation").asText();
+            if (disambiguation != null && !disambiguation.isBlank()) {
+                String lowerDisambiguation = disambiguation.toLowerCase();
+                if (lowerDisambiguation.contains("subunit") ||
+                    lowerDisambiguation.contains("sub-group") ||
+                    lowerDisambiguation.contains("project group") ||
+                    lowerDisambiguation.contains("part of")) {
+                    log.info("MusicBrainz 서브 유닛 감지 (disambiguation): mbid={}, disambiguation={}", mbid, disambiguation);
+                    return Optional.of(true);
+                }
+            }
+            
+            // (B) relations에서 "member of" 또는 "subgroup of" 확인
+            JsonNode relations = artist.path("relations");
+            if (relations.isArray() && !relations.isEmpty()) {
+                for (JsonNode relation : relations) {
+                    String type = relation.path("type").asText();
+                    if (type == null || type.isBlank()) {
+                        continue;
+                    }
+                    
+                    String lowerType = type.toLowerCase();
+                    // "member of" 관계 확인 (상위 그룹의 멤버인 경우)
+                    if (lowerType.contains("member of")) {
+                        JsonNode targetArtist = relation.path("artist");
+                        if (!targetArtist.isMissingNode()) {
+                            String targetType = targetArtist.path("type").asText();
+                            // 상위 그룹이 Group 타입이면 서브 유닛으로 판단
+                            if ("Group".equals(targetType)) {
+                                log.info("MusicBrainz 서브 유닛 감지 (member of): mbid={}, relation.type={}, targetGroup={}", 
+                                        mbid, type, targetArtist.path("name").asText());
+                                return Optional.of(true);
+                            }
+                        }
+                    }
+                    
+                    // "subgroup of" 관계 확인
+                    if (lowerType.contains("subgroup of") || lowerType.equals("subgroup")) {
+                        log.info("MusicBrainz 서브 유닛 감지 (subgroup of): mbid={}, relation.type={}", mbid, type);
+                        return Optional.of(true);
+                    }
+                }
+            }
+            
+            return Optional.of(false);
+            
+        } catch (org.springframework.web.client.HttpServerErrorException e) {
+            int statusCode = e.getStatusCode().value();
+            if (statusCode == 503) {
+                log.debug("MusicBrainz 서버 일시적 사용 불가: mbid={}, status=503", mbid);
+            } else {
+                log.debug("MusicBrainz 서브 유닛 조회 서버 에러: mbid={}, status={}", mbid, statusCode);
+            }
+            return Optional.empty();
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            log.debug("MusicBrainz 네트워크 에러: mbid={}, error={}", mbid, e.getMessage());
+            return Optional.empty();
+        } catch (Exception e) {
+            log.debug("MusicBrainz 서브 유닛 조회 실패: mbid={}", mbid, e);
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * MusicBrainz MBID로 아티스트 활동 종료 여부 확인
+     * @param mbid MusicBrainz Artist ID
+     * @return ended = true면 true, false면 false, 정보 없으면 empty
+     */
+    public Optional<Boolean> isEnded(String mbid) {
+        try {
+            String url = String.format(
+                    "%s/artist/%s?fmt=json",
+                    MUSICBRAINZ_API_BASE, mbid
+            );
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", USER_AGENT);
+            headers.set("Accept", "application/json");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.debug("MusicBrainz ended 조회 실패: mbid={}, status={}", mbid, response.getStatusCode());
+                return Optional.empty();
+            }
+
+            JsonNode artist = objectMapper.readTree(response.getBody());
+            JsonNode lifeSpan = artist.path("life-span");
+            
+            if (lifeSpan.isMissingNode()) {
+                return Optional.empty();
+            }
+            
+            JsonNode ended = lifeSpan.path("ended");
+            if (ended.isMissingNode() || ended.isNull()) {
+                return Optional.empty();
+            }
+            
+            boolean isEnded = ended.asBoolean(false);
+            return Optional.of(isEnded);
+
+        } catch (org.springframework.web.client.HttpServerErrorException e) {
+            int statusCode = e.getStatusCode().value();
+            if (statusCode == 503) {
+                log.debug("MusicBrainz 서버 일시적 사용 불가: mbid={}, status=503", mbid);
+            } else {
+                log.debug("MusicBrainz ended 조회 서버 에러: mbid={}, status={}", mbid, statusCode);
+            }
+            return Optional.empty();
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            log.debug("MusicBrainz 네트워크 에러: mbid={}, error={}", mbid, e.getMessage());
+            return Optional.empty();
+        } catch (Exception e) {
+            log.debug("MusicBrainz ended 조회 실패: mbid={}", mbid, e);
+            return Optional.empty();
+        }
+    }
 
     // Spotify URL로 MusicBrainz ID 찾기
     public Optional<String> searchMbidBySpotifyUrl(String spotifyId) {

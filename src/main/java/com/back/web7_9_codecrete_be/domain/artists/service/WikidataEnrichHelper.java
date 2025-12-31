@@ -15,9 +15,7 @@ public class WikidataEnrichHelper {
 
     private final WikidataClient wikidataClient;
 
-    /**
-     * Wikidata 엔티티에서 아티스트 타입 추출
-     */
+    // Wikidata 엔티티에서 아티스트 타입 추출
     public String inferArtistType(JsonNode entity) {
         List<String> instanceOfList = wikidataClient.getAllEntityIdClaims(entity, "P31");
         boolean isGroup = instanceOfList.contains("http://www.wikidata.org/entity/Q215380");
@@ -32,9 +30,7 @@ public class WikidataEnrichHelper {
         return null;
     }
 
-    /**
-     * Wikidata 엔티티에서 소속 그룹 이름 추출
-     */
+    // Wikidata 엔티티에서 소속 그룹 이름 추출
     public String resolveGroupName(JsonNode artistEntity) {
         List<String> memberOfQids = wikidataClient.getAllEntityIdClaims(artistEntity, "P463");
         if (memberOfQids.isEmpty()) {
@@ -99,9 +95,7 @@ public class WikidataEnrichHelper {
         return candidates.get(0).name;
     }
 
-    /**
-     * Wikidata 엔티티 검증 (QID 후보 검증)
-     */
+    // Wikidata 엔티티 검증 (QID 후보 검증)
     public int validateEntity(JsonNode entity, String artistName, String nameKo) {
         int score = 0;
         
