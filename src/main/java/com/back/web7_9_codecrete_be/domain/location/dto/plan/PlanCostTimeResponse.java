@@ -5,8 +5,8 @@ import lombok.Data;
 @Data
 public class PlanCostTimeResponse {
 
-    private int cost;
+    private Integer cost;
 
-    private int time;
+    private Integer time;
 
 }

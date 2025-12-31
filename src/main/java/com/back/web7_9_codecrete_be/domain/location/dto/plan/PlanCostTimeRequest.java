@@ -13,5 +13,5 @@ public class PlanCostTimeRequest {
     private double startY;
     private double endX;
     private double endY;
-
+    private Schedule.TransportType transportType;
 }
