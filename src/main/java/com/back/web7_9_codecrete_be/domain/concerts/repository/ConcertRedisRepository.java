@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.*;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -20,15 +21,15 @@ public class ConcertRedisRepository {
     private final RedisTemplate<String, String> redisTemplate;
     private final RedisTemplate<String, Object> objectRedisTemplate;
 
-    private static final String LOCK_FLAG_PREFIX = "initLoad: ";
+    private static final String LOCK_FLAG_PREFIX = "initLoad:";
 
-    private static final String CONCERT_DETAIL_PREFIX = "concertDetail: ";
+    private static final String CONCERT_DETAIL_PREFIX = "concertDetail:";
 
-    private static final String CONCERT_LIST_PREFIX = "concertList: ";
+    private static final String CONCERT_LIST_PREFIX = "concertList:";
 
-    private static final String VIEW_COUNT_MAP = "viewCountMap";
+    private static final String CONCERTS_COUNT_PREFIX = "totalConcertsCount:";
 
-    private static final String CONCERTS_COUNT_PREFIX = "totalConcertsCount: ";
+    private static final String CONCERTS_VIEW_COUNTS = "concertsViewCount";
 
     private static final int HOUR = 3600;
 
@@ -50,14 +51,14 @@ public class ConcertRedisRepository {
     }
 
     // 공연 목록 캐싱
-    public void listSave(ListSort sort, Pageable pageable, List<ConcertItem> list) {
-        String key = CONCERT_LIST_PREFIX + sort.name() + pageable.getPageNumber();
+    public void saveConcertsList(ListSort sort, Pageable pageable, List<ConcertItem> list) {
+        String key = CONCERT_LIST_PREFIX + sort.name() + pageable.getPageNumber() + "S" + pageable.getPageSize();
         objectRedisTemplate.opsForValue().set(key, list, HOUR, TimeUnit.SECONDS);
     }
 
     // 공연 목록 가져오기
     public List<ConcertItem> getConcertsList(Pageable pageable, ListSort sort) {
-        String key = CONCERT_LIST_PREFIX + sort.name() + pageable.getPageNumber();
+        String key = CONCERT_LIST_PREFIX + sort.name() + pageable.getPageNumber()+ "S" + pageable.getPageSize();
         Object object = objectRedisTemplate.opsForValue().get(key);
         List<ConcertItem> list = (List<ConcertItem>) object;
         if (list == null || list.isEmpty()) return List.of(); // null 이 아닌 empty 값 반환
@@ -70,64 +71,70 @@ public class ConcertRedisRepository {
     }
 
     // 공연 상세 캐싱
-    public void detailSave(long concertId, ConcertDetailResponse concertDetailResponse) {
+    public void saveConcertDetail(Long concertId, ConcertDetailResponse concertDetailResponse) {
         objectRedisTemplate.opsForValue().set(
                 CONCERT_DETAIL_PREFIX + concertId,
                 concertDetailResponse,
-                HOUR,
-                TimeUnit.SECONDS
+                2,
+                TimeUnit.DAYS
         );
+        redisTemplate.opsForHash().put(CONCERTS_VIEW_COUNTS, concertId.toString(), concertDetailResponse.getViewCount() + "");
     }
 
-    // todo : 객체 일부의 값만 바뀌는거니 해당 값만 바꿔서 저장하거나 Redis 내부의 값만 갱신할 수 있는 방법 찾기
-    public ConcertDetailResponse getDetail(long concertId) {
+    // 공연 정보 가져오기
+    public ConcertDetailResponse getCachedConcertDetail(Long concertId) {
+        ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(concertId);
+        if (concertDetailResponse == null) return null;
+        return concertDetailResponse;
+    }
+
+    private ConcertDetailResponse getConcertDetailResponse(long concertId) {
         ConcertDetailResponse concertDetailResponse = (ConcertDetailResponse) objectRedisTemplate.opsForValue().get(CONCERT_DETAIL_PREFIX + concertId);
         if (concertDetailResponse == null) return null;
-        int viewCount = concertDetailResponse.getViewCount();
-        viewCountSet(concertId, viewCount + 1);
-        concertDetailResponse.setViewCount(viewCount + 1);
-        detailSave(concertId, concertDetailResponse);
         return concertDetailResponse;
     }
 
     // 공연 상세 삭제
-    public void deleteDetail(String concertId) {
+    public void deleteConcertDetail(String concertId) {
         redisTemplate.delete(CONCERT_DETAIL_PREFIX + concertId);
     }
 
     // 모든 공연 상세 삭제
-    public void deleteAllConcertDetail() {
+    public void deleteAllCachedConcertDetail() {
         deleteAllItemsByPREFIX(CONCERT_DETAIL_PREFIX);
     }
 
-    // 조회수 처리 -> 좀 지저분한데 개선 여지 찾아보기
-    public int viewCountSet(long concertId, int viewCount) {
-        Map<String, Integer> rawMap = (Map<String, Integer>) objectRedisTemplate.opsForValue().get(VIEW_COUNT_MAP);
-
-        if (rawMap == null) {
-            Map<Long, Integer> viewCountMap = new HashMap<>();
-            viewCountMap.put(concertId, viewCount);
-            objectRedisTemplate.opsForValue().set(VIEW_COUNT_MAP, viewCountMap);
-        } else {
-            Map<Long, Integer> viewCountMap = convertViewCountMap(rawMap);
-            viewCountMap.put(concertId, viewCount);
-            objectRedisTemplate.opsForValue().set(VIEW_COUNT_MAP, viewCountMap);
-            log.info(viewCountMap.size() + "view count size.");
+    // 모든 공연의 조회수 맵 조회 -> 하나의 해시를 기준으로 가져올 수 있게 처리
+    public Map<Long, Integer> getCachedViewCountMap() {
+        Map<Object, Object> rawMap = redisTemplate.opsForHash().entries(CONCERTS_VIEW_COUNTS);
+        Map<Long, Integer> viewCountMap = new HashMap<>();
+        for (Map.Entry<Object, Object> rawEntity : rawMap.entrySet()) {
+            Long concertID = Long.valueOf(rawEntity.getKey().toString());
+            Integer viewCount = Integer.valueOf(rawEntity.getValue().toString());
+            viewCountMap.put(concertID, viewCount);
         }
+        return viewCountMap;
+    }
+
+    // 공연의 조회수 조회
+    public Long getCachedViewCount(Long concertId) {
+        Long viewCount = Long.valueOf(redisTemplate.opsForHash()
+                .get(
+                        CONCERTS_VIEW_COUNTS,
+                        concertId.toString()
+                )
+                .toString());
+
         return viewCount;
     }
 
-    // 조회수 맵 조회
-    public Map<Long, Integer> getViewCountMap() {
-        Map<String, Integer> rawMap = (Map<String, Integer>) objectRedisTemplate.opsForValue().get(VIEW_COUNT_MAP);
-        if (rawMap == null) return null;
-        objectRedisTemplate.delete(VIEW_COUNT_MAP);
-        return convertViewCountMap(rawMap);
-    }
-
-    // 조회수 맵 삭제
-    public void deleteViewCountMap() {
-        objectRedisTemplate.delete(VIEW_COUNT_MAP);
+    // 공연에 예매시작, 종료일자 추가
+    public void updateCachedTickingDate(Long concertId, LocalDateTime TicketTime, LocalDateTime TicketEndTime) {
+        ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(concertId);
+        if (concertDetailResponse == null) return;
+        concertDetailResponse.setTicketTime(TicketTime);
+        concertDetailResponse.setTicketEndTime(TicketEndTime);
+        saveConcertDetail(concertId, concertDetailResponse);
     }
 
     // String Integer 타입 맵을 Long Integer로 변환
@@ -164,20 +171,20 @@ public class ConcertRedisRepository {
 
     // 총 공연의 개수 저장
     public Long saveTotalConcertsCount(Long totalConcertsCount, ListSort sort) {
-        redisTemplate.opsForValue().set(CONCERTS_COUNT_PREFIX + sort.name(),totalConcertsCount.toString());
+        redisTemplate.opsForValue().set(CONCERTS_COUNT_PREFIX + sort.name(), totalConcertsCount.toString());
         return totalConcertsCount;
     }
 
     // 총 공연의 개수 조회
     public Long getTotalConcertsCount(ListSort sort) {
-        String raw =  redisTemplate.opsForValue().get(CONCERTS_COUNT_PREFIX + sort.name());
+        String raw = redisTemplate.opsForValue().get(CONCERTS_COUNT_PREFIX + sort.name());
         if (raw == null) return -1L;
-        else return Long.parseLong(redisTemplate.opsForValue().get(CONCERTS_COUNT_PREFIX +  sort.name()));
+        else return Long.parseLong(redisTemplate.opsForValue().get(CONCERTS_COUNT_PREFIX + sort.name()));
     }
 
     // 총 공연의 개수 삭제
     public void deleteTotalConcertsCount(ListSort sort) {
-        redisTemplate.delete(CONCERTS_COUNT_PREFIX+sort.name());
+        redisTemplate.delete(CONCERTS_COUNT_PREFIX + sort.name());
     }
 
     // 사용자가 좋아요를 누른 공연의 개수 조회(임시 캐시 느낌으로 짧게 저장, 조회시 시간 갱신 ~1일
@@ -189,7 +196,7 @@ public class ConcertRedisRepository {
     }
 
     // 사용자가 좋아요를 누른 공연의 개수 저장
-    public Long saveUserLikedCount(User user,Long count) {
+    public Long saveUserLikedCount(User user, Long count) {
         redisTemplate.opsForValue().set(
                 CONCERTS_COUNT_PREFIX + user.getId(),
                 count.toString(),

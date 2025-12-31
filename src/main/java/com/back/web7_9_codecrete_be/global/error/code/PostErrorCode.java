@@ -22,6 +22,12 @@ public enum PostErrorCode implements ErrorCode {
             "유효하지 않은 게시글 카테고리입니다."
     ),
 
+    JOIN_ALREADY_CLOSED(
+            HttpStatus.BAD_REQUEST,
+            "P-111",
+            "이미 마감된 모집 게시글입니다."
+    ),
+
     // 권한 관련
     NO_POST_PERMISSION(
             HttpStatus.FORBIDDEN,

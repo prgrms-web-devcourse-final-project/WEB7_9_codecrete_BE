@@ -291,13 +291,17 @@ public class SpotifyService {
             ArtistType artistType,
             long likeCount,
             long artistId,
-            Long genreId,
-            boolean isLiked
+            Long genreId
     ) {
         try {
             SpotifyApi api = spotifyClient.getAuthorizedApi();
 
             se.michaelthelin.spotify.model_objects.specification.Artist artist = api.getArtist(spotifyArtistId).build().execute(); // 메인 정보는 실패 시 예외 발생
+
+            // DB에서 아티스트 정보 조회하여 nameKo 가져오기
+            Artist dbArtist = artistRepository.findById(artistId)
+                    .orElse(null);
+            String nameKo = dbArtist != null ? dbArtist.getNameKo() : null;
 
             Track[] topTracks = safeGetTopTracks(api, spotifyArtistId);
             Paging<AlbumSimplified> albums = safeGetAlbums(api, spotifyArtistId);
@@ -311,18 +315,19 @@ public class SpotifyService {
             );
 
             return new ArtistDetailResponse(
+                    (long) artistId,
                     artist.getName(),
+                    nameKo,
                     artistGroup,
                     artistType,
                     pickImageUrl(artist.getImages()),
                     likeCount,
                     albums != null ? albums.getTotal() : 0,
-                    artist.getPopularity(), // 별점으로 수정
-                    "", // 설명
+                    artist.getPopularity(),
+                    "",
                     toAlbumResponses(albums != null ? albums.getItems() : null, spotifyArtistId),
                     toTopTrackResponses(topTracks),
-                    relatedResponses,
-                    isLiked
+                    relatedResponses
             );
         } catch (Exception e) {
             log.error("Spotify 상세 조회 실패: artistId={}", spotifyArtistId, e);
@@ -398,8 +403,10 @@ public class SpotifyService {
             if (artistGroup != null && !artistGroup.isBlank()) {
                 return artistRepository.findTop5ByArtistGroupAndIdNot(artistGroup, artistId).stream()
                         .map(a -> new RelatedArtistResponse(
+                                a.getId(),
                                 a.getArtistName(),
-                                null,
+                                a.getNameKo(),
+                                a.getImageUrl(),
                                 a.getSpotifyArtistId()
                         ))
                         .toList();
@@ -408,8 +415,10 @@ public class SpotifyService {
                 return artistRepository.findTop5ByGenreIdAndIdNot(genreId, artistId, 
                         org.springframework.data.domain.PageRequest.of(0, 5)).stream()
                         .map(a -> new RelatedArtistResponse(
+                                a.getId(),
                                 a.getArtistName(),
-                                null,
+                                a.getNameKo(),
+                                a.getImageUrl(),
                                 a.getSpotifyArtistId()
                         ))
                         .toList();
@@ -473,11 +482,23 @@ public class SpotifyService {
         if (artists == null) return List.of();
         return Stream.of(artists)
                 .filter(Objects::nonNull)
-                .map(a -> new RelatedArtistResponse(
-                        a.getName(),
-                        pickImageUrl(a.getImages()),
-                        a.getId()
-                ))
+                .map(a -> {
+                    // DB에서 아티스트 정보 조회하여 id와 nameKo 가져오기
+                    Long artistId = null;
+                    String nameKo = null;
+                    Optional<Artist> dbArtist = artistRepository.findBySpotifyArtistId(a.getId());
+                    if (dbArtist.isPresent()) {
+                        artistId = dbArtist.get().getId();
+                        nameKo = dbArtist.get().getNameKo();
+                    }
+                    return new RelatedArtistResponse(
+                            artistId,
+                            a.getName(),
+                            nameKo,
+                            pickImageUrl(a.getImages()),
+                            a.getId()
+                    );
+                })
                 .collect(toList());
     }
 }

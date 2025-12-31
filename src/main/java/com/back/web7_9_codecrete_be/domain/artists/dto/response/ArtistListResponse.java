@@ -12,6 +12,9 @@ public record ArtistListResponse(
         @Schema(description = "아티스트 이름입니다.")
         String artistName,
 
+        @Schema(description = "한국어 기준 아티스트 이름 입니다.")
+        String nameKo,
+
         @Schema(description = "아티스트 소속 그룹입니다. 아티스트 이름이 그룹인 경우, null 로 처리됩니다.")
         String artistGroup,
 
@@ -39,6 +42,7 @@ public record ArtistListResponse(
         return new ArtistListResponse(
                 artist.getId(),
                 artist.getArtistName(),
+                artist.getNameKo(),
                 artist.getArtistGroup(),
                 genres,
                 artist.getLikeCount(),
@@ -52,6 +56,7 @@ public record ArtistListResponse(
         return new ArtistListResponse(
                 artist.getId(),
                 artist.getArtistName(),
+                artist.getNameKo(),
                 artist.getArtistGroup(),
                 genres,
                 artist.getLikeCount(),

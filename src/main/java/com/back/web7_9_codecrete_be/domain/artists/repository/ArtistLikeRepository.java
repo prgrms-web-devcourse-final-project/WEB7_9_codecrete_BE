@@ -22,4 +22,10 @@ public interface ArtistLikeRepository extends JpaRepository<ArtistLike, Long> {
         where al.user.id = :userId
     """)
     List<Long> findArtistIdsByUserId(@Param("userId") Long userId);
+    @Query("""
+        select al.artist
+        from ArtistLike al
+        where al.user.id = :userId
+    """)
+    List<Artist> findArtistsByUserId(@Param("userId") Long userId);
 }

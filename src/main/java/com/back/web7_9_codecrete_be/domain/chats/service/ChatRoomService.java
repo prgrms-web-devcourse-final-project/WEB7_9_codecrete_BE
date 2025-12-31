@@ -1,11 +1,14 @@
 package com.back.web7_9_codecrete_be.domain.chats.service;
 
+import java.time.Duration;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.back.web7_9_codecrete_be.domain.chats.entity.ChatRoom;
 import com.back.web7_9_codecrete_be.domain.chats.repository.ChatRoomRepository;
+import com.back.web7_9_codecrete_be.domain.chats.repository.ChatStreamRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRepository;
 import com.back.web7_9_codecrete_be.global.error.code.ChatErrorCode;
@@ -21,6 +24,7 @@ public class ChatRoomService {
 	private final ChatRoomRepository chatRoomRepository;
 	private final ChatPolicyService chatPolicyService;
 	private final ConcertRepository concertRepository;
+	private final ChatStreamRepository chatStreamRepository;
 
 	/**
 	 * 채팅방 입장
@@ -38,7 +42,15 @@ public class ChatRoomService {
 		chatRoomRepository.findByConcert_ConcertId(concertId)
 			.orElseGet(() -> createChatRoomSafely(concertId));
 
-		// TODO: 입장 처리 (WebSocket)
+		// Redis Stream TTL 설정
+		if (!chatStreamRepository.hasTtl(concertId)) {
+			Duration ttl = chatPolicyService.calculateChatRemainingTtl(concertId);
+
+			if (!ttl.isZero() && !ttl.isNegative()) {
+				chatStreamRepository.setTtl(concertId, ttl);
+			}
+		}
+
 	}
 
 	/**
