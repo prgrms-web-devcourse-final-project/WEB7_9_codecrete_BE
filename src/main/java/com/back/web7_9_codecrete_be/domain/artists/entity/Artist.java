@@ -40,6 +40,9 @@ public class Artist {
     @Column(name = "name_ko", length = 200)
     private String nameKo;
 
+    @Column(name = "real_name", length = 200)
+    private String realName;
+
     @Column(name = "like_count", nullable = false)
     private int likeCount = 0;
 

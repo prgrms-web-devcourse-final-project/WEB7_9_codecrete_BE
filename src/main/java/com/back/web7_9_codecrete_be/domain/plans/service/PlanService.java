@@ -701,21 +701,47 @@ public class PlanService {
 
     /**
      * 공유 링크 생성 (UUID 기반 13자)
+     * OWNER만 가능합니다.
      *
      * @param planId 계획 ID
      * @param user 현재 로그인한 사용자 (권한 체크용)
      * @return 공유 링크 응답 DTO
-     * @throws BusinessException 계획을 찾을 수 없거나 권한이 없는 경우
+     * @throws BusinessException 계획을 찾을 수 없거나 OWNER가 아닌 경우
      */
     @Transactional
     public PlanShareLinkResponse generateShareLink(Long planId, User user) {
-        // 권한 체크 (수정 권한 확인: OWNER 또는 EDITOR)
-        Plan plan = findPlanWithEditPermissionCheck(planId, user);
+        // 권한 체크 (OWNER만 가능)
+        Plan plan = findPlanWithOwnerCheck(planId, user);
 
         // shareToken이 없거나 만료되었으면 새로 생성, 유효하면 재사용
         if (plan.getShareToken() == null || plan.isShareTokenExpired()) {
             plan.generateShareToken();
             planRepository.save(plan);
+        }
+
+        return PlanShareLinkResponse.builder()
+                .planId(plan.getPlanId())
+                .shareToken(plan.getShareToken())
+                .shareLink("/plans/share/" + plan.getShareToken())
+                .build();
+    }
+
+    /**
+     * 공유 링크 조회
+     * OWNER만 가능합니다.
+     *
+     * @param planId 계획 ID
+     * @param user 현재 로그인한 사용자 (권한 체크용)
+     * @return 공유 링크 응답 DTO
+     * @throws BusinessException 계획을 찾을 수 없거나 OWNER가 아닌 경우, 공유 링크가 생성되지 않았거나 만료된 경우
+     */
+    public PlanShareLinkResponse getShareLink(Long planId, User user) {
+        // 권한 체크 (OWNER만 가능)
+        Plan plan = findPlanWithOwnerCheck(planId, user);
+
+        // 공유 링크가 없거나 만료되었으면 에러
+        if (plan.getShareToken() == null || plan.isShareTokenExpired()) {
+            throw new BusinessException(PlanErrorCode.SHARE_TOKEN_NOT_GENERATED);
         }
 
         return PlanShareLinkResponse.builder()
@@ -832,15 +858,16 @@ public class PlanService {
 
     /**
      * 공유 링크 삭제 (shareToken 제거)
+     * OWNER만 가능합니다.
      *
      * @param planId 계획 ID
      * @param user 현재 로그인한 사용자 (권한 체크용)
-     * @throws BusinessException 계획을 찾을 수 없거나 권한이 없는 경우
+     * @throws BusinessException 계획을 찾을 수 없거나 OWNER가 아닌 경우
      */
     @Transactional
     public void deleteShareLink(Long planId, User user) {
-        // 권한 체크 (수정 권한 확인: OWNER 또는 EDITOR)
-        Plan plan = findPlanWithEditPermissionCheck(planId, user);
+        // 권한 체크 (OWNER만 가능)
+        Plan plan = findPlanWithOwnerCheck(planId, user);
 
         plan.clearShareToken();
         planRepository.save(plan);
