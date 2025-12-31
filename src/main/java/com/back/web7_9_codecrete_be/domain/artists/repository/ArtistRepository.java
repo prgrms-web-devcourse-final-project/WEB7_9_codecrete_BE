@@ -53,4 +53,8 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     // 인기순 정렬 (좋아요 많은 순)
     @Query("SELECT a FROM Artist a ORDER BY a.likeCount DESC")
     Slice<Artist> findAllOrderByLikeCountDesc(Pageable pageable);
+
+    // 배치 조회: spotifyId 리스트로 존재하는 아티스트의 spotifyId만 반환
+    @Query("SELECT a.spotifyArtistId FROM Artist a WHERE a.spotifyArtistId IN :spotifyIds")
+    List<String> findSpotifyIdsBySpotifyIdsIn(@org.springframework.data.repository.query.Param("spotifyIds") List<String> spotifyIds);
 }
