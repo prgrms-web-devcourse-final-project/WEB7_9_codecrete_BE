@@ -2,11 +2,15 @@ package com.back.web7_9_codecrete_be.domain.location.controller;
 
 import com.back.web7_9_codecrete_be.domain.location.dto.fe.KakaoRouteFeResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.fe.KakaoRouteSectionFeResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.plan.PlanCostTimeRequest;
+import com.back.web7_9_codecrete_be.domain.location.dto.plan.PlanCostTimeResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.kakao.KakaoLocalResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.kakao.KakaoMobilityResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.request.kakao.KakaoRouteTransitRequest;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.kakao.KakaoRouteTransitResponse;
 import com.back.web7_9_codecrete_be.domain.location.service.KakaoLocalService;
+import com.back.web7_9_codecrete_be.domain.location.service.PlanCostTimeService;
+import com.back.web7_9_codecrete_be.domain.plans.entity.Schedule;
 import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
@@ -17,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -173,5 +178,38 @@ public class KakaoApiController {
                 sections
         );
     }
+
+
+//    @GetMapping("/raw")
+//    public KakaoMobilityResponse.Summary directionsRaw(
+//            @RequestParam double startX,
+//            @RequestParam double startY,
+//            @RequestParam double endX,
+//            @RequestParam double endY
+//    ) {
+//        PlanCostTimeResponse req = PlanCostTimeService.getCostTime(startX, startY, endX, endY);
+//        return ResponseEntity.ok(raw);
+//    }
 }
 
+//@GetMapping("/navigate/summary")
+//public KakaoMobilityResponse.Summary navigateSummary(
+//        @RequestParam double startX,
+//        @RequestParam double startY,
+//        @RequestParam double endX,
+//        @RequestParam double endY
+//) {
+//    KakaoMobilityResponse res = kakaoLocalService.NaviSearchSummary();
+//
+//    if (res == null || res.getRoutes() == null || res.getRoutes().isEmpty()) {
+//        throw new BusinessException(LocationErrorCode.ROUTE_NOT_FOUND);
+//    }
+//
+//    KakaoMobilityResponse.Route route0 = res.getRoutes().get(0);
+//    if (route0.getSummary() == null) {
+//        throw new BusinessException(LocationErrorCode.ROUTE_NOT_FOUND);
+//    }
+//
+//    return route0.getSummary();
+//
+//}
