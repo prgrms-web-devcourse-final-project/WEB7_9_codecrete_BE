@@ -14,7 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "Chat", description = "공연 채팅방 입장 API")
+@Tag(name = "Chat", description = "채팅 관련 API")
 @RestController
 @RequestMapping("/api/v1/chat-room")
 @RequiredArgsConstructor

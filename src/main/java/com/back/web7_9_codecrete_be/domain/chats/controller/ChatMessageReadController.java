@@ -17,7 +17,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "Chat", description = "채팅 메시지 조회 API")
+@Tag(name = "Chat", description = "채팅 관련 API")
 @RestController
 @RequestMapping("/api/v1/chats")
 @RequiredArgsConstructor
@@ -45,7 +45,7 @@ public class ChatMessageReadController {
 
 		@Parameter(
 			description = """
-				조회 기준 cursor (Redis Stream ID).
+				조회 기준 cursor (messageId).
 				해당 값이 주어지면, 그 이전의 채팅 메시지를 조회합니다.
 				""",
 			example = "1734940012345-0",
