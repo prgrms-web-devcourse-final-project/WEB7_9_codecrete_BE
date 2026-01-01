@@ -246,7 +246,7 @@ public class ConcertController {
 
     @Operation(summary = "유사 공연 목록",description = """
             현재 검색한 공연과 유사한 공연을 추천합니다.<br/>
-            같은 공연장을 기준으로 30일 이내의 유사한 가격을 가진 공연을 추천합니다.
+            같은 공연장을 기준으로 60일 이내의 공연들을 날짜 오름차순으로 추천합니다.
             """)
     @GetMapping("similarConcerts/{concertId}")
     public RsData<List<ConcertItem>> similarConcerts(
@@ -262,7 +262,7 @@ public class ConcertController {
     }
 
     @Operation(summary = "제목이 유사한 공연 목록", description = """
-            입력한 공연 ID에 해당하는 공연과 유사한 글자를 가지는 공연들을 검색합니다.<br/>
+            입력한 공연 ID에 해당하는 공연과 유사한 제목을 가지는 공연들을 검색합니다.<br/>
             """)
     @GetMapping("similarTitleConcerts")
     public RsData<List<ConcertItem>> getSimilarTitleConcert(
