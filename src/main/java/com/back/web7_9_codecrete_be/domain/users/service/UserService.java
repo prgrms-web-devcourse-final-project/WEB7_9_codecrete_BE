@@ -189,7 +189,7 @@ public class UserService {
     @Transactional
     public UserResponse updateBirth(User user, UserUpdateBirthRequest req) {
         validateActiveUser(user);
-        user.updateBirth(req.getBirth());
+        user.updateBirth(LocalDate.parse(req.getBirth()));
         userRepository.save(user);
         return UserResponse.from(user);
     }
