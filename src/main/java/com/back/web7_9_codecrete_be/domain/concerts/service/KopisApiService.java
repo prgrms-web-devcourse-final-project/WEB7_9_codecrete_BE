@@ -160,6 +160,7 @@ public class KopisApiService {
                         ticketPrice.maxPrice,
                         ticketPrice.minPrice,
                         concertDetail.getPosterUrl(),
+                        concertDetail.getArea(),
                         concertDetail.getApiConcertId()
                 );
 
@@ -262,6 +263,7 @@ public class KopisApiService {
                         ticketPrice.maxPrice,
                         ticketPrice.minPrice,
                         concertDetail.getPosterUrl(),
+                        concertDetail.getArea(),
                         concertDetail.getApiConcertId()
                 );
 

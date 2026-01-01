@@ -18,9 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -116,7 +114,6 @@ public class ConcertService {
             for(ConcertImage concertImage : concertImages){
                 concertImageUrls.add(concertImage.getImageUrl());
             }
-            concertRepository.concertViewCountUp(concertId);
             concertDetailResponse.setConcertImageUrls(concertImageUrls);
         }
         // 조회수 1 증가하고 해당 데이터를 캐시에 저장.
@@ -274,5 +271,61 @@ public class ConcertService {
                 () -> new BusinessException(ConcertErrorCode.CONCERT_NOT_FOUND)
         );
     }
+
+    // 같은 위치에 시작하는 공연
+    public List<ConcertItem> recommendSimilarConcerts(long concertId) {
+        Concert concert = findConcertByConcertId(concertId);
+        return concertRepository.getSimilarConcerts(
+                concertId,
+                concert.getConcertPlace().getConcertPlaceId(),
+                concert.getStartDate(),
+                concert.getStartDate().plusDays(60)
+        );
+    }
+
+    // 유사한 제목을 가지는 공연 추천
+    public List<ConcertItem> recommendSimilarTitleConcerts(long concertId) {
+        Concert concert = findConcertByConcertId(concertId);
+        String name = concert.getName();
+        String match = "[^ㄱ-ㅎㅏ-ㅣ가-힣a-zA-Z0-9\\s]";
+        name = name.replaceAll(match, "");
+        log.info("name: " + name);
+        String[] words = name.split(" ");
+        List<AutoCompleteItem> result = new ArrayList<>();
+
+        for (String word : words) {
+            if(word.isEmpty()) continue;
+            log.info("word: " + word);
+            result.addAll(concertSearchRedisTemplate.getAutoCompleteWord(word,0,5));
+        }
+        List<Long> idList = new ArrayList<>();
+
+        for (AutoCompleteItem item : result) {
+            if(Objects.equals(concert.getConcertId(), item.getId())) continue;
+            idList.add(item.getId());
+        }
+
+        // 자카드 유사도를 통해 더 비슷한 항목이 위로 오게 정렬하기
+        List<ConcertItem> concertItemList = concertRepository.getConcertItemsInIdList(idList,LocalDate.now());
+        concertItemList.sort(Comparator.comparingDouble(i1 -> jaccardSimilarity(words,i1.getName().split(" "))));
+        return concertItemList;
+    }
+
+    private double jaccardSimilarity(String[] origin , String[] target) {
+        Set<String> union = new HashSet<>();
+        Set<String> intersection = new HashSet<>();
+        union.addAll(Arrays.asList(origin));
+        union.addAll(Arrays.asList(target));
+
+        for (String s : origin) {
+            for (String t : target) {
+                if (s.equals(t)) intersection.add(s);
+            }
+        }
+
+        return (double)  union.size() / intersection.size();
+    }
+
+
 
 }

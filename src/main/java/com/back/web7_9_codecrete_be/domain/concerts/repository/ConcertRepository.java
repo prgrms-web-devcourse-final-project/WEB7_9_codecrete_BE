@@ -3,7 +3,6 @@ package com.back.web7_9_codecrete_be.domain.concerts.repository;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
-import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -51,8 +50,7 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
                 c.concertPlace cp
                 ORDER BY
                 c.viewCount
-                DESC,
-                c.concertId
+                DESC
             """)
         // 조회수 기준 내림차순
     List<ConcertItem> getConcertItemsOrderByViewCountDesc(Pageable pageable);
@@ -66,8 +64,7 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
                 c.concertPlace cp
                 ORDER BY
                 c.likeCount
-                desc,
-                c.concertId
+                desc
             """)
         // 좋아요 기준 내림차순
     List<ConcertItem> getConcertItemsOrderByLikeCountDesc(Pageable pageable);
@@ -84,8 +81,7 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
                 c.startDate >= :fromDate
                 ORDER BY 
                 c.startDate
-                asc,
-                c.concertId
+                asc
             """)
     List<ConcertItem> getUpComingConcertItemsFromDateASC(
             Pageable pageable,
@@ -123,8 +119,7 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
                 c.ticketTime IS NULL
                 ORDER BY 
                 c.startDate
-                DESC,
-                c.concertId
+                DESC
             """)
     List<ConcertItem> getNoTicketTimeConcertList(
             Pageable pageable
@@ -262,5 +257,46 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     );
 
 
+    @Query("""
+            SELECT
+            c 
+            FROM
+            Concert c
+            WHERE
+            c.concertId != :concertId
+            AND
+            c.concertPlace.concertPlaceId = :placeId
+            AND 
+            c.startDate BETWEEN :startDate AND :endDate
+            ORDER BY
+            c.startDate
+            ASC
+            """)
+    List<ConcertItem> getSimilarConcerts(
+            @Param("concertId") long concertId,
+            @Param("placeId") Long concertPlaceId,
+            @Param("startDate") LocalDate rangeStartDate,
+            @Param("endDate") LocalDate rangeEndDate
+    );
+
     Integer countConcertsByNameContaining(String name);
+
+    @Query("""
+            SELECT
+            c
+            FROM
+            Concert c
+            JOIN FETCH
+            c.concertPlace cp
+            WHERE 
+            c.concertId IN :list
+            AND
+            c.startDate > :afterDate
+            ORDER BY 
+            c.startDate
+            asc
+            """)
+    List<ConcertItem> getConcertItemsInIdList(
+            @Param("list") List<Long> idList,
+            @Param("afterDate") LocalDate afterDate);
 }
