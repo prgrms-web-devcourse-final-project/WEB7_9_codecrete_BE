@@ -12,6 +12,7 @@ import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
+import com.back.web7_9_codecrete_be.domain.chats.service.ChatPresenceService;
 import com.back.web7_9_codecrete_be.global.security.CustomUserDetail;
 import com.back.web7_9_codecrete_be.global.security.JwtTokenProvider;
 
@@ -24,8 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 public class ChatStompHandler implements ChannelInterceptor {
 
 	private final RedisTemplate<String, Object> redisTemplate;
-	private final ChatCountBroadcaster chatCountBroadcaster;
 	private final JwtTokenProvider jwtTokenProvider;
+	private final ChatPresenceService chatPresenceService;
 
 	private String getConcertUserKey(Long concertId) {
 		return "chat:concert:" + concertId + ":users";
@@ -90,7 +91,7 @@ public class ChatStompHandler implements ChannelInterceptor {
 		// 공연별 접속자 유저 ID 목록(Set)에 추가 (Set -> 동일 유저는 한 번만 기록됨)
 		redisTemplate.opsForSet().add(getConcertUserKey(concertId), userId);
 
-		broadcast(concertId);
+		chatPresenceService.broadcast(concertId);
 
 		log.info("[CHAT CONNECT] 성공: concertId={}, userId={}, email={}",
 			concertId, userId, userDetail.getUsername());
@@ -119,12 +120,7 @@ public class ChatStompHandler implements ChannelInterceptor {
 			log.info("[CHAT DISCONNECT] 탭 하나 종료 - userId={}, 남은 세션={}", userId, remainingSessions);
 		}
 
-		broadcast(concertId);
-	}
-
-	private void broadcast(Long concertId) {
-		Long count = redisTemplate.opsForSet().size(getConcertUserKey(concertId));
-		chatCountBroadcaster.broadcast(concertId, count != null ? count : 0);
+		chatPresenceService.broadcast(concertId);
 	}
 
 	private String extractTokenFromCookie(StompHeaderAccessor accessor) {

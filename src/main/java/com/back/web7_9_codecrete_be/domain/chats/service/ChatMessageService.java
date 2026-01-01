@@ -11,7 +11,6 @@ import com.back.web7_9_codecrete_be.domain.chats.dto.request.ChatMessageRequest;
 import com.back.web7_9_codecrete_be.domain.chats.dto.response.ChatMessageResponse;
 import com.back.web7_9_codecrete_be.domain.chats.dto.response.ChatUserCache;
 import com.back.web7_9_codecrete_be.domain.chats.repository.ChatStreamRepository;
-import com.back.web7_9_codecrete_be.global.websocket.ChatCountBroadcaster;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +25,7 @@ public class ChatMessageService {
 	private final ChatUserCacheService chatUserCacheService;
 
 	private final RedisTemplate<String, Object> redisTemplate;
-	private final ChatCountBroadcaster chatCountBroadcaster;
+	private final ChatPresenceService chatPresenceService;
 
 	public void sendMessage(ChatMessageRequest request, Principal principal) {
 
@@ -53,14 +52,8 @@ public class ChatMessageService {
 		);
 	}
 
-	public void broadcastUserCount(Long concertId) {
+	public void broadcastUser(Long concertId) {
 
-		String key = "chat:concert:" + concertId + ":users";
-		Long count = redisTemplate.opsForSet().size(key);
-		long userCount = (count != null) ? count : 0;
-
-		chatCountBroadcaster.broadcast(concertId, userCount);
-
-		log.info("[CHAT STATUS] 인원수 응답 완료: concertId={}, count={}", concertId, userCount);
+		chatPresenceService.broadcast(concertId);
 	}
 }

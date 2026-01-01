@@ -55,8 +55,7 @@ public class ChatMessageController {
 			Long concertId = Long.valueOf(concertIdObj.toString());
 			log.info("[CHAT STATUS] 인원수 초기 요청 수신: concertId={}", concertId);
 
-			chatMessageService.broadcastUserCount(concertId);
+			chatMessageService.broadcastUser(concertId);
 		}
 	}
 }
-
