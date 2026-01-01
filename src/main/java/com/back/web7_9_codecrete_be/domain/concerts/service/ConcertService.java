@@ -298,20 +298,14 @@ public class ConcertService {
             log.info("word: " + word);
             result.addAll(concertSearchRedisTemplate.getAutoCompleteWord(word,0,5));
         }
-
-        result.sort(Comparator.comparingDouble(i1 -> jaccardSimilarity(words,i1.getName().split(" "))));
-
-        // 자카드 유사도를 통해 더 비슷한 항목이 위로 오게 정렬하기
         List<Long> idList = new ArrayList<>();
 
-        log.info("원본 이름 : " + name);
         for (AutoCompleteItem item : result) {
-            if(concert.getConcertId() == item.getId()) continue;
-            log.info("id: " + item.getId());
-            log.info("name: " + item.getName());
+            if(Objects.equals(concert.getConcertId(), item.getId())) continue;
             idList.add(item.getId());
         }
 
+        // 자카드 유사도를 통해 더 비슷한 항목이 위로 오게 정렬하기
         List<ConcertItem> concertItemList = concertRepository.getConcertItemsInIdList(idList,LocalDate.now());
         concertItemList.sort(Comparator.comparingDouble(i1 -> jaccardSimilarity(words,i1.getName().split(" "))));
         return concertItemList;
@@ -329,8 +323,7 @@ public class ConcertService {
             }
         }
 
-        double result = (double)  union.size() / intersection.size() ;
-        return result;
+        return (double)  union.size() / intersection.size();
     }
 
 
