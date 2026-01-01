@@ -18,9 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -301,12 +299,38 @@ public class ConcertService {
             result.addAll(concertSearchRedisTemplate.getAutoCompleteWord(word,0,5));
         }
 
+        result.sort(Comparator.comparingDouble(i1 -> jaccardSimilarity(words,i1.getName().split(" "))));
+
+        // 자카드 유사도를 통해 더 비슷한 항목이 위로 오게 정렬하기
         List<Long> idList = new ArrayList<>();
+
+        log.info("원본 이름 : " + name);
         for (AutoCompleteItem item : result) {
+            if(concert.getConcertId() == item.getId()) continue;
+            log.info("id: " + item.getId());
+            log.info("name: " + item.getName());
             idList.add(item.getId());
         }
 
-        return concertRepository.getConcertItemsInIdList(idList,LocalDate.now());
+        List<ConcertItem> concertItemList = concertRepository.getConcertItemsInIdList(idList,LocalDate.now());
+        concertItemList.sort(Comparator.comparingDouble(i1 -> jaccardSimilarity(words,i1.getName().split(" "))));
+        return concertItemList;
+    }
+
+    private double jaccardSimilarity(String[] origin , String[] target) {
+        Set<String> union = new HashSet<>();
+        Set<String> intersection = new HashSet<>();
+        union.addAll(Arrays.asList(origin));
+        union.addAll(Arrays.asList(target));
+
+        for (String s : origin) {
+            for (String t : target) {
+                if (s.equals(t)) intersection.add(s);
+            }
+        }
+
+        double result = (double)  union.size() / intersection.size() ;
+        return result;
     }
 
 
