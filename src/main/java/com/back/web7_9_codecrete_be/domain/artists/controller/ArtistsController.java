@@ -1,6 +1,8 @@
 package com.back.web7_9_codecrete_be.domain.artists.controller;
 
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.*;
+import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
+import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistLike;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistSort;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.CreateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.SearchRequest;
@@ -119,11 +121,14 @@ public class ArtistsController {
         return RsData.success("찜한 아티스트 공연 리스트 조회 성공", artistService.getConcertList(user.getId()));
     }
 
-    @Operation(summary = "유저가 찜한 아티스트 목록", description = "유저 Id 를 통해 해당 유저가 찜한 아티스트 목록을 조회합니다.")
-    @GetMapping("/likes")
-    public RsData<List<LikeArtistResponse>> findLikeArtists() {
+    @Operation(summary = "아티스트 찜 여부 반환", description = "아티스트 Id 를 통해 로그인한 유저가 해당 아티스트를 찜했는지 여부를 반환합니다.")
+    @GetMapping("/likes/{artistId}")
+    public RsData<LikeArtistResponse> isLiked(
+            @PathVariable Long artistId
+    ) {
         User user = rq.getUser();
-        return RsData.success("유저가 찜한 아티스트 목록 조회 성공", artistService.findArtistsLikeByUserId(user));
+        Artist artist = artistService.findArtist(artistId);
+        return RsData.success("해당 아티스트 찜 여부 조회 성공", artistService.findArtistLikeByUserId(artist, user));
     }
 
     @Operation(summary = "아티스트 인기 순위(구현 전)", description = "Spotify 인기도를 바탕으로 아티스트 인기 순위 랭킹을 제공합니다.")
