@@ -1,7 +1,5 @@
-package com.back.web7_9_codecrete_be.domain.location.dto.request;
+package com.back.web7_9_codecrete_be.domain.location.dto.request.kakao;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 
 import java.util.List;
