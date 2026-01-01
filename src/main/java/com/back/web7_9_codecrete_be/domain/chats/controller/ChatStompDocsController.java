@@ -108,19 +108,18 @@ public class ChatStompDocsController {
         ### 1️⃣ CONNECT 시 자동 집계
         - STOMP CONNECT 시 `concertId` 기준으로 접속자 등록
         - 접속 즉시 현재 인원 수가 브로드캐스트됩니다.
+        
+        #### CONNECT Headers
+        - 접속자 수 집계를 위해 `concertId`를 CONNECT 헤더로 전달
+		```text
+		concertId: number
+		```
 
         ### 2️⃣ 초기 접속자 수 요청 (SEND)
         ```
         /app/chat/status
         ```
 
-        #### SEND Payload
-        - 접속자 수 집계를 위해 `concertId`를 CONNECT 헤더로 전달
-        ```json
-        {
-          "concertId": 1
-        }
-        ```
 
         - 채팅방 최초 진입 시 프론트에서 1회 호출
         - 서버가 Redis 기준 현재 접속자 수 계산 후 브로드캐스트
@@ -145,5 +144,52 @@ public class ChatStompDocsController {
 	)
 	@GetMapping("/user-count")
 	public void chatUserCountGuide() {}
+
+	@Operation(
+		summary = "실시간 채팅 참여자 목록 조회 (STOMP 전용, 문서용 API. 사용X)",
+		description = """
+        ### 👤 실시간 채팅 참여자 목록
+
+        - 현재 채팅방에 **접속 중인 유저 목록**
+        - 동일 유저의 여러 탭은 **1명으로 집계**
+        - 접속 / 퇴장 / 초기 진입 시 자동 브로드캐스트
+
+        ---
+
+        ### 1️⃣ CONNECT
+        - STOMP CONNECT 시 `concertId` 헤더 전달
+        - 서버는 해당 채팅방 Presence에 유저를 등록
+        
+		#### CONNECT Headers
+		```text
+		concertId: number
+		```
+
+        ### 2️⃣ SUBSCRIBE Destination
+        ```
+        /topic/chat/{concertId}/users
+        ```
+
+        ### 3️⃣ SUBSCRIBE Response
+        ```json
+        [
+          {
+            "userId": 1,
+            "nickname": "어드민유저",
+            "profileImage": "https://cdn.example.com/profile/1.png"
+          },
+          {
+            "userId": 2,
+            "nickname": "테스트유저",
+            "profileImage": "https://cdn.example.com/profile/2.png"
+          }
+        ]
+        ```
+
+        - Array 형태의 참여자 목록
+        """
+	)
+	@GetMapping("/users")
+	public void chatUserListGuide() {}
 }
 
