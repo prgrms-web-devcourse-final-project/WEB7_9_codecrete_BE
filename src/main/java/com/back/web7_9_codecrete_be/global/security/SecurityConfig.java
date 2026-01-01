@@ -60,7 +60,8 @@ public class SecurityConfig {
 					"/api/v1/concerts/**",     // concert 정보 조회 도메인
 					"/api/v1/artists/**",    // artist 정보 저장 도메인(임시)
           			"/api/v1/users/**",
-					"/api/v1/chats/**"
+					"/api/v1/chats/**",
+					"/api/v1/server-time/**"
 				).permitAll()
 
 				// ADMIN 전용
