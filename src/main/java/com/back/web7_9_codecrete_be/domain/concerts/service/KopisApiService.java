@@ -87,7 +87,7 @@ public class KopisApiService {
         Long startNs = System.currentTimeMillis();
 
         // 총 콘서트 요소를 저장할 배열
-        List<ConcertListElement> totalConcertsList = new ArrayList<>();
+        List<ConcertListElement> totalConcertsList;
         // 저장시 캐시로 사용할 맵(어차피 400개 정도니까 맵 쓰는게 더 효율적으로 판단) -> 필드로 빼야 하나?
         Map<String, ConcertPlace> concertPlaceMap = new HashMap<>();
 
@@ -98,18 +98,8 @@ public class KopisApiService {
 
         int page = 1;
         try{
-            while (true) {
-                // 콘서트 목록 받아오기
-                ConcertListResponse plr = getConcertListResponse(serviceKey, sdate, edate, page);
-                page++;
-                // 더 이상 받아올 콘서트 목록이 없으면 멈춤
-                if (plr.getConcertList() == null) break;
-                // 콘서트 요소를 콘서트 목록에서 꺼내서 더하기
-                totalConcertsList.addAll(plr.getConcertList());
-                log.info("Total Concert List: {}", totalConcertsList.size() + "개의 데이터 가져오는중...");
-                Thread.sleep(120);
-            }
-
+            // 모든 공연을 가져오기
+            totalConcertsList = getAllConcertsListFromKopisAPI(page);
         }catch (Exception e){
             log.error("공연 목록 저장 도중 오류 발생");
             log.error("오류 내용 : " + e.getMessage());
@@ -274,6 +264,23 @@ public class KopisApiService {
         saveConcertImages(concertDetail, savedConcert);
 
 
+    }
+
+
+    private List<ConcertListElement> getAllConcertsListFromKopisAPI(int page) throws InterruptedException {
+        List<ConcertListElement> totalConcertsList = new ArrayList<>();
+        while (true) {
+            // 콘서트 목록 받아오기
+            ConcertListResponse plr = getConcertListResponse(serviceKey, sdate, edate, page);
+            page++;
+            // 더 이상 받아올 콘서트 목록이 없으면 멈춤
+            if (plr.getConcertList() == null) break;
+            // 콘서트 요소를 콘서트 목록에서 꺼내서 더하기
+            totalConcertsList.addAll(plr.getConcertList());
+            log.info("Total Concert List: {}", totalConcertsList.size() + "개의 데이터 가져오는중...");
+            Thread.sleep(120);
+        }
+        return totalConcertsList;
     }
 
     // 공연 데이터 저장
