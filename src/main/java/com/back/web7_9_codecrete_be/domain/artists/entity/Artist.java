@@ -34,7 +34,7 @@ public class Artist {
     @Column(name = "spotify_artist_id", unique = true)
     private String spotifyArtistId;
 
-    @Column(name = "musicbrainz_id")
+    @Column(name = "musicbrainz_id", unique = true)
     private String musicBrainzId;
 
     @Column(name = "name_ko", length = 200)
