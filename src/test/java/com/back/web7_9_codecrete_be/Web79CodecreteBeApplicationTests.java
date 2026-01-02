@@ -6,7 +6,6 @@ import org.springframework.test.context.ActiveProfiles;
 
 @ActiveProfiles("test")
 @SpringBootTest
-@ActiveProfiles("test")
 class Web79CodecreteBeApplicationTests {
 
     @Test

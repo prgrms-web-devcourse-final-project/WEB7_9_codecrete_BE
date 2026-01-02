@@ -46,6 +46,7 @@ public class KopisApiService {
 
     @Value("${kopis.api-key}")
     private String serviceKey;
+
     private LocalDate sdate = LocalDate.of(2025, 12, 1);
     private LocalDate edate = LocalDate.now().plusYears(1);
 
@@ -106,9 +107,7 @@ public class KopisApiService {
                 // 더 이상 받아올 콘서트 목록이 없으면 멈춤
                 if (plr.getConcertList() == null) break;
                 // 콘서트 요소를 콘서트 목록에서 꺼내서 더하기
-                for (ConcertListElement p : plr.getConcertList()) {
-                    totalConcertsList.add(p);
-                }
+                totalConcertsList.addAll(plr.getConcertList());
                 log.info("Total Concert List: {}", totalConcertsList.size() + "개의 데이터 가져오는중...");
                 Thread.sleep(120);
             }
@@ -122,10 +121,12 @@ public class KopisApiService {
 
         log.info("저장할 총 공연의 수: {}", totalConcertsList.size());
         log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
+        int savedIndex = 0;
         try {
-            for (ConcertListElement performanceListElement : totalConcertsList) {
+            for(int i = savedIndex; i < totalConcertsList.size(); i++) {
+                ConcertListElement concertListElement = totalConcertsList.get(i);
                 // API에서 공연 상세 가져오기
-                ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(serviceKey, performanceListElement.getApiConcertId());
+                ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(serviceKey, concertListElement.getApiConcertId());
                 Thread.sleep(120);
                 ConcertDetailElement concertDetail = concertDetailResponse.getConcertDetail();
 
@@ -166,9 +167,9 @@ public class KopisApiService {
 
                 Concert savedConcert = concertRepository.save(concert);
                 addedConcerts++;
-
                 addedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
                 addedConcertImages += saveConcertImages(concertDetail, savedConcert);
+                savedIndex++;
             }
         } catch (Exception e) {
             log.error("개별 공연 세부 내용 저장 도중 오류 발생");
