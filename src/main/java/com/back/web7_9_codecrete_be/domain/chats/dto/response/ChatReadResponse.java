@@ -30,6 +30,9 @@ public class ChatReadResponse {
 	@Schema(description = "메시지 내용", example = "안녕하세요")
 	private String content;
 
-	@Schema(description = "전송 시각")
+	@Schema(description = "전송 시각", example = "2026-01-02T12:13:13.1588173")
 	private LocalDateTime sentDate;
+
+	@Schema(description = "프로필 이미지 URL", example = "https://example.com/profile.jpg")
+	private String profileImage;
 }

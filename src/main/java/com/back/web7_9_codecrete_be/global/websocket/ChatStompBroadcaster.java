@@ -8,11 +8,11 @@ import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
-public class ChatCountBroadcaster {
+public class ChatStompBroadcaster {
 
 	private final ObjectProvider<SimpMessagingTemplate> messagingTemplateProvider;
 
-	public void broadcast(Long concertId, long count) {
+	public void broadcast(String destination, Object payload) {
 
 		SimpMessagingTemplate messagingTemplate =
 			messagingTemplateProvider.getIfAvailable();
@@ -21,10 +21,7 @@ public class ChatCountBroadcaster {
 			return; // WebSocket 브로커 아직 준비 안 됨
 		}
 
-		messagingTemplate.convertAndSend(
-			"/topic/chat/" + concertId + "/count",
-			count
-		);
+		messagingTemplate.convertAndSend(destination, payload);
 	}
 }
 

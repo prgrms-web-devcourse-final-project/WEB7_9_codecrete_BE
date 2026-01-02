@@ -11,4 +11,5 @@ public class ChatUserCache {
 
 	private Long userId;
 	private String nickname;
+	private String profileImage;
 }
