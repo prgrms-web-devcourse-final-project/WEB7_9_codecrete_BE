@@ -146,26 +146,9 @@ public class KopisApiService {
                     addedConcertPlaces++;
                 }
 
-                //콘서트 최고 금액, 최저 금액 처리.
-                TicketPrice ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
-
                 // 콘서트 저장
-                Concert concert = new Concert(
-                        concertPlace,
-                        concertDetail.getConcertName(),
-                        concertDetail.getConcertDescription(),
-                        dateStringToDateTime(concertDetail.getStartDate()),
-                        dateStringToDateTime(concertDetail.getEndDate()),
-                        null,
-                        null,
-                        ticketPrice.maxPrice,
-                        ticketPrice.minPrice,
-                        concertDetail.getPosterUrl(),
-                        concertDetail.getArea(),
-                        concertDetail.getApiConcertId()
-                );
+                Concert savedConcert = saveConcert(concertPlace, concertDetail);
 
-                Concert savedConcert = concertRepository.save(concert);
                 addedConcerts++;
                 addedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
                 addedConcertImages += saveConcertImages(concertDetail, savedConcert);
@@ -184,6 +167,27 @@ public class KopisApiService {
         long durationSec = ((endNs - startNs) / 1000);
         log.info(durationSec/60 + "분, " + durationSec % 60 + "초 소요되었습니다." );
         concertRedisRepository.unlockSave(key);
+    }
+
+    private Concert saveConcert(ConcertPlace concertPlace, ConcertDetailElement concertDetail) {
+        TicketPrice ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
+        Concert concert = new Concert(
+                concertPlace,
+                concertDetail.getConcertName(),
+                concertDetail.getConcertDescription(),
+                dateStringToDateTime(concertDetail.getStartDate()),
+                dateStringToDateTime(concertDetail.getEndDate()),
+                null,
+                null,
+                ticketPrice.maxPrice,
+                ticketPrice.minPrice,
+                concertDetail.getPosterUrl(),
+                concertDetail.getArea(),
+                concertDetail.getApiConcertId()
+        );
+
+        Concert savedConcert = concertRepository.save(concert);
+        return savedConcert;
     }
 
     @Transactional
@@ -253,22 +257,7 @@ public class KopisApiService {
             Concert concert = concertRepository.getConcertByApiConcertId(concertDetail.getApiConcertId());
 
             if (concert == null) {
-                concert = new Concert(
-                        concertPlace,
-                        concertDetail.getConcertName(),
-                        concertDetail.getConcertDescription(),
-                        dateStringToDateTime(concertDetail.getStartDate()),
-                        dateStringToDateTime(concertDetail.getEndDate()),
-                        null,
-                        null,
-                        ticketPrice.maxPrice,
-                        ticketPrice.minPrice,
-                        concertDetail.getPosterUrl(),
-                        concertDetail.getArea(),
-                        concertDetail.getApiConcertId()
-                );
-
-                Concert savedConcert = concertRepository.save(concert);
+                Concert savedConcert = saveConcert(concertPlace,concertDetail);
                 addedConcerts ++;
                 addedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
                 addedConcertImages += saveConcertImages(concertDetail, savedConcert);
