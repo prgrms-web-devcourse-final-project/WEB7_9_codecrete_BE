@@ -88,7 +88,7 @@ public class KopisApiService {
 
         // 총 콘서트 요소를 저장할 배열
         List<ConcertListElement> totalConcertsList = new ArrayList<>();
-        // 저장시 캐시로 사용할 맵(어차피 400개 정도니까 맵 쓰는게 더 효율적으로 판단)
+        // 저장시 캐시로 사용할 맵(어차피 400개 정도니까 맵 쓰는게 더 효율적으로 판단) -> 필드로 빼야 하나?
         Map<String, ConcertPlace> concertPlaceMap = new HashMap<>();
 
         int addedConcerts = 0;
@@ -132,18 +132,9 @@ public class KopisApiService {
                 // 콘서트 상세에서 저장할 콘서트 위치의 API ID 값 가져오기
                 String concertPlaceAPiKey = concertDetailResponse.getConcertDetail().getMt10id();
                 // 캐시로 사용하는 맵이나 DB에서 콘서트 위치가 있는지 확인하기
-                ConcertPlace concertPlace = concertPlaceMap.getOrDefault(concertPlaceAPiKey, placeRepository.getConcertPlaceByApiConcertPlaceId(concertPlaceAPiKey));
-                if (concertPlace == null) {
-                    // 맵이나 DB에 없다면 API에서 해당 콘서트 위치를 가져와서 DB에 저장 후 캐시에 저장
-                    ConcertPlaceDetailResponse concertPlaceDetailElement = getConcertPlaceDetailResponse(serviceKey, concertPlaceAPiKey);
-                    Thread.sleep(120);
-                    ConcertPlaceDetailElement concertPlaceDetail = concertPlaceDetailElement.getConcertPlaceDetail();
-                    concertPlace = concertPlaceDetail.getConcertPlace();
-                    ConcertPlace savedConcertPlace = placeRepository.save(concertPlace);
-                    concertPlaceMap.put(concertPlaceAPiKey, savedConcertPlace);
-                    addedConcertPlaces++;
-                }
+                ConcertPlace concertPlace = getConcertPlaceOrSaveNewConcertPlace(concertPlaceMap, concertPlaceAPiKey);
 
+                addedConcertPlaces = concertPlaceMap.size();
                 // 공연 저장
                 Concert savedConcert = saveConcert(concertPlace, concertDetail);
                 // 공연 예매처 저장
@@ -167,25 +158,6 @@ public class KopisApiService {
         long durationSec = ((endNs - startNs) / 1000);
         log.info(durationSec/60 + "분, " + durationSec % 60 + "초 소요되었습니다." );
         concertRedisRepository.unlockSave(key);
-    }
-
-    private Concert saveConcert(ConcertPlace concertPlace, ConcertDetailElement concertDetail) {
-        TicketPrice ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
-        Concert concert = new Concert(
-                concertPlace,
-                concertDetail.getConcertName(),
-                concertDetail.getConcertDescription(),
-                dateStringToDateTime(concertDetail.getStartDate()),
-                dateStringToDateTime(concertDetail.getEndDate()),
-                null,
-                null,
-                ticketPrice.maxPrice,
-                ticketPrice.minPrice,
-                concertDetail.getPosterUrl(),
-                concertDetail.getArea(),
-                concertDetail.getApiConcertId()
-        );
-        return concertRepository.save(concert);
     }
 
     @Transactional
@@ -233,20 +205,9 @@ public class KopisApiService {
             ConcertDetailElement concertDetail = concertDetailResponse.getConcertDetail();
             log.info("concert detail: " + concertDetailResponse.getConcertDetail());
 
-            // 콘서트 위치 저장 -> 추후 메소드 추출하기?
+            // 콘서트 위치 탐색 또는 추가
             String concertPlaceAPiKey = concertDetailResponse.getConcertDetail().getMt10id();
-            ConcertPlace concertPlace;
-            concertPlace = concertPlaceMap.getOrDefault(concertPlaceAPiKey, placeRepository.getConcertPlaceByApiConcertPlaceId(concertPlaceAPiKey));
-            if (concertPlace == null) {
-                // 콘서트 장소가 null일시
-                ConcertPlaceDetailResponse concertPlaceDetailElement = getConcertPlaceDetailResponse(serviceKey, concertPlaceAPiKey);
-                ConcertPlaceDetailElement concertPlaceDetail = concertPlaceDetailElement.getConcertPlaceDetail();
-                concertPlace = concertPlaceDetail.getConcertPlace();
-                ConcertPlace savedConcertPlace = placeRepository.save(concertPlace);
-                concertPlaceMap.put(concertPlaceAPiKey, savedConcertPlace);
-                addedConcertPlaces ++;
-                log.info("concert place saved: " + savedConcertPlace);
-            }
+            ConcertPlace concertPlace = getConcertPlaceOrSaveNewConcertPlace(concertPlaceMap, concertPlaceAPiKey);
 
             // 콘서트 저장
             Concert concert = concertRepository.getConcertByApiConcertId(concertDetail.getApiConcertId());
@@ -260,14 +221,15 @@ public class KopisApiService {
                 addedConcertImages += saveConcertImages(concertDetail, savedConcert);
                 addedConcerts ++;
             } else {
+                // 공연 데이터 갱신 후 저장
                 Concert savedConcert = updateConcert(concert, concertPlace, concertDetail);
-                updatedConcerts ++;
                 // 기존에 저장되어 있던 연관 테이블 데이터 삭제
                 ticketOfficeRepository.deleteByConcertId(savedConcert.getConcertId());
                 imageRepository.deleteByConcertId(savedConcert.getConcertId());
                 // 갱신된 데이터로 연관 테이블 저장
                 updatedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
                 updatedConcertImages += saveConcertImages(concertDetail, savedConcert);
+                updatedConcerts ++;
             }
 
             Thread.sleep(300);
@@ -281,21 +243,6 @@ public class KopisApiService {
         return new SetResultResponse(addedConcerts,updatedConcerts,addedConcertPlaces,updatedConcertPlaces,addedConcertImages,updatedConcertImages,addedTicketOffices,updatedTicketOffices);
     }
 
-    // 공연 정보를 새로운 정보로 갱신해서 DB에 저장
-    private Concert updateConcert(Concert concert, ConcertPlace concertPlace, ConcertDetailElement concertDetail) {
-        TicketPrice ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
-        concert = concert.updateByAPI(
-                concertPlace,
-                concertDetail.getConcertDescription(),
-                dateStringToDateTime(concertDetail.getStartDate()),
-                dateStringToDateTime(concertDetail.getEndDate()),
-                ticketPrice.maxPrice,
-                ticketPrice.minPrice,
-                concertDetail.getPosterUrl()
-        );
-
-        return concertRepository.save(concert);
-    }
 
     @Transactional
     public void concertUpdateByKopisApi(Long concertId){
@@ -327,6 +274,59 @@ public class KopisApiService {
         saveConcertImages(concertDetail, savedConcert);
 
 
+    }
+
+    // 공연 데이터 저장
+    private Concert saveConcert(ConcertPlace concertPlace, ConcertDetailElement concertDetail) {
+        TicketPrice ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
+        Concert concert = new Concert(
+                concertPlace,
+                concertDetail.getConcertName(),
+                concertDetail.getConcertDescription(),
+                dateStringToDateTime(concertDetail.getStartDate()),
+                dateStringToDateTime(concertDetail.getEndDate()),
+                null,
+                null,
+                ticketPrice.maxPrice,
+                ticketPrice.minPrice,
+                concertDetail.getPosterUrl(),
+                concertDetail.getArea(),
+                concertDetail.getApiConcertId()
+        );
+        return concertRepository.save(concert);
+    }
+
+    // 공연 정보를 새로운 정보로 갱신해서 DB에 저장
+    private Concert updateConcert(Concert concert, ConcertPlace concertPlace, ConcertDetailElement concertDetail) {
+        TicketPrice ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
+        concert = concert.updateByAPI(
+                concertPlace,
+                concertDetail.getConcertDescription(),
+                dateStringToDateTime(concertDetail.getStartDate()),
+                dateStringToDateTime(concertDetail.getEndDate()),
+                ticketPrice.maxPrice,
+                ticketPrice.minPrice,
+                concertDetail.getPosterUrl()
+        );
+
+        return concertRepository.save(concert);
+    }
+
+    // 공연 장소를 주어진 map에서 찾고 없으면 DB에서 찾음, DB에서도 없으면 API에서 해당 데이터를 찾아서 저장 후 반환
+    private ConcertPlace getConcertPlaceOrSaveNewConcertPlace(Map<String, ConcertPlace> concertPlaceMap, String concertPlaceAPiKey) throws InterruptedException {
+        ConcertPlace concertPlace = concertPlaceMap.getOrDefault(concertPlaceAPiKey, placeRepository.getConcertPlaceByApiConcertPlaceId(concertPlaceAPiKey));
+
+        if (concertPlace == null) {
+            // 맵이나 DB에 없다면 API에서 해당 콘서트 위치를 가져와서 DB에 저장 후 캐시에 저장
+            ConcertPlaceDetailResponse concertPlaceDetailElement = getConcertPlaceDetailResponse(serviceKey, concertPlaceAPiKey);
+            Thread.sleep(120);
+            ConcertPlaceDetailElement concertPlaceDetail = concertPlaceDetailElement.getConcertPlaceDetail();
+            concertPlace = concertPlaceDetail.getConcertPlace();
+            ConcertPlace savedConcertPlace = placeRepository.save(concertPlace);
+            concertPlaceMap.put(concertPlaceAPiKey, savedConcertPlace);
+        }
+
+        return concertPlace;
     }
 
     // 콘서트 예매처를 저장합니다.
