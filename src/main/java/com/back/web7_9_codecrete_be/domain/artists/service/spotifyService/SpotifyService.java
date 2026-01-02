@@ -1,4 +1,4 @@
-package com.back.web7_9_codecrete_be.domain.artists.service;
+package com.back.web7_9_codecrete_be.domain.artists.service.spotifyService;
 
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.AlbumResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
@@ -10,10 +10,6 @@ import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Genre;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.GenreRepository;
-import com.back.web7_9_codecrete_be.domain.artists.service.seed.ArtistData;
-import com.back.web7_9_codecrete_be.domain.artists.service.seed.CategoryConfig;
-import com.back.web7_9_codecrete_be.domain.artists.service.seed.SimpleRateLimiter;
-import com.back.web7_9_codecrete_be.domain.artists.service.seed.SpotifyRateLimitHandler;
 import com.back.web7_9_codecrete_be.global.error.code.ArtistErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import com.back.web7_9_codecrete_be.global.musicbrainz.MusicBrainzClient;

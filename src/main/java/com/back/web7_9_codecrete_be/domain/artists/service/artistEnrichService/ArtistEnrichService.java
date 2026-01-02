@@ -1,4 +1,4 @@
-package com.back.web7_9_codecrete_be.domain.artists.service;
+package com.back.web7_9_codecrete_be.domain.artists.service.artistEnrichService;
 
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service

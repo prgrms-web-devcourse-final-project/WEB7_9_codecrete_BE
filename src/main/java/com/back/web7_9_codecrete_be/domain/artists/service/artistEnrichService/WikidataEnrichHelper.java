@@ -1,4 +1,4 @@
-package com.back.web7_9_codecrete_be.domain.artists.service;
+package com.back.web7_9_codecrete_be.domain.artists.service.artistEnrichService;
 
 import com.back.web7_9_codecrete_be.global.wikidata.WikidataClient;
 import com.fasterxml.jackson.databind.JsonNode;

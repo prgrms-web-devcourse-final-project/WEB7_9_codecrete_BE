@@ -2,13 +2,10 @@ package com.back.web7_9_codecrete_be.domain.artists.controller;
 
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.*;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
-import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistLike;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistSort;
-import com.back.web7_9_codecrete_be.domain.artists.dto.request.CreateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.SearchRequest;
-import com.back.web7_9_codecrete_be.domain.artists.dto.request.UpdateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistService;
-import com.back.web7_9_codecrete_be.domain.artists.service.ArtistEnrichService;
+import com.back.web7_9_codecrete_be.domain.artists.service.artistEnrichService.ArtistEnrichService;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.rq.Rq;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
