@@ -13,10 +13,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.EnableRetry;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.time.LocalDate;
@@ -30,6 +34,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @EnableAsync
+@EnableRetry
 public class KopisApiService {
     // 공연예술통합 전산망 조회를 위한 서비스 클래스입니다.
     private final ConcertRepository concertRepository;
@@ -52,6 +57,8 @@ public class KopisApiService {
 
     private final RestClient restClient;
 
+    private int savedIndex;
+
     public KopisApiService(ConcertRepository concertRepository, ConcertPlaceRepository placeRepository, TicketOfficeRepository ticketOfficeRepository, ConcertImageRepository imageRepository, ConcertUpdateTimeRepository concertUpdateTimeRepository,ConcertRedisRepository concertRedisRepository) {
         this.concertRepository = concertRepository;
         this.placeRepository = placeRepository;
@@ -65,6 +72,7 @@ public class KopisApiService {
                 .build();
     }
 
+    @Retryable(value = HttpClientErrorException.class, backoff = @Backoff(delay = 5000))
     @Async
     @Transactional
     public void setConcertsList() throws InterruptedException {
@@ -84,7 +92,7 @@ public class KopisApiService {
         }
 
         LocalDateTime now = LocalDateTime.now();
-        Long startNs = System.currentTimeMillis();
+        long startNs = System.currentTimeMillis();
 
         // 총 콘서트 요소를 저장할 배열
         List<ConcertListElement> totalConcertsList;
@@ -104,12 +112,14 @@ public class KopisApiService {
             log.error("공연 목록 저장 도중 오류 발생");
             log.error("오류 내용 : " + e.getMessage());
             return;
+        } finally {
+            concertRedisRepository.unlockSave(key);
         }
 
-
+        concertRedisRepository.lockSave(key,"running...");
         log.info("저장할 총 공연의 수: {}", totalConcertsList.size());
         log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
-        int savedIndex = 0;
+        savedIndex = 0;
         try {
             for(int i = savedIndex; i < totalConcertsList.size(); i++) {
                 ConcertListElement concertListElement = totalConcertsList.get(i);
@@ -140,14 +150,16 @@ public class KopisApiService {
             log.error("오류 내용 : " + e.getMessage());
             e.printStackTrace();
             return ;
+        } finally {
+            concertRedisRepository.unlockSave(key);
         }
         ConcertUpdateTime concertUpdateTime = new ConcertUpdateTime(now);
         concertUpdateTimeRepository.save(concertUpdateTime);
+        savedIndex = 0;
         log.info(now + "시 기준 " + totalConcertsList.size() + "개의 공연 데이터 저장 완료!");
         long endNs = System.currentTimeMillis();
         long durationSec = ((endNs - startNs) / 1000);
         log.info(durationSec/60 + "분, " + durationSec % 60 + "초 소요되었습니다." );
-        concertRedisRepository.unlockSave(key);
     }
 
     @Transactional
