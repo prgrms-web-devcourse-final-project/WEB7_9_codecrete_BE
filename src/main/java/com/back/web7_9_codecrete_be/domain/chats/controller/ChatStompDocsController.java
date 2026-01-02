@@ -116,11 +116,11 @@ public class ChatStompDocsController {
         /app/chat/status
         ```
 
-        #### SEND Payload
+        #### CONNECT Header
         - 접속자 수 집계를 위해 `concertId`를 CONNECT 헤더로 전달
-        ```json
+        ```text
         {
-          "concertId": 1
+          concertId: 1
         }
         ```
 
