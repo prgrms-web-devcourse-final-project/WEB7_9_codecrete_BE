@@ -41,7 +41,8 @@ public class ChatUserCacheService {
 
 		ChatUserCache cache = new ChatUserCache(
 			user.getId(),
-			user.getNickname()
+			user.getNickname(),
+			user.getProfileImage()
 		);
 
 		redisTemplate.opsForValue().set(key, cache, ttl);

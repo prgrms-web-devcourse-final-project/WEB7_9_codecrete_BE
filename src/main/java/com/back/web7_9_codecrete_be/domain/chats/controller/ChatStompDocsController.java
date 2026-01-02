@@ -10,6 +10,7 @@ import com.back.web7_9_codecrete_be.domain.chats.dto.response.ChatMessageRespons
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -43,19 +44,20 @@ public class ChatStompDocsController {
         #### 4️⃣ SEND Payload
         ```json
         {
-          "concertId": 1,
-          "content": "안녕하세요!"
+          concertId: 1,
+          content: "안녕하세요!"
         }
         ```
 
         #### 5️⃣ SUBSCRIBE Response
         ```json
         {
-          "concertId": 1,
-          "senderId": 10,
-          "senderName": "테스트 유저",
-          "content": "안녕하세요!",
-          "sentAt": "2025-12-23T15:30:00"
+          concertId: 1,
+          senderId: 2,
+          senderName: "테스트 유저",
+          content: "안녕하세요!",
+          sentDate: "2026-01-02T12:13:18.4422905",
+          profileImage: "https://example.com/profile.jpg"
         }
         ```
         """
@@ -71,7 +73,7 @@ public class ChatStompDocsController {
         - 실제 사용되는 HTTP API 아닙니다.
         - Swagger 문서용
         """,
-		requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+		requestBody = @RequestBody(
 			description = "STOMP 메세지 SEND하면 전달되는 요청 데이터",
 			required = true,
 			content = @Content(
@@ -114,11 +116,11 @@ public class ChatStompDocsController {
         /app/chat/status
         ```
 
-        #### SEND Payload
+        #### CONNECT Header
         - 접속자 수 집계를 위해 `concertId`를 CONNECT 헤더로 전달
-        ```json
+        ```text
         {
-          "concertId": 1
+          concertId: 1
         }
         ```
 

@@ -63,7 +63,8 @@ public class ChatMessageService {
 			chatUser.getUserId(),
 			chatUser.getNickname(),
 			request.getContent(),
-			LocalDateTime.now()
+			LocalDateTime.now(),
+			chatUser.getProfileImage()
 		);
 
 		log.info("[SEND MESSAGE] From User ID: {}, Content: {}",

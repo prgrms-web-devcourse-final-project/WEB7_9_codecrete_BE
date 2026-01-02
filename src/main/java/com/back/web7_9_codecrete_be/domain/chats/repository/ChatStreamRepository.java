@@ -39,6 +39,7 @@ public class ChatStreamRepository {
 		fields.put("senderName", message.getSenderName());
 		fields.put("content", message.getContent());
 		fields.put("sentDate", message.getSentDate().toString());
+		fields.put("profileImage", message.getProfileImage());
 
 		redisTemplate.opsForStream().add(
 			StreamRecords.newRecord()
@@ -106,7 +107,8 @@ public class ChatStreamRepository {
 					Long.valueOf(v.get("senderId").toString()),
 					v.get("senderName").toString(),
 					v.get("content").toString(),
-					LocalDateTime.parse(v.get("sentDate").toString())
+					LocalDateTime.parse(v.get("sentDate").toString()),
+					v.get("profileImage").toString()
 				);
 			})
 			.filter(Objects::nonNull)
