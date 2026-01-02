@@ -690,22 +690,28 @@ public class SpotifyService {
     }
     
     private Map<String, Genre> processGenres(List<ArtistData> finalArtists) {
-        Set<String> allGenreNames = finalArtists.stream()
+        // 1단계: 원본 장르명들을 통합된 카테고리로 변환
+        Set<String> unifiedGenreNames = finalArtists.stream()
                     .flatMap(data -> data.genres.stream())
+                    .filter(Objects::nonNull)
+                    .filter(g -> !g.isBlank())
+                    .map(this::normalizeGenre)
                     .filter(Objects::nonNull)
                     .filter(g -> !g.isBlank())
                     .collect(Collectors.toSet());
 
-            if (allGenreNames.isEmpty()) {
+            if (unifiedGenreNames.isEmpty()) {
                 return new HashMap<>();
             }
 
-            List<Genre> existingGenres = genreRepository.findByGenreNameIn(new ArrayList<>(allGenreNames));
+            // 2단계: 통합된 장르명으로 DB에서 조회
+            List<Genre> existingGenres = genreRepository.findByGenreNameIn(new ArrayList<>(unifiedGenreNames));
             Set<String> existingGenreNames = existingGenres.stream()
                     .map(Genre::getGenreName)
                     .collect(Collectors.toSet());
 
-            List<String> newGenreNames = allGenreNames.stream()
+            // 3단계: 신규 장르 생성
+            List<String> newGenreNames = unifiedGenreNames.stream()
                     .filter(name -> !existingGenreNames.contains(name))
                     .collect(toList());
 
@@ -720,6 +726,88 @@ public class SpotifyService {
         return existingGenres.stream()
                     .collect(Collectors.toMap(Genre::getGenreName, g -> g, (g1, g2) -> g1));
     }
+    
+    /**
+     * 원본 장르명을 통합된 카테고리로 변환
+     * 우선순위 순서대로 체크하여 매칭되는 첫 번째 카테고리 반환
+     */
+    private String normalizeGenre(String originalGenre) {
+        if (originalGenre == null || originalGenre.isBlank()) {
+            return null;
+        }
+        
+        String lowerGenre = originalGenre.toLowerCase().trim();
+        
+        // 1순위: KOREAN (k-로 시작)
+        if (lowerGenre.startsWith("k-")) {
+            return "KOREAN";
+        }
+        
+        // 2순위: HIPHOP/RAP
+        if (containsAny(lowerGenre, "hip hop", "rap", "drill", "grime", "boom bap", "hip-hop", "hiphop")) {
+            return "HIPHOP/RAP";
+        }
+        
+        // 3순위: R&B/SOUL
+        if (containsAny(lowerGenre, "r&b", "rnb", "soul", "r and b")) {
+            return "R&B/SOUL";
+        }
+        
+        // 4순위: METAL
+        if (lowerGenre.contains("metal")) {
+            return "METAL";
+        }
+        
+        // 5순위: ROCK
+        if (containsAny(lowerGenre, "rock", "grunge", "shoegaze", "britpop", "classic rock")) {
+            return "ROCK";
+        }
+        
+        // 6순위: INDIE/ALT
+        if (containsAny(lowerGenre, "indie", "alternative", "art rock", "neo-psychedelic", "jangle pop", "alt")) {
+            return "INDIE/ALT";
+        }
+        
+        // 7순위: LATIN
+        if (containsAny(lowerGenre, "latin", "reggaeton", "urbano", "bachata", "latin afrobeats")) {
+            return "LATIN";
+        }
+        
+        // 8순위: REGGAE
+        if (lowerGenre.contains("reggae")) {
+            return "REGGAE";
+        }
+        
+        // 9순위: JAPAN
+        if (containsAny(lowerGenre, "j-pop", "j-rock", "jpop", "jrock", "vocaloid", "shibuya-kei", "japanese", "city pop", "japanese indie")) {
+            return "JAPAN";
+        }
+        
+        // 10순위: SOUNDTRACK/ANIME
+        if (containsAny(lowerGenre, "soundtrack", "anime", "bollywood", "tollywood", "kollywood", "ost")) {
+            return "SOUNDTRACK/ANIME";
+        }
+        
+        // 11순위: POP (pop이 포함된 경우)
+        if (lowerGenre.contains("pop")) {
+            return "POP";
+        }
+        
+        // 12순위: ETC (그 외 모든 경우)
+        return "ETC";
+    }
+    
+    /**
+     * 문자열이 주어진 키워드들 중 하나라도 포함하는지 확인
+     */
+    private boolean containsAny(String text, String... keywords) {
+        for (String keyword : keywords) {
+            if (text.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     private int createArtistGenreMappings(List<ArtistData> finalArtists, Map<String, Artist> artistMap,
                                          Map<String, Genre> genreMap) {
@@ -731,12 +819,18 @@ public class SpotifyService {
                     continue;
                 }
 
-                for (String genreName : data.genres) {
-                if (genreName == null || genreName.isBlank()) {
+                for (String originalGenreName : data.genres) {
+                if (originalGenreName == null || originalGenreName.isBlank()) {
                     continue;
                 }
                     
-                    Genre genre = genreMap.get(genreName);
+                    // 원본 장르명을 통합된 카테고리로 변환
+                    String unifiedGenreName = normalizeGenre(originalGenreName);
+                    if (unifiedGenreName == null || unifiedGenreName.isBlank()) {
+                        continue;
+                    }
+                    
+                    Genre genre = genreMap.get(unifiedGenreName);
                     if (genre == null) {
                         continue;
                     }
@@ -1121,11 +1215,10 @@ public class SpotifyService {
             Track[] topTracks = safeGetTopTracks(api, spotifyArtistId);
             Paging<AlbumSimplified> albums = safeGetAlbums(api, spotifyArtistId);
 
-            List<RelatedArtistResponse> relatedResponses = safeGetRelated(
-                    api,
-                    artist,
-                    artistGroup,
+            List<RelatedArtistResponse> relatedResponses = getRelatedArtists(
                     artistId,
+                    artistGroup,
+                    artistType,
                     genreId
             );
 
@@ -1200,72 +1293,200 @@ public class SpotifyService {
         }
     }
 
-    private List<RelatedArtistResponse> safeGetRelated(
-            SpotifyApi api,
-            se.michaelthelin.spotify.model_objects.specification.Artist me,
-            String artistGroup,
+    /**
+     * 관련 아티스트 추천 (3단계: Recall -> Score -> Diversity)
+     */
+    private List<RelatedArtistResponse> getRelatedArtists(
             long artistId,
+            String artistGroup,
+            ArtistType artistType,
             Long genreId
     ) {
-        String id = (me == null || me.getId() == null) ? null : me.getId().trim();
-        if (id == null || id.isBlank()) {
+        try {
+            // 1단계: 후보 뽑기 (Recall)
+            Set<Artist> candidates = collectRelatedCandidates(artistId, artistGroup, artistType, genreId);
+            
+            if (candidates.isEmpty()) {
+                return List.of();
+            }
+            
+            // 2단계: 점수 매기기 (Score)
+            List<ScoredArtist> scoredArtists = scoreCandidates(candidates, artistGroup, artistType, genreId);
+            
+            // 3단계: 4~5명 뽑기 + 도배 방지 (Diversity)
+            List<Artist> selectedArtists = selectWithDiversity(scoredArtists, artistGroup, genreId);
+            
+            // RelatedArtistResponse로 변환
+            return selectedArtists.stream()
+                    .map(a -> new RelatedArtistResponse(
+                            a.getId(),
+                            a.getArtistName(),
+                            a.getNameKo(),
+                            a.getImageUrl(),
+                            a.getSpotifyArtistId()
+                    ))
+                    .toList();
+                    
+        } catch (Exception e) {
+            log.error("관련 아티스트 조회 실패: artistId={}", artistId, e);
             return List.of();
         }
-
-        try {
-            se.michaelthelin.spotify.model_objects.specification.Artist[] related = rateLimitHandler.callWithRateLimitRetry(() -> {
-                try {
-                    spotifyRateLimiter.acquire();
-                    return api.getArtistsRelatedArtists(id).build().execute();
-                } catch (RuntimeException e) {
-                    throw e;
-                } catch (Exception e) {
-                    throw new RuntimeException("Exception during getArtistsRelatedArtists API call", e);
-                }
-            }, "safeGetRelated artistId=" + id);
-            
-            if (related != null && related.length > 0) {
-                return toRelatedArtistResponses(related);
-            }
-
-            return fallbackRelatedFromDb(artistGroup, artistId, genreId);
-
-        } catch (RuntimeException e) {
-            return fallbackRelatedFromDb(artistGroup, artistId, genreId);
-        } catch (Exception e) {
-            return fallbackRelatedFromDb(artistGroup, artistId, genreId);
-        }
     }
-
-    private List<RelatedArtistResponse> fallbackRelatedFromDb(String artistGroup, long artistId, Long genreId) {
-        try {
-            if (artistGroup != null && !artistGroup.isBlank()) {
-                return artistRepository.findTop5ByArtistGroupAndIdNot(artistGroup, artistId).stream()
-                        .map(a -> new RelatedArtistResponse(
-                                a.getId(),
-                                a.getArtistName(),
-                                a.getNameKo(),
-                                a.getImageUrl(),
-                                a.getSpotifyArtistId()
-                        ))
-                        .toList();
-            }
-            if (genreId != null) {
-                return artistRepository.findTop5ByGenreIdAndIdNot(genreId, artistId, 
-                        org.springframework.data.domain.PageRequest.of(0, 5)).stream()
-                        .map(a -> new RelatedArtistResponse(
-                                a.getId(),
-                                a.getArtistName(),
-                                a.getNameKo(),
-                                a.getImageUrl(),
-                                a.getSpotifyArtistId()
-                        ))
-                        .toList();
-            }
-        } catch (Exception e) {
-            log.error("Fallback related from DB failed", e);
+    
+    /**
+     * 1단계: 후보 뽑기 (Recall)
+     * - 같은 genre인 아티스트들
+     * - 같은 artistGroup인 아티스트들 (artistGroup이 있을 때만)
+     * - 같은 artistType인 아티스트들
+     */
+    private Set<Artist> collectRelatedCandidates(
+            long artistId,
+            String artistGroup,
+            ArtistType artistType,
+            Long genreId
+    ) {
+        Set<Artist> candidates = new HashSet<>();
+        
+        // 같은 genre인 아티스트들
+        if (genreId != null) {
+            List<Artist> sameGenre = artistRepository.findTop5ByGenreIdAndIdNot(
+                    genreId, artistId, 
+                    org.springframework.data.domain.PageRequest.of(0, 50) // 충분히 많이 가져오기
+            );
+            candidates.addAll(sameGenre);
         }
-        return List.of();
+        
+        // 같은 artistGroup인 아티스트들 (artistGroup이 있을 때만)
+        if (artistGroup != null && !artistGroup.isBlank()) {
+            List<Artist> sameGroup = artistRepository.findTop5ByArtistGroupAndIdNot(artistGroup, artistId);
+            candidates.addAll(sameGroup);
+        }
+        
+        // 같은 artistType인 아티스트들
+        if (artistType != null) {
+            List<Artist> sameType = artistRepository.findByArtistTypeAndIdNot(
+                    artistType, artistId,
+                    org.springframework.data.domain.PageRequest.of(0, 50) // 충분히 많이 가져오기
+            );
+            candidates.addAll(sameType);
+        }
+        
+        return candidates;
+    }
+    
+    /**
+     * 2단계: 점수 매기기 (Score)
+     * - 같은 그룹: +80
+     * - 같은 장르: +60
+     * - 같은 타입: +15
+     * - likeCount 보정: + 5 * log(likeCount+1)
+     */
+    private List<ScoredArtist> scoreCandidates(
+            Set<Artist> candidates,
+            String artistGroup,
+            ArtistType artistType,
+            Long genreId
+    ) {
+        List<ScoredArtist> scored = new ArrayList<>();
+        
+        for (Artist candidate : candidates) {
+            double score = 0.0;
+            
+            // 같은 그룹이면 +80
+            if (artistGroup != null && !artistGroup.isBlank() && 
+                candidate.getArtistGroup() != null && 
+                candidate.getArtistGroup().equals(artistGroup)) {
+                score += 80;
+            }
+            
+            // 같은 장르면 +60
+            if (genreId != null) {
+                boolean hasSameGenre = candidate.getArtistGenres().stream()
+                        .anyMatch(ag -> ag.getGenre().getId() == genreId);
+                if (hasSameGenre) {
+                    score += 60;
+                }
+            }
+            
+            // 같은 타입이면 +15
+            if (artistType != null && candidate.getArtistType() == artistType) {
+                score += 15;
+            }
+            
+            // likeCount 보정: + 5 * log(likeCount+1)
+            if (candidate.getLikeCount() > 0) {
+                score += 5.0 * Math.log(candidate.getLikeCount() + 1);
+            }
+            
+            scored.add(new ScoredArtist(candidate, score));
+        }
+        
+        // 점수 내림차순 정렬, 같은 점수면 id 오름차순으로 일관성 보장
+        scored.sort((a, b) -> {
+            int scoreCompare = Double.compare(b.score, a.score);
+            if (scoreCompare != 0) {
+                return scoreCompare;
+            }
+            // 같은 점수면 id 오름차순으로 일관성 보장
+            return Long.compare(a.artist.getId(), b.artist.getId());
+        });
+        
+        return scored;
+    }
+    
+    /**
+     * 3단계: 4~5명 뽑기 + 도배 방지 (Diversity)
+     * - 같은 artistGroup 최대 2명
+     * - 나머지는 같은 genre에서 채우기
+     */
+    private List<Artist> selectWithDiversity(
+            List<ScoredArtist> scoredArtists,
+            String artistGroup,
+            Long genreId
+    ) {
+        List<Artist> selected = new ArrayList<>();
+        int sameGroupCount = 0;
+        final int MAX_SAME_GROUP = 2;
+        final int TARGET_COUNT = 5;
+        
+        for (ScoredArtist scored : scoredArtists) {
+            if (selected.size() >= TARGET_COUNT) {
+                break;
+            }
+            
+            Artist candidate = scored.artist;
+            
+            // 같은 그룹 체크
+            boolean isSameGroup = artistGroup != null && !artistGroup.isBlank() &&
+                    candidate.getArtistGroup() != null &&
+                    candidate.getArtistGroup().equals(artistGroup);
+            
+            if (isSameGroup) {
+                if (sameGroupCount < MAX_SAME_GROUP) {
+                    selected.add(candidate);
+                    sameGroupCount++;
+                }
+                // 같은 그룹이 이미 2명이면 스킵
+            } else {
+                // 같은 그룹이 아니면 추가
+                selected.add(candidate);
+            }
+        }
+        
+        return selected;
+    }
+    
+    /**
+     * 점수가 매겨진 아티스트
+     */
+    private static class ScoredArtist {
+        final Artist artist;
+        final double score;
+        
+        ScoredArtist(Artist artist, double score) {
+            this.artist = artist;
+            this.score = score;
+        }
     }
 
     private String pickImageUrl(Image[] images) {
@@ -1315,26 +1536,4 @@ public class SpotifyService {
                 .collect(toList());
     }
 
-    private List<RelatedArtistResponse> toRelatedArtistResponses(se.michaelthelin.spotify.model_objects.specification.Artist[] artists) {
-        if (artists == null) return List.of();
-        return Stream.of(artists)
-                .filter(Objects::nonNull)
-                .map(a -> {
-                    Long artistId = null;
-                    String nameKo = null;
-                    Optional<Artist> dbArtist = artistRepository.findBySpotifyArtistId(a.getId());
-                    if (dbArtist.isPresent()) {
-                        artistId = dbArtist.get().getId();
-                        nameKo = dbArtist.get().getNameKo();
-                    }
-                    return new RelatedArtistResponse(
-                            artistId,
-                            a.getName(),
-                            nameKo,
-                            pickImageUrl(a.getImages()),
-                            a.getId()
-                    );
-                })
-                .collect(toList());
-    }
 }
