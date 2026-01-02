@@ -28,6 +28,6 @@ public class ChatMessageResponse {
 	@Schema(description = "전송 시각", example = "2025-12-23T16:28:07.8806432")
 	private LocalDateTime sentDate;
 
-	@Schema(description = "프로필 이미지", example = "https://example.com/profile.jpg")
+	@Schema(description = "프로필 이미지 URL", example = "https://example.com/profile.jpg")
 	private String profileImage;
 }
