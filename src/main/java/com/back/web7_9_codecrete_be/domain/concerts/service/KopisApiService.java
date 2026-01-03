@@ -119,7 +119,6 @@ public class KopisApiService {
         concertRedisRepository.lockSave(key,"running...");
         log.info("저장할 총 공연의 수: {}", totalConcertsList.size());
         log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
-        savedIndex = 0;
         try {
             for(int i = savedIndex; i < totalConcertsList.size(); i++) {
                 ConcertListElement concertListElement = totalConcertsList.get(i);
@@ -131,7 +130,7 @@ public class KopisApiService {
                 // 콘서트 위치 저장
                 // 콘서트 상세에서 저장할 콘서트 위치의 API ID 값 가져오기
                 String concertPlaceAPiKey = concertDetailResponse.getConcertDetail().getMt10id();
-                // 캐시로 사용하는 맵이나 DB에서 콘서트 위치가 있는지 확인하기
+                // 캐시로 사용하는 맵이나 DB에서 콘서트 위치가 있는지 확인하기 -> 없으면 저장
                 ConcertPlace concertPlace = getConcertPlaceOrSaveNewConcertPlace(concertPlaceMap, concertPlaceAPiKey);
 
                 addedConcertPlaces = concertPlaceMap.size();
@@ -202,6 +201,9 @@ public class KopisApiService {
             Thread.sleep(200);
         }
         log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
+
+        savedIndex = 0;
+        for(int i = savedIndex; i < totalConcertsList.size(); i++) {}
         for (ConcertListElement performanceListElement : totalConcertsList) {
             ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(serviceKey, performanceListElement.getApiConcertId());
             ConcertDetailElement concertDetail = concertDetailResponse.getConcertDetail();
