@@ -13,10 +13,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.EnableRetry;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.time.LocalDate;
@@ -30,6 +34,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @EnableAsync
+@EnableRetry
 public class KopisApiService {
     // 공연예술통합 전산망 조회를 위한 서비스 클래스입니다.
     private final ConcertRepository concertRepository;
@@ -46,10 +51,13 @@ public class KopisApiService {
 
     @Value("${kopis.api-key}")
     private String serviceKey;
+
     private LocalDate sdate = LocalDate.of(2025, 12, 1);
     private LocalDate edate = LocalDate.now().plusYears(1);
 
     private final RestClient restClient;
+
+    private int savedIndex;
 
     public KopisApiService(ConcertRepository concertRepository, ConcertPlaceRepository placeRepository, TicketOfficeRepository ticketOfficeRepository, ConcertImageRepository imageRepository, ConcertUpdateTimeRepository concertUpdateTimeRepository,ConcertRedisRepository concertRedisRepository) {
         this.concertRepository = concertRepository;
@@ -64,6 +72,7 @@ public class KopisApiService {
                 .build();
     }
 
+    @Retryable(value = HttpClientErrorException.class, backoff = @Backoff(delay = 5000))
     @Async
     @Transactional
     public void setConcertsList() throws InterruptedException {
@@ -83,13 +92,11 @@ public class KopisApiService {
         }
 
         LocalDateTime now = LocalDateTime.now();
-        Long startNs = System.currentTimeMillis();
+        long startNs = System.currentTimeMillis();
 
-        // 콘서트 목록 받아올 Response 객체 선언
-        ConcertListResponse plr;
         // 총 콘서트 요소를 저장할 배열
-        List<ConcertListElement> totalConcertsList = new ArrayList<>();
-        // 저장시 캐시로 사용할 맵(어차피 400개 정도니까 맵 쓰는게 더 효율적으로 판단)
+        List<ConcertListElement> totalConcertsList;
+        // 저장시 캐시로 사용할 맵(어차피 400개 정도니까 맵 쓰는게 더 효율적으로 판단) -> 필드로 빼야 하나?
         Map<String, ConcertPlace> concertPlaceMap = new HashMap<>();
 
         int addedConcerts = 0;
@@ -99,90 +106,59 @@ public class KopisApiService {
 
         int page = 1;
         try{
-            while (true) {
-                // 콘서트 목록 받아오기
-                plr = getConcertListResponse(serviceKey, sdate, edate, page);
-                page++;
-                // 더 이상 받아올 콘서트 목록이 없으면 멈춤
-                if (plr.getConcertList() == null) break;
-                // 콘서트 요소를 콘서트 목록에서 꺼내서 더하기
-                for (ConcertListElement p : plr.getConcertList()) {
-                    totalConcertsList.add(p);
-                }
-                log.info("Total Concert List: {}", totalConcertsList.size() + "개의 데이터 가져오는중...");
-                Thread.sleep(120);
-            }
-
+            // 모든 공연을 가져오기
+            totalConcertsList = getAllConcertsListFromKopisAPI(page);
         }catch (Exception e){
             log.error("공연 목록 저장 도중 오류 발생");
             log.error("오류 내용 : " + e.getMessage());
             return;
+        } finally {
+            concertRedisRepository.unlockSave(key);
         }
 
-
+        concertRedisRepository.lockSave(key,"running...");
         log.info("저장할 총 공연의 수: {}", totalConcertsList.size());
         log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
         try {
-            for (ConcertListElement performanceListElement : totalConcertsList) {
+            for(int i = savedIndex; i < totalConcertsList.size(); i++) {
+                ConcertListElement concertListElement = totalConcertsList.get(i);
                 // API에서 공연 상세 가져오기
-                ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(serviceKey, performanceListElement.getApiConcertId());
+                ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(serviceKey, concertListElement.getApiConcertId());
                 Thread.sleep(120);
                 ConcertDetailElement concertDetail = concertDetailResponse.getConcertDetail();
 
                 // 콘서트 위치 저장
                 // 콘서트 상세에서 저장할 콘서트 위치의 API ID 값 가져오기
                 String concertPlaceAPiKey = concertDetailResponse.getConcertDetail().getMt10id();
-                // 캐시로 사용하는 맵이나 DB에서 콘서트 위치가 있는지 확인하기
-                ConcertPlace concertPlace = concertPlaceMap.getOrDefault(concertPlaceAPiKey, placeRepository.getConcertPlaceByApiConcertPlaceId(concertPlaceAPiKey));
-                if (concertPlace == null) {
-                    // 맵이나 DB에 없다면 API에서 해당 콘서트 위치를 가져와서 DB에 저장 후 캐시에 저장
-                    ConcertPlaceDetailResponse concertPlaceDetailElement = getConcertPlaceDetailResponse(serviceKey, concertPlaceAPiKey);
-                    Thread.sleep(120);
-                    ConcertPlaceDetailElement concertPlaceDetail = concertPlaceDetailElement.getConcertPlaceDetail();
-                    concertPlace = concertPlaceDetail.getConcertPlace();
-                    ConcertPlace savedConcertPlace = placeRepository.save(concertPlace);
-                    concertPlaceMap.put(concertPlaceAPiKey, savedConcertPlace);
-                    addedConcertPlaces++;
-                }
+                // 캐시로 사용하는 맵이나 DB에서 콘서트 위치가 있는지 확인하기 -> 없으면 저장
+                ConcertPlace concertPlace = getConcertPlaceOrSaveNewConcertPlace(concertPlaceMap, concertPlaceAPiKey);
 
-                //콘서트 최고 금액, 최저 금액 처리.
-                TicketPrice ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
-
-                // 콘서트 저장
-                Concert concert = new Concert(
-                        concertPlace,
-                        concertDetail.getConcertName(),
-                        concertDetail.getConcertDescription(),
-                        dateStringToDateTime(concertDetail.getStartDate()),
-                        dateStringToDateTime(concertDetail.getEndDate()),
-                        null,
-                        null,
-                        ticketPrice.maxPrice,
-                        ticketPrice.minPrice,
-                        concertDetail.getPosterUrl(),
-                        concertDetail.getArea(),
-                        concertDetail.getApiConcertId()
-                );
-
-                Concert savedConcert = concertRepository.save(concert);
-                addedConcerts++;
-
+                addedConcertPlaces = concertPlaceMap.size();
+                // 공연 저장
+                Concert savedConcert = saveConcert(concertPlace, concertDetail);
+                // 공연 예매처 저장
                 addedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
+                // 공연 이미지 저장
                 addedConcertImages += saveConcertImages(concertDetail, savedConcert);
+
+                addedConcerts++;
+                savedIndex++;
             }
         } catch (Exception e) {
             log.error("개별 공연 세부 내용 저장 도중 오류 발생");
             log.error("오류 내용 : " + e.getMessage());
             e.printStackTrace();
             return ;
+        } finally {
+            concertRedisRepository.unlockSave(key);
         }
         ConcertUpdateTime concertUpdateTime = new ConcertUpdateTime(now);
         concertUpdateTimeRepository.save(concertUpdateTime);
+        savedIndex = 0;
         log.info(now + "시 기준 " + totalConcertsList.size() + "개의 공연 데이터 저장 완료!");
         long endNs = System.currentTimeMillis();
         long durationSec = ((endNs - startNs) / 1000);
         log.info(durationSec/60 + "분, " + durationSec % 60 + "초 소요되었습니다." );
-        concertRedisRepository.unlockSave(key);
     }
 
     @Transactional
@@ -225,71 +201,39 @@ public class KopisApiService {
             Thread.sleep(200);
         }
         log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
+
+        savedIndex = 0;
+        for(int i = savedIndex; i < totalConcertsList.size(); i++) {}
         for (ConcertListElement performanceListElement : totalConcertsList) {
             ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(serviceKey, performanceListElement.getApiConcertId());
             ConcertDetailElement concertDetail = concertDetailResponse.getConcertDetail();
             log.info("concert detail: " + concertDetailResponse.getConcertDetail());
 
-            // 콘서트 위치 저장 -> 추후 메소드 추출하기?
+            // 콘서트 위치 탐색 또는 추가
             String concertPlaceAPiKey = concertDetailResponse.getConcertDetail().getMt10id();
-            ConcertPlace concertPlace;
-            concertPlace = concertPlaceMap.getOrDefault(concertPlaceAPiKey, placeRepository.getConcertPlaceByApiConcertPlaceId(concertPlaceAPiKey));
-            if (concertPlace == null) {
-                // 콘서트 장소가 null일시
-                ConcertPlaceDetailResponse concertPlaceDetailElement = getConcertPlaceDetailResponse(serviceKey, concertPlaceAPiKey);
-                ConcertPlaceDetailElement concertPlaceDetail = concertPlaceDetailElement.getConcertPlaceDetail();
-                concertPlace = concertPlaceDetail.getConcertPlace();
-                ConcertPlace savedConcertPlace = placeRepository.save(concertPlace);
-                concertPlaceMap.put(concertPlaceAPiKey, savedConcertPlace);
-                addedConcertPlaces ++;
-                log.info("concert place saved: " + savedConcertPlace);
-            }
-
-            //콘서트 최고 금액, 최저 금액 처리.
-            TicketPrice ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
+            ConcertPlace concertPlace = getConcertPlaceOrSaveNewConcertPlace(concertPlaceMap, concertPlaceAPiKey);
 
             // 콘서트 저장
             Concert concert = concertRepository.getConcertByApiConcertId(concertDetail.getApiConcertId());
 
             if (concert == null) {
-                concert = new Concert(
-                        concertPlace,
-                        concertDetail.getConcertName(),
-                        concertDetail.getConcertDescription(),
-                        dateStringToDateTime(concertDetail.getStartDate()),
-                        dateStringToDateTime(concertDetail.getEndDate()),
-                        null,
-                        null,
-                        ticketPrice.maxPrice,
-                        ticketPrice.minPrice,
-                        concertDetail.getPosterUrl(),
-                        concertDetail.getArea(),
-                        concertDetail.getApiConcertId()
-                );
-
-                Concert savedConcert = concertRepository.save(concert);
-                addedConcerts ++;
+                // 새 공연 저장
+                Concert savedConcert = saveConcert(concertPlace,concertDetail);
+                // 공연 예매처 저장
                 addedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
+                // 공연 이미지 저장
                 addedConcertImages += saveConcertImages(concertDetail, savedConcert);
+                addedConcerts ++;
             } else {
-                concert = concert.updateByAPI(
-                        concertPlace,
-                        concertDetail.getConcertDescription(),
-                        dateStringToDateTime(concertDetail.getStartDate()),
-                        dateStringToDateTime(concertDetail.getEndDate()),
-                        ticketPrice.maxPrice,
-                        ticketPrice.minPrice,
-                        concertDetail.getPosterUrl()
-                );
-
-                Concert savedConcert = concertRepository.save(concert);
-                updatedConcerts ++;
+                // 공연 데이터 갱신 후 저장
+                Concert savedConcert = updateConcert(concert, concertPlace, concertDetail);
                 // 기존에 저장되어 있던 연관 테이블 데이터 삭제
                 ticketOfficeRepository.deleteByConcertId(savedConcert.getConcertId());
                 imageRepository.deleteByConcertId(savedConcert.getConcertId());
                 // 갱신된 데이터로 연관 테이블 저장
                 updatedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
                 updatedConcertImages += saveConcertImages(concertDetail, savedConcert);
+                updatedConcerts ++;
             }
 
             Thread.sleep(300);
@@ -302,6 +246,7 @@ public class KopisApiService {
         concertRedisRepository.deleteTotalConcertsCount(ListSort.VIEW);
         return new SetResultResponse(addedConcerts,updatedConcerts,addedConcertPlaces,updatedConcertPlaces,addedConcertImages,updatedConcertImages,addedTicketOffices,updatedTicketOffices);
     }
+
 
     @Transactional
     public void concertUpdateByKopisApi(Long concertId){
@@ -323,11 +268,58 @@ public class KopisApiService {
             ConcertPlace savedConcertPlace = placeRepository.save(concertPlace);
             log.info("concert place saved: " + savedConcertPlace);
         }
-
-        // 표 최고가, 최저가  구분
-        TicketPrice ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
-
         // 공연의 정보를 새로운 정보로 변경
+        Concert savedConcert = updateConcert(concert, concertPlace, concertDetail);
+        // 기존에 저장되어 있던 연관 테이블 데이터 삭제
+        ticketOfficeRepository.deleteByConcertId(savedConcert.getConcertId());
+        imageRepository.deleteByConcertId(savedConcert.getConcertId());
+        // 새로 받아온 예매처, 이미지 데이터 저장
+        saveConcertTicketOffice(concertDetail, savedConcert);
+        saveConcertImages(concertDetail, savedConcert);
+
+
+    }
+
+
+    private List<ConcertListElement> getAllConcertsListFromKopisAPI(int page) throws InterruptedException {
+        List<ConcertListElement> totalConcertsList = new ArrayList<>();
+        while (true) {
+            // 콘서트 목록 받아오기
+            ConcertListResponse plr = getConcertListResponse(serviceKey, sdate, edate, page);
+            page++;
+            // 더 이상 받아올 콘서트 목록이 없으면 멈춤
+            if (plr.getConcertList() == null) break;
+            // 콘서트 요소를 콘서트 목록에서 꺼내서 더하기
+            totalConcertsList.addAll(plr.getConcertList());
+            log.info("Total Concert List: {}", totalConcertsList.size() + "개의 데이터 가져오는중...");
+            Thread.sleep(120);
+        }
+        return totalConcertsList;
+    }
+
+    // 공연 데이터 저장
+    private Concert saveConcert(ConcertPlace concertPlace, ConcertDetailElement concertDetail) {
+        TicketPrice ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
+        Concert concert = new Concert(
+                concertPlace,
+                concertDetail.getConcertName(),
+                concertDetail.getConcertDescription(),
+                dateStringToDateTime(concertDetail.getStartDate()),
+                dateStringToDateTime(concertDetail.getEndDate()),
+                null,
+                null,
+                ticketPrice.maxPrice,
+                ticketPrice.minPrice,
+                concertDetail.getPosterUrl(),
+                concertDetail.getArea(),
+                concertDetail.getApiConcertId()
+        );
+        return concertRepository.save(concert);
+    }
+
+    // 공연 정보를 새로운 정보로 갱신해서 DB에 저장
+    private Concert updateConcert(Concert concert, ConcertPlace concertPlace, ConcertDetailElement concertDetail) {
+        TicketPrice ticketPrice = new TicketPrice(concertDetail.getConcertPrice());
         concert = concert.updateByAPI(
                 concertPlace,
                 concertDetail.getConcertDescription(),
@@ -338,16 +330,24 @@ public class KopisApiService {
                 concertDetail.getPosterUrl()
         );
 
-        // 공연 저장
-        Concert savedConcert = concertRepository.save(concert);
-        // 기존에 저장되어 있던 연관 테이블 데이터 삭제
-        ticketOfficeRepository.deleteByConcertId(savedConcert.getConcertId());
-        imageRepository.deleteByConcertId(savedConcert.getConcertId());
-        // 새로 받아온 예매처, 이미지 데이터 저장
-        saveConcertTicketOffice(concertDetail, savedConcert);
-        saveConcertImages(concertDetail, savedConcert);
+        return concertRepository.save(concert);
+    }
 
+    // 공연 장소를 주어진 map에서 찾고 없으면 DB에서 찾음, DB에서도 없으면 API에서 해당 데이터를 찾아서 저장 후 반환
+    private ConcertPlace getConcertPlaceOrSaveNewConcertPlace(Map<String, ConcertPlace> concertPlaceMap, String concertPlaceAPiKey) throws InterruptedException {
+        ConcertPlace concertPlace = concertPlaceMap.getOrDefault(concertPlaceAPiKey, placeRepository.getConcertPlaceByApiConcertPlaceId(concertPlaceAPiKey));
 
+        if (concertPlace == null) {
+            // 맵이나 DB에 없다면 API에서 해당 콘서트 위치를 가져와서 DB에 저장 후 캐시에 저장
+            ConcertPlaceDetailResponse concertPlaceDetailElement = getConcertPlaceDetailResponse(serviceKey, concertPlaceAPiKey);
+            Thread.sleep(120);
+            ConcertPlaceDetailElement concertPlaceDetail = concertPlaceDetailElement.getConcertPlaceDetail();
+            concertPlace = concertPlaceDetail.getConcertPlace();
+            ConcertPlace savedConcertPlace = placeRepository.save(concertPlace);
+            concertPlaceMap.put(concertPlaceAPiKey, savedConcertPlace);
+        }
+
+        return concertPlace;
     }
 
     // 콘서트 예매처를 저장합니다.

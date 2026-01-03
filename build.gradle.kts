@@ -32,6 +32,10 @@ dependencies {
     // 웹 클라이언트
     implementation("org.springframework.boot:spring-boot-starter-webflux")
 
+    // Spring Retry( 로직 재시도 편의성 추구)
+    implementation ("org.springframework.boot:spring-boot-starter-aop")
+    implementation ("org.springframework.retry:spring-retry")
+
     // 캐싱
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
