@@ -1,7 +1,7 @@
 package com.back.web7_9_codecrete_be.global.security;
 
-import java.util.List;
-
+import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -14,9 +14,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
-
-import lombok.RequiredArgsConstructor;
+import java.util.List;
 
 @Configuration
 @RequiredArgsConstructor
@@ -65,7 +63,8 @@ public class SecurityConfig {
 					"/api/v1/chats/**",
 					"/api/v1/reviews/**",
 					"/api/v1/join/**",
-					"/api/v1/server-time/**"
+					"/api/v1/server-time/**",
+                        "/api/v1/posts/**"
 				).permitAll()
 
 				// ADMIN 전용
