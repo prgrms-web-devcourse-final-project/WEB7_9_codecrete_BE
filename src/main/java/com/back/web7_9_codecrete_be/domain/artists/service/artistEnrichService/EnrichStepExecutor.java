@@ -194,12 +194,23 @@ public class EnrichStepExecutor {
         }
     }
 
-    // FLO Client로 한국어 이름 가져오기
+    // FLO Client로 한국어 이름 및 그룹 정보 가져오기
     public EnrichStepResult executeStepOne(Artist artist) {
         try {
             Optional<FloClient.ArtistInfo> floInfoOpt = floClient.searchArtist(artist.getArtistName());
-            if (floInfoOpt.isPresent() && floInfoOpt.get().getNameKo() != null && !floInfoOpt.get().getNameKo().isBlank()) {
-                return new EnrichStepResult(floInfoOpt.get().getNameKo(), null, null, "FLO ");
+            if (floInfoOpt.isPresent()) {
+                FloClient.ArtistInfo floInfo = floInfoOpt.get();
+                String nameKo = floInfo.getNameKo();
+                String artistGroup = floInfo.getArtistGroup();
+                
+                // nameKo가 있으면 반환 (그룹 정보도 함께)
+                if (nameKo != null && !nameKo.isBlank()) {
+                    String source = "FLO ";
+                    if (artistGroup != null && !artistGroup.isBlank()) {
+                        source += "(그룹) ";
+                    }
+                    return new EnrichStepResult(nameKo, artistGroup, null, source);
+                }
             }
         } catch (Exception e) {
             // 실패는 조용히 넘어감
@@ -227,6 +238,93 @@ public class EnrichStepExecutor {
             // 실패는 조용히 넘어감
         }
         return new EnrichStepResult(null, null, null, null);
+    }
+
+    /**
+     * SOLO 확정 이후 그룹 수집 재시도
+     * 
+     * 초반에 artistType이 null이거나 GROUP으로 오판되어 그룹 수집이 스킵된 경우,
+     * Step2에서 SOLO로 확정된 후 그룹 수집을 다시 시도
+     */
+    public EnrichStepResult retryGroupCollection(Artist artist, String confirmedArtistType) {
+        if (!"SOLO".equals(confirmedArtistType)) {
+            return new EnrichStepResult(null, null, null, null);
+        }
+
+        String source = "";
+        String artistGroup = null;
+
+        // MusicBrainz ID가 있으면 Step -1 로직 재사용
+        if (artist.getMusicBrainzId() != null && !artist.getMusicBrainzId().isBlank()) {
+            try {
+                Optional<String> qidOpt = wikidataClient.searchWikidataIdByMusicBrainzId(artist.getMusicBrainzId());
+                if (qidOpt.isPresent()) {
+                    Optional<com.fasterxml.jackson.databind.JsonNode> entityOpt = wikidataClient.getEntityInfo(qidOpt.get());
+                    if (entityOpt.isPresent()) {
+                        artistGroup = wikidataHelper.resolveGroupName(entityOpt.get());
+                        if (artistGroup != null) {
+                            source += "Wikidata(MBID-retry) ";
+                        }
+                    }
+                }
+
+                // Wikidata에서 못 찾았으면 MusicBrainz에서 직접 가져오기
+                if (artistGroup == null) {
+                    Optional<MusicBrainzClient.ArtistInfo> mbInfoOpt = musicBrainzClient.getArtistByMbid(artist.getMusicBrainzId());
+                    if (mbInfoOpt.isPresent() && mbInfoOpt.get().getArtistGroup() != null && 
+                        !mbInfoOpt.get().getArtistGroup().isBlank()) {
+                        artistGroup = mbInfoOpt.get().getArtistGroup();
+                        source += "MusicBrainz(retry) ";
+                    }
+                }
+            } catch (Exception e) {
+                // 실패는 조용히 넘어감
+            }
+        }
+
+        // MusicBrainz ID가 없거나 실패했으면 Spotify ID 기반으로 재시도
+        if (artistGroup == null && artist.getSpotifyArtistId() != null && !artist.getSpotifyArtistId().isBlank()) {
+            try {
+                List<String> candidateQids = wikidataClient.searchWikidataIdCandidatesBySpotifyId(artist.getSpotifyArtistId());
+                
+                for (String candidateQid : candidateQids) {
+                    Optional<com.fasterxml.jackson.databind.JsonNode> entityOpt = wikidataClient.getEntityInfo(candidateQid);
+                    if (entityOpt.isEmpty()) continue;
+                    
+                    // SPARQL로 그룹 검색 시도
+                    List<String> groups = wikidataClient.searchGroupBySpotifyId(artist.getSpotifyArtistId());
+                    if (!groups.isEmpty()) {
+                        artistGroup = groups.get(0);
+                        source += "Wikidata(SPARQL-retry) ";
+                        break;
+                    }
+                    
+                    // Entity에서 직접 추출 시도
+                    artistGroup = wikidataHelper.resolveGroupName(entityOpt.get());
+                    if (artistGroup != null) {
+                        source += "Wikidata(retry) ";
+                        break;
+                    }
+                }
+
+                // Wikidata에서 못 찾았으면 MusicBrainz에서 가져오기
+                if (artistGroup == null) {
+                    Optional<String> mbidOpt = musicBrainzClient.searchMbidBySpotifyUrl(artist.getSpotifyArtistId());
+                    if (mbidOpt.isPresent()) {
+                        Optional<MusicBrainzClient.ArtistInfo> mbInfoOpt = musicBrainzClient.getArtistByMbid(mbidOpt.get());
+                        if (mbInfoOpt.isPresent() && mbInfoOpt.get().getArtistGroup() != null && 
+                            !mbInfoOpt.get().getArtistGroup().isBlank()) {
+                            artistGroup = mbInfoOpt.get().getArtistGroup();
+                            source += "MusicBrainz(retry) ";
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // 실패는 조용히 넘어감
+            }
+        }
+
+        return new EnrichStepResult(null, artistGroup, null, source.trim());
     }
 
     private String resolveTypeConsensus(String wdType, String mbType, String currentSource) {

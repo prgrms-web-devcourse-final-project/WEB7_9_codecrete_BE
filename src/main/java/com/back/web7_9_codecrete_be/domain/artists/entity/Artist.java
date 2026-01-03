@@ -27,7 +27,7 @@ public class Artist {
     @Column(name = "artist_group")
     private String artistGroup;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = ArtistTypeConverter.class)
     @Column(name = "artist_type")
     private ArtistType artistType;
 
@@ -42,6 +42,9 @@ public class Artist {
 
     @Column(name = "real_name", length = 200)
     private String realName;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 
     @Column(name = "like_count", nullable = false)
     private int likeCount = 0;

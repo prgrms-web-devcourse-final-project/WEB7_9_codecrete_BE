@@ -60,6 +60,10 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     @Query("SELECT a.spotifyArtistId FROM Artist a WHERE a.spotifyArtistId IN :spotifyIds")
     List<String> findSpotifyIdsBySpotifyIdsIn(@org.springframework.data.repository.query.Param("spotifyIds") List<String> spotifyIds);
     
+    // 배치 조회: spotifyId 리스트로 존재하는 아티스트 전체 엔티티 반환 (Bulk 저장용)
+    @Query("SELECT a FROM Artist a WHERE a.spotifyArtistId IN :spotifyIds")
+    List<Artist> findBySpotifyArtistIdIn(@org.springframework.data.repository.query.Param("spotifyIds") List<String> spotifyIds);
+    
     // 같은 artistType인 아티스트들 조회 (관련 아티스트 추천용)
     @Query("SELECT a FROM Artist a WHERE a.artistType = :artistType AND a.id != :excludeId ORDER BY a.likeCount DESC, a.id ASC")
     List<Artist> findByArtistTypeAndIdNot(@org.springframework.data.repository.query.Param("artistType") com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType artistType,
