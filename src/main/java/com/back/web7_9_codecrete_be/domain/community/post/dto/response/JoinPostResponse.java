@@ -18,9 +18,6 @@ public class JoinPostResponse {
     @Schema(description = "공통 게시글 정보")
     private PostResponse post;
 
-    @Schema(description = "콘서트 ID", example = "1")
-    private Long concertId;
-
     @Schema(description = "모집 인원", example = "4")
     private Integer maxParticipants;
 
@@ -68,7 +65,6 @@ public class JoinPostResponse {
     public static JoinPostResponse from(JoinPost joinPost) {
         return JoinPostResponse.builder()
                 .post(PostResponse.from(joinPost.getPost()))
-                .concertId(joinPost.getConcertId())
                 .maxParticipants(joinPost.getMaxParticipants())
                 .currentParticipants(joinPost.getCurrentParticipants())
                 .genderPreference(joinPost.getGenderPreference())
