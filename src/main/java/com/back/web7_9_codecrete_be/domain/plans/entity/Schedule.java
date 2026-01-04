@@ -86,6 +86,11 @@ public class Schedule {
     @Column(name = "is_main_event", nullable = false)
     private Boolean isMainEvent = false;
 
+    // 낙관적 잠금을 위한 버전 필드
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
 
     @Builder
     public Schedule(Plan plan, ScheduleType scheduleType, String title,
