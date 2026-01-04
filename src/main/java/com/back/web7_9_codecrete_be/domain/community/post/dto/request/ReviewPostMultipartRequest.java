@@ -1,8 +1,5 @@
 package com.back.web7_9_codecrete_be.domain.community.post.dto.request;
 
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
-import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -10,7 +7,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -50,14 +46,16 @@ public class ReviewPostMultipartRequest {
     )
     private Integer rating;
 
-    @Parameter(
+    @Schema(
+            description = "후기 태그",
+            example = "[\"Sound\", \"Stage\", \"Seat\"]"
+    )
+    private List<String> tags;
+
+    @Schema(
             description = "후기 이미지 파일 (다중 업로드 가능)",
-            content = @Content(
-                    mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
-                    array = @ArraySchema(
-                            schema = @Schema(type = "string", format = "binary")
-                    )
-            )
+            type = "array",
+            implementation = MultipartFile.class
     )
     private List<MultipartFile> images;
 }
