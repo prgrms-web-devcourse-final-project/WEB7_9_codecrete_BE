@@ -14,6 +14,13 @@ import java.util.List;
 @Schema(description = "구인글 수정 요청")
 public class JoinPostUpdateRequest {
 
+    @NotNull(message = "콘서트 ID는 필수입니다.")
+    @Schema(
+            description = "연관된 콘서트 ID",
+            example = "1"
+    )
+    private Long concertId;
+
     @NotBlank(message = "제목은 필수입니다.")
     @Schema(
             description = "구인글 제목",
