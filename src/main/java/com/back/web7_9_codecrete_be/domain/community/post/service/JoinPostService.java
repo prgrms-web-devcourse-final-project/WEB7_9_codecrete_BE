@@ -9,6 +9,7 @@ import com.back.web7_9_codecrete_be.domain.community.post.entity.Post;
 import com.back.web7_9_codecrete_be.domain.community.post.entity.PostCategory;
 import com.back.web7_9_codecrete_be.domain.community.post.repository.JoinPostRepository;
 import com.back.web7_9_codecrete_be.domain.community.post.repository.PostRepository;
+import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.PostErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
@@ -22,14 +23,17 @@ public class JoinPostService {
 
     private final PostRepository postRepository;
     private final JoinPostRepository joinPostRepository;
+    private final ConcertService concertService;
 
     // 구인글 작성
     @Transactional
     public Long create(JoinPostCreateRequest req, User user) {
 
+        concertService.validateConcertExists(req.getConcertId());
+
         Post post = Post.create(
                 user.getId(),
-                user.getNickname(),
+                req.getConcertId(),
                 req.getTitle(),
                 req.getContent(),
                 PostCategory.JOIN
@@ -67,7 +71,9 @@ public class JoinPostService {
 
         Post post = validateOwner(joinPost, userId);
 
-        post.update(req.getTitle(), req.getContent(), PostCategory.JOIN);
+        concertService.validateConcertExists(req.getConcertId());
+
+        post.update(req.getConcertId(), req.getTitle(), req.getContent(), PostCategory.JOIN);
 
         joinPost.update(req);
     }

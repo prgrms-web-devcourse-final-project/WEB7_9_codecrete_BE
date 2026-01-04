@@ -19,8 +19,8 @@ public class PostResponse {
     @Schema(description = "작성자 사용자 ID", example = "10")
     private Long userId;
 
-    @Schema(description = "작성자 닉네임", example = "콘서트요정")
-    private String nickname;
+    @Schema(description = "연관된 콘서트 ID", example = "5")
+    private Long concertId;
 
     @Schema(description = "게시글 제목", example = "공연 정보 공유합니다")
     private String title;
@@ -40,7 +40,7 @@ public class PostResponse {
     public static PostResponse from(Post post) {
         return PostResponse.builder()
                 .postId(post.getPostId())
-                .nickname(post.getNickname())
+                .concertId(post.getConcertId())
                 .userId(post.getUserId())
                 .title(post.getTitle())
                 .content(post.getContent())
