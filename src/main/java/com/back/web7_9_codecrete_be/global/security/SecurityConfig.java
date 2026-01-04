@@ -48,7 +48,9 @@ public class SecurityConfig {
 				.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
 			// Authorization 설정
+
 			.authorizeHttpRequests(auth -> auth
+				.requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
 				.requestMatchers(
 					"/ws-chat/**",
 					"/actuator/**",
@@ -59,7 +61,11 @@ public class SecurityConfig {
 					"/api/v1/location/**",      //location 정보 조회 도메인(임시)
 					"/api/v1/concerts/**",     // concert 정보 조회 도메인
 					"/api/v1/artists/**",    // artist 정보 저장 도메인(임시)
-          			"/api/v1/users/**"
+					"/api/v1/users/**",
+					"/api/v1/chats/**",
+					"/api/v1/reviews/**",
+					"/api/v1/join/**",
+					"/api/v1/server-time/**"
 				).permitAll()
 
 				// ADMIN 전용
@@ -86,11 +92,12 @@ public class SecurityConfig {
 	public UrlBasedCorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
 
-		configuration.setAllowedOrigins(List.of("http://localhost:3000", "https://www.naeconcertbutakhae.shop"));
+		configuration.setAllowedOrigins(
+			List.of("http://localhost:3000", "http://localhost:8080", "https://www.naeconcertbutakhae.shop"));
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
 		configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of("Set-Cookie"));
+		configuration.setExposedHeaders(List.of("Set-Cookie"));
 
 		//쿠키 자동으로 넘어가게 설정
 		configuration.setAllowCredentials(true);

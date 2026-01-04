@@ -1,13 +1,12 @@
 package com.back.web7_9_codecrete_be.domain.artists.controller;
 
+import com.back.web7_9_codecrete_be.domain.artists.dto.response.*;
+import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
+import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistLike;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistSort;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.CreateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.SearchRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.UpdateRequest;
-import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistListResponse;
-import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
-import com.back.web7_9_codecrete_be.domain.artists.dto.response.ConcertListByArtistResponse;
-import com.back.web7_9_codecrete_be.domain.artists.dto.response.SearchResponse;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistService;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistEnrichService;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
@@ -18,7 +17,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -57,24 +55,16 @@ public class ArtistsController {
         return RsData.success("MusicBrainz ID 수집 성공", updated);
     }
 
-    @Operation(summary = "아티스트 생성", description = "아티스트를 등록합니다.")
-    @PostMapping()
-    public RsData<Void> create(
-            @Valid @RequestBody CreateRequest reqBody
-    ) {
-        artistService.createArtist(reqBody.spotifyID(), reqBody.artistName(), reqBody.artistGroup(), reqBody.artistType(), reqBody.genreName());
-        return RsData.success("아티스트 생성이 완료되었습니다.", null);
-    }
-
     @Operation(summary = "아티스트 목록 조회",
             description = "아티스트 전체 목록을 조회합니다(NAME: 이름순 / LIKE: 인기순 (좋아요 많은 순)")
     @GetMapping()
-    public RsData<Slice<ArtistListResponse>> list(
+    public RsData<ArtistSliceResponse> list(
             Pageable pageable,
             @RequestParam(required = false) ArtistSort sort
     ) {
         User user = rq.getUserOrNull(); // 로그인하지 않은 경우 null
-        return RsData.success("아티스트 전체 목록을 조회했습니다.", artistService.listArtist(pageable, user, sort));
+        return RsData.success("아티스트 전체 목록을 조회했습니다.",
+                ArtistSliceResponse.from(artistService.listArtist(pageable, user, sort)));
     }
 
     @Operation(summary = "아티스트 상세 조회", description = "아티스트의 상세 정보를 조회합니다.")
@@ -82,27 +72,7 @@ public class ArtistsController {
     public RsData<ArtistDetailResponse> artist(
             @PathVariable Long id
     ) {
-        User user = rq.getUserOrNull(); // 로그인하지 않은 경우 null
-        return RsData.success("아티스트 상세 조회를 성공했습니다.", artistService.getArtistDetail(id, user));
-    }
-
-    @Operation(summary = "아티스트 정보 수정", description = "아티스트 정보를 수정합니다.")
-    @PatchMapping("/{id}")
-    public RsData<Void> update(
-            @PathVariable Long id,
-            @Valid @RequestBody UpdateRequest reqBody
-    ) {
-        artistService.updateArtist(id, reqBody);
-        return RsData.success("아티스트 정보 수정을 완료했습니다.", null);
-    }
-
-    @Operation(summary = "아티스트 정보 삭제", description = "아티스트 정보를 삭제합니다.")
-    @DeleteMapping("/{id}")
-    public RsData<Void> delete(
-            @PathVariable Long id
-    ) {
-        artistService.delete(id);
-        return RsData.success("아티스트 정보를 삭제했습니다.", null);
+        return RsData.success("아티스트 상세 조회를 성공했습니다.", artistService.getArtistDetail(id));
     }
 
     @Operation(summary = "아티스트 검색",
@@ -149,6 +119,16 @@ public class ArtistsController {
     public RsData<List<ConcertListByArtistResponse>> concertList() {
         User user = rq.getUser();
         return RsData.success("찜한 아티스트 공연 리스트 조회 성공", artistService.getConcertList(user.getId()));
+    }
+
+    @Operation(summary = "아티스트 찜 여부 반환", description = "아티스트 Id 를 통해 로그인한 유저가 해당 아티스트를 찜했는지 여부를 반환합니다.")
+    @GetMapping("/likes/{artistId}")
+    public RsData<LikeArtistResponse> isLiked(
+            @PathVariable Long artistId
+    ) {
+        User user = rq.getUser();
+        Artist artist = artistService.findArtist(artistId);
+        return RsData.success("해당 아티스트 찜 여부 조회 성공", artistService.findArtistLikeByUserId(artist, user));
     }
 
     @Operation(summary = "아티스트 인기 순위(구현 전)", description = "Spotify 인기도를 바탕으로 아티스트 인기 순위 랭킹을 제공합니다.")

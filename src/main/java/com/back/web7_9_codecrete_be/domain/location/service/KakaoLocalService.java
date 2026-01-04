@@ -1,11 +1,11 @@
 package com.back.web7_9_codecrete_be.domain.location.service;
 
-import com.back.web7_9_codecrete_be.domain.location.dto.KakaoCoordinateResponse;
-import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoLocalResponse;
-import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoMobilityResponse;
-import com.back.web7_9_codecrete_be.domain.location.dto.request.KakaoRouteTransitRequest;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.kakao.KakaoCoordinateResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.kakao.KakaoLocalResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.kakao.KakaoMobilityResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.request.kakao.KakaoRouteTransitRequest;
 //import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoRouteTransitFeResponse;
-import com.back.web7_9_codecrete_be.domain.location.dto.response.KakaoRouteTransitResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.kakao.KakaoRouteTransitResponse;
 import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;

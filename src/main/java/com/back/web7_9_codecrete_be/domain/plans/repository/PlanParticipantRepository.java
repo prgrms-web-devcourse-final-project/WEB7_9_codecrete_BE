@@ -1,9 +1,11 @@
 package com.back.web7_9_codecrete_be.domain.plans.repository;
 
 import com.back.web7_9_codecrete_be.domain.plans.entity.PlanParticipant;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -24,4 +26,13 @@ public interface PlanParticipantRepository extends JpaRepository<PlanParticipant
      * @return PlanParticipant
      */
     Optional<PlanParticipant> findByUser_IdAndPlan_PlanId(Long userId, Long planId);
+
+    /**
+     * 특정 플랜의 모든 참가자 조회 (User 정보 포함)
+     * @EntityGraph를 사용하여 User 정보를 함께 조회하여 N+1 문제 방지
+     * @param planId 플랜 ID
+     * @return 참가자 목록
+     */
+    @EntityGraph(attributePaths = {"user"})
+    List<PlanParticipant> findByPlan_PlanId(Long planId);
 }

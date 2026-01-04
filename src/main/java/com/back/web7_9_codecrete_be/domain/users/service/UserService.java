@@ -1,10 +1,11 @@
 package com.back.web7_9_codecrete_be.domain.users.service;
 
-
 import com.back.web7_9_codecrete_be.domain.auth.dto.request.SignupRequest;
 import com.back.web7_9_codecrete_be.domain.auth.service.TokenService;
+import com.back.web7_9_codecrete_be.domain.chats.service.ChatUserCacheService;
 import com.back.web7_9_codecrete_be.domain.email.service.EmailService;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserSettingUpdateRequest;
+import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdateBirthRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdateNicknameRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdatePasswordRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.response.UserResponse;
@@ -40,6 +41,7 @@ public class UserService {
     private final TokenService tokenService;
     private final UserRestoreTokenRedisRepository userRestoreTokenRedisRepository;
     private final EmailService emailService;
+    private final ChatUserCacheService chatUserCacheService;
 
     private final ImageFileValidator imageFileValidator;
 
@@ -110,6 +112,9 @@ public class UserService {
 
         user.updateNickname(req.getNickname());
         userRepository.save(user);
+
+        chatUserCacheService.removeChatUserCache(user.getEmail());
+
         return UserResponse.from(user);
     }
 
@@ -179,6 +184,14 @@ public class UserService {
 
         // 비밀번호 변경 시 로그아웃 처리
         tokenService.removeTokens(user);
+    }
+
+    @Transactional
+    public UserResponse updateBirth(User user, UserUpdateBirthRequest req) {
+        validateActiveUser(user);
+        user.updateBirth(LocalDate.parse(req.getBirth()));
+        userRepository.save(user);
+        return UserResponse.from(user);
     }
 
     public void sendRestoreLink(String email) {

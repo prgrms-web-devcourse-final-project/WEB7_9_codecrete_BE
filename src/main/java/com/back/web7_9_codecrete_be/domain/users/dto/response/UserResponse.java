@@ -1,6 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.users.dto.response;
 
 import com.back.web7_9_codecrete_be.domain.users.entity.Role;
+import com.back.web7_9_codecrete_be.domain.users.entity.SocialType;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,6 +20,7 @@ public class UserResponse {
     private String profileImageUrl;
     private String status;
     private Role role;
+    private SocialType socialType;
 
     public static UserResponse from(User user) {
         return UserResponse.builder()
@@ -30,6 +32,7 @@ public class UserResponse {
                 .profileImageUrl(user.getProfileImage())
                 .status(user.getStatus().name())
                 .role(user.getRole())
+                .socialType(user.getSocialType())
                 .build();
     }
 }

@@ -1,11 +1,13 @@
 package com.back.web7_9_codecrete_be.domain.chats.controller;
 
 import java.security.Principal;
+import java.util.Map;
 
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Controller;
 
-import com.back.web7_9_codecrete_be.domain.chats.dto.ChatMessageRequest;
+import com.back.web7_9_codecrete_be.domain.chats.dto.request.ChatMessageRequest;
 import com.back.web7_9_codecrete_be.domain.chats.service.ChatMessageService;
 
 import lombok.RequiredArgsConstructor;
@@ -25,7 +27,20 @@ public class ChatMessageController {
 			throw new IllegalStateException("Unauthenticated WebSocket access");
 		}
 
-		chatMessageService.sendMessage(message, principal);
+		chatMessageService.handleSend(message, principal);
+	}
+
+	@MessageMapping("/chat/status")
+	public void getInitialCount(@Payload Map<String, Object> payload) {
+
+		Object concertIdObj = payload.get("concertId");
+
+		if (concertIdObj != null) {
+			Long concertId = Long.valueOf(concertIdObj.toString());
+			log.info("[CHAT STATUS] 인원수 초기 요청 수신: concertId={}", concertId);
+
+			chatMessageService.broadcastUser(concertId);
+		}
 	}
 }
 

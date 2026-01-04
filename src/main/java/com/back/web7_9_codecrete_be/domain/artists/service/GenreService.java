@@ -1,11 +1,16 @@
 package com.back.web7_9_codecrete_be.domain.artists.service;
 
+import com.back.web7_9_codecrete_be.domain.artists.dto.response.ConcertListByArtistResponse;
+import com.back.web7_9_codecrete_be.domain.artists.dto.response.GenreResponse;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Genre;
 import com.back.web7_9_codecrete_be.domain.artists.repository.GenreRepository;
+import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import com.back.web7_9_codecrete_be.global.error.code.GenreErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -18,5 +23,12 @@ public class GenreService {
         Genre genre = genreRepository.findByGenreName(normalized)
                 .orElseThrow(() -> new BusinessException(GenreErrorCode.GENRE_NOT_FOUND));
         return genre;
+    }
+
+    public List<GenreResponse> genreList() {
+        List<Genre> genre = genreRepository.findAll();
+        return genre.stream()
+                .map(GenreResponse::from)
+                .toList();
     }
 }

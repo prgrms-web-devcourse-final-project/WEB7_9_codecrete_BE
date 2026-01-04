@@ -173,13 +173,27 @@ public class ConcertController {
                     <h3>검색어가 되는 Keyword입니다.</h3>
                     <hr/>
                     <b>?keyword={keyword}</b> 로 값을 넘기시면 됩니다.<br/>
-                    DB에서 해당 문자열을 가지고 있는 모든 결과값을 반환합니다.
+                    DB에서 해당 문자열을 가지고 있는 모든 결과값을 페이징 된 만큼 반환합니다.
                     """)
             @RequestParam String keyword,
             @Schema(description = "페이징 처리 또는 무한 스크롤 구현에 쓸 Pageable 객체입니다.")
             Pageable pageable
     ) {
         return RsData.success(concertService.getConcertListByKeyword(keyword, pageable));
+    }
+
+    @Operation(summary = "공연 검색 결과 개수" , description = "키워드를 포함하고 있는 공연의 총 개수를 반환합니다.")
+    @GetMapping("searchCount")
+    public RsData<Integer> getConcertSearchCount(
+            @Schema(description = """
+                    <h3>검색어가 되는 Keyword입니다.</h3>
+                    <hr/>
+                    <b>?keyword={keyword}</b> 로 값을 넘기시면 됩니다.<br/>
+                    DB에서 해당 문자열을 가지고 있는 모든 제목의 개수를 반환합니다.
+                    """)
+            @RequestParam String keyword
+    ){
+        return  RsData.success(concertService.getConcertSearchCountByKeyword(keyword));
     }
 
     @Operation(summary = "공연의 공연장소 상세 조회", description = "해당 공연의 공연장의 상세 정보를 표시합니다.")
@@ -197,7 +211,11 @@ public class ConcertController {
         return RsData.success(concertService.getConcertPlaceDetail(concertId));
     }
 
-    @Operation(summary = "검색어 자동완성", description = "주어진 문자열을 가지고 있는 결과를 조회합니다.")
+    @Operation(summary = "검색어 자동완성",
+            description = """
+                    주어진 문자열을 가지고 있는 결과를 조회합니다.<br/>
+                    ConcertAdmin api에서 autoSet을 호출하여 검색어 등록을 진행해주셔야 결과가 나옵니다.
+                    """)
     @GetMapping("autoComplete")
     public RsData<List<AutoCompleteItem>> autoCompleteConcert(
             @RequestParam
@@ -226,4 +244,31 @@ public class ConcertController {
         return RsData.success(concertService.autoCompleteSearch(keyword,start,end));
     }
 
+    @Operation(summary = "유사 공연 목록",description = """
+            현재 검색한 공연과 유사한 공연을 추천합니다.<br/>
+            같은 공연장을 기준으로 60일 이내의 공연들을 날짜 오름차순으로 추천합니다.
+            """)
+    @GetMapping("similarConcerts/{concertId}")
+    public RsData<List<ConcertItem>> similarConcerts(
+            @PathVariable
+            @Schema(description = """
+                    <h3>조회 기준이 되는 concertId입니다.</h3>
+                    <hr/>
+                    DB에 저장되어 있는 공연의 ID 값을 기준으로 유사한 공연을 조회합니다. <br/>
+                    """)
+            long concertId
+    ){
+        return RsData.success(concertService.recommendSimilarConcerts(concertId));
+    }
+
+    @Operation(summary = "제목이 유사한 공연 목록", description = """
+            입력한 공연 ID에 해당하는 공연과 유사한 제목을 가지는 공연들을 검색합니다.<br/>
+            """)
+    @GetMapping("similarTitleConcerts")
+    public RsData<List<ConcertItem>> getSimilarTitleConcert(
+            @RequestParam
+            long concertId
+    ){
+        return RsData.success(concertService.recommendSimilarTitleConcerts(concertId));
+    }
 }

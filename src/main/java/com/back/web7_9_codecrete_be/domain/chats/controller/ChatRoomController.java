@@ -14,7 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "Chat Room", description = "공연 채팅방 입장 및 퇴장 API")
+@Tag(name = "Chat", description = "채팅 관련 API")
 @RestController
 @RequestMapping("/api/v1/chat-room")
 @RequiredArgsConstructor
@@ -34,8 +34,13 @@ public class ChatRoomController {
 			Redis Stream 기반 과거 채팅과 실시간 채팅을 수신합니다.
 			""" )
 	@ApiResponse( responseCode = "200", description = "채팅방 입장에 성공하였습니다." )
-	@ApiResponse( responseCode = "403", description = "로그인이 필요합니다." )
-	@ApiResponse( responseCode = "403", description = "채팅 가능한 기간이 아닙니다." )
+	@ApiResponse(
+		responseCode = "403",
+		description = """
+			- 로그인이 필요합니다.
+			- 채팅 가능한 기간이 아닙니다.
+		"""
+	)
 	@ApiResponse( responseCode = "404", description = "콘서트가 존재하지 않습니다." )
 	@PostMapping("/concert/{concertId}/join")
 	public RsData<Void> joinChatRoom(@PathVariable Long concertId) {

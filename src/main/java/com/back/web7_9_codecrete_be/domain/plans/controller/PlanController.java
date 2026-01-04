@@ -8,11 +8,13 @@ import com.back.web7_9_codecrete_be.domain.plans.dto.request.ScheduleUpdateReque
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.PlanDeleteResponse;
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.PlanDetailResponse;
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.PlanListResponse;
+import com.back.web7_9_codecrete_be.domain.plans.dto.response.PlanParticipantListResponse;
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.PlanResponse;
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.PlanShareLinkResponse;
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.ScheduleResponse;
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.ScheduleListResponse;
 import com.back.web7_9_codecrete_be.domain.plans.dto.response.ScheduleDeleteResponse;
+import com.back.web7_9_codecrete_be.domain.plans.entity.PlanParticipant;
 import com.back.web7_9_codecrete_be.domain.plans.service.PlanService;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.rq.Rq;
@@ -219,13 +221,13 @@ public class PlanController {
      * @param participantId 참가자 ID
      * @return 성공 메시지 (200 OK)
      */
-    @DeleteMapping("/kick/{planId}/{participantId}")
-    @Operation(summary = "계획 공유 인원 추방", description = "계획에 참여 중인 사용자를 추방합니다. 계획의 소유자만 다른 참가자를 추방할 수 있으며, 소유자 자신은 추방할 수 없습니다.")
+    @DeleteMapping("/{planId}/participants/{participantId}/kick")
+    @Operation(summary = "계획 공유 인원 추방", description = "계획에 참여 중인 사용자를 추방합니다. 계획의 소유자 또는 편집 권한이 있는 사용자만 다른 참가자를 추방할 수 있으며, 소유자는 추방할 수 없습니다.")
     public RsData<Void> kickParticipant(
             @PathVariable Long planId,
             @PathVariable Long participantId) {
         User user = rq.getUser();
-        // TODO: 구현 필요
+        planService.kickParticipant(planId, participantId, user);
         return RsData.success("참가자 추방 성공", null);
     }
 
@@ -235,12 +237,43 @@ public class PlanController {
      * @param planId 계획 ID
      * @return 성공 메시지 (200 OK)
      */
-    @DeleteMapping("/quit/{planId}")
-    @Operation(summary = "계획 공유 나가기", description = "공유된 계획에서 나갑니다. 계획의 소유자가 아닌 참가자만 사용할 수 있으며, 나가기 시 해당 계획의 참가자 목록에서 제거됩니다.")
+    @DeleteMapping("/{planId}/quit")
+    @Operation(summary = "계획 공유 나가기", description = "공유된 계획에서 나갑니다. 계획의 소유자가 아닌 참가자만 사용할 수 있으며, 나가기 시 참가자 상태가 LEFT로 변경됩니다.")
     public RsData<Void> quitPlan(@PathVariable Long planId) {
         User user = rq.getUser();
-        // TODO: 구현 필요
+        planService.quitPlan(planId, user);
         return RsData.success("계획 나가기 성공", null);
+    }
+
+    /**
+     * 초대 거절
+     *
+     * @param shareToken 공유 토큰
+     * @return 성공 메시지 (200 OK)
+     */
+    @PostMapping("/share/{shareToken}/decline")
+    @Operation(summary = "초대 거절", description = "공유 링크를 통해 받은 초대를 거절합니다. 참가자 상태가 DECLINED로 변경됩니다.")
+    public RsData<Void> declinePlanInvitation(@PathVariable String shareToken) {
+        User user = rq.getUser();
+        planService.declinePlanInvitation(shareToken, user);
+        return RsData.success("초대 거절 성공", null);
+    }
+
+    /**
+     * 참가자 목록 조회
+     *
+     * @param planId 계획 ID
+     * @param inviteStatus 초대 상태 필터 (선택적)
+     * @return 참가자 목록 (200 OK)
+     */
+    @GetMapping("/{planId}/participants")
+    @Operation(summary = "참가자 목록 조회", description = "계획의 참가자 목록을 조회합니다. 상태별 필터링이 가능하며, 참가자 정보(닉네임, 이메일, 프로필 이미지 등)를 포함합니다.")
+    public RsData<PlanParticipantListResponse> getParticipantList(
+            @PathVariable Long planId,
+            @RequestParam(required = false) PlanParticipant.InviteStatus inviteStatus) {
+        User user = rq.getUser();
+        PlanParticipantListResponse response = planService.getParticipantList(planId, user, inviteStatus);
+        return RsData.success("참가자 목록 조회 성공", response);
     }
 
     /**
@@ -250,11 +283,39 @@ public class PlanController {
      * @return 공유 링크 정보 (200 OK)
      */
     @PostMapping("/{planId}/share/link")
-    @Operation(summary = "공유 링크 생성", description = "플랜 공유를 위한 UUID 기반 13자 토큰 링크를 생성합니다. 계획의 소유자 또는 편집 권한이 있는 사용자만 링크를 생성할 수 있습니다.")
+    @Operation(summary = "공유 링크 생성", description = "플랜 공유를 위한 UUID 기반 13자 토큰 링크를 생성합니다. 계획의 소유자만 링크를 생성할 수 있습니다.")
     public RsData<PlanShareLinkResponse> generateShareLink(@PathVariable Long planId) {
         User user = rq.getUser();
         PlanShareLinkResponse response = planService.generateShareLink(planId, user);
         return RsData.success("공유 링크 생성 성공", response);
+    }
+
+    /**
+     * 공유 링크 조회
+     *
+     * @param planId 계획 ID
+     * @return 공유 링크 정보 (200 OK)
+     */
+    @GetMapping("/{planId}/share/link")
+    @Operation(summary = "공유 링크 조회", description = "생성된 공유 링크를 조회합니다. 계획의 소유자만 링크를 조회할 수 있습니다. 공유 링크가 생성되지 않았거나 만료된 경우 에러가 발생합니다.")
+    public RsData<PlanShareLinkResponse> getShareLink(@PathVariable Long planId) {
+        User user = rq.getUser();
+        PlanShareLinkResponse response = planService.getShareLink(planId, user);
+        return RsData.success("공유 링크 조회 성공", response);
+    }
+
+    /**
+     * 공유 링크 재생성 (재발급)
+     *
+     * @param planId 계획 ID
+     * @return 공유 링크 정보 (200 OK)
+     */
+    @PostMapping("/{planId}/share/link/regenerate")
+    @Operation(summary = "공유 링크 재생성", description = "기존 공유 링크를 무효화하고 새로운 링크를 재발급합니다. 이전 링크는 더 이상 접근할 수 없습니다. 계획의 소유자만 링크를 재생성할 수 있습니다.")
+    public RsData<PlanShareLinkResponse> regenerateShareLink(@PathVariable Long planId) {
+        User user = rq.getUser();
+        PlanShareLinkResponse response = planService.regenerateShareLink(planId, user);
+        return RsData.success("공유 링크 재생성 성공", response);
     }
 
     /**
@@ -292,7 +353,7 @@ public class PlanController {
      * @return 성공 메시지 (200 OK)
      */
     @DeleteMapping("/{planId}/share/link")
-    @Operation(summary = "공유 링크 삭제", description = "생성된 공유 링크를 삭제합니다. 계획의 소유자 또는 편집 권한이 있는 사용자만 링크를 삭제할 수 있습니다.")
+    @Operation(summary = "공유 링크 삭제", description = "생성된 공유 링크를 삭제합니다. 계획의 소유자만 링크를 삭제할 수 있습니다.")
     public RsData<Void> deleteShareLink(@PathVariable Long planId) {
         User user = rq.getUser();
         planService.deleteShareLink(planId, user);

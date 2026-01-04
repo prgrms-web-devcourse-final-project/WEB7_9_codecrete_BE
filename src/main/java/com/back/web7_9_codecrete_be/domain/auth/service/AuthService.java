@@ -75,7 +75,7 @@ public class AuthService {
         }
         tokenService.issueTokens(user);
 
-        return new LoginResponse(user.getId(), user.getNickname(), user.getRole());
+        return new LoginResponse(user.getId(), user.getNickname(), user.getRole(), user.getSocialType());
     }
 
     // 이메일 인증코드 전송
@@ -117,16 +117,41 @@ public class AuthService {
         emailService.sendNewPassword(email, tempPassword);
     }
 
-    // 임시 비밀번호 생성
+    // 임시 비밀번호 생성 (영문 + 숫자 + 특수문자 포함)
     private String generateTempPassword() {
         SecureRandom random = new SecureRandom();
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+        String upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        String lower = "abcdefghijklmnopqrstuvwxyz";
+        String digits = "0123456789";
+        String special = "!@#$%^&*";
+        String all = upper + lower + digits + special;
+
         StringBuilder sb = new StringBuilder();
 
-        for (int i = 0; i < 10; i++) {
-            sb.append(chars.charAt(random.nextInt(chars.length())));
+        // 패턴 충족을 위해 최소 1개씩 강제 포함
+        sb.append(upper.charAt(random.nextInt(upper.length())));
+        sb.append(lower.charAt(random.nextInt(lower.length())));
+        sb.append(digits.charAt(random.nextInt(digits.length())));
+        sb.append(special.charAt(random.nextInt(special.length())));
+
+        // 나머지 자리 랜덤 채우기 (총 10자)
+        for (int i = sb.length(); i < 10; i++) {
+            sb.append(all.charAt(random.nextInt(all.length())));
         }
-        return sb.toString();
+
+        return shuffle(sb.toString(), random);
+    }
+
+    private String shuffle(String input, SecureRandom random) {
+        char[] chars = input.toCharArray();
+        for (int i = chars.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            char temp = chars[i];
+            chars[i] = chars[j];
+            chars[j] = temp;
+        }
+        return new String(chars);
     }
 
     @Transactional
@@ -154,7 +179,7 @@ public class AuthService {
         // 5. 토큰 발급
         tokenService.issueTokens(user);
 
-        return new LoginResponse(user.getId(), user.getNickname(), user.getRole());
+        return new LoginResponse(user.getId(), user.getNickname(), user.getRole(), user.getSocialType());
     }
 
     private User registerKakaoUser(KakaoUserInfo info) {
@@ -195,7 +220,7 @@ public class AuthService {
         // 5. 토큰 발급
         tokenService.issueTokens(user);
 
-        return new LoginResponse(user.getId(), user.getNickname(), user.getRole());
+        return new LoginResponse(user.getId(), user.getNickname(), user.getRole(), user.getSocialType());
     }
 
     private User registerGoogleUser(GoogleUserInfo info) {

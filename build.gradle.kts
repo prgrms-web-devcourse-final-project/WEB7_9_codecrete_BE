@@ -1,10 +1,9 @@
 plugins {
-    java
+    id("java")
     id("org.springframework.boot") version "3.5.8"
     id("io.spring.dependency-management") version "1.1.7"
-    jacoco
+    id("jacoco")
 }
-
 group = "com.back"
 version = "0.0.1-SNAPSHOT"
 description = "WEB7_9_codecrete_BE"
@@ -32,6 +31,10 @@ dependencies {
 
     // 웹 클라이언트
     implementation("org.springframework.boot:spring-boot-starter-webflux")
+
+    // Spring Retry( 로직 재시도 편의성 추구)
+    implementation ("org.springframework.boot:spring-boot-starter-aop")
+    implementation ("org.springframework.retry:spring-retry")
 
     // 캐싱
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
@@ -71,7 +74,7 @@ dependencies {
 
     // 정적 HTML 문서 기준 크롤링
     implementation("org.jsoup:jsoup:1.21.2")
-   
+
     // Spotify
     implementation("se.michaelthelin.spotify:spotify-web-api-java:8.4.1")
 
@@ -81,7 +84,7 @@ dependencies {
 
     // Apache Tika
     implementation("org.apache.tika:tika-core:2.9.0")
-    
+
     // 서버 정상 작동 확인용
     implementation("org.springframework.boot:spring-boot-starter-actuator")
 }
@@ -89,7 +92,6 @@ dependencies {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
-
 
 
 /** -----------------------------

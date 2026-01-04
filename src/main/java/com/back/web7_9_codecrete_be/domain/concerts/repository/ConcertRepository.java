@@ -3,7 +3,6 @@ package com.back.web7_9_codecrete_be.domain.concerts.repository;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailResponse;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
-import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -258,4 +257,46 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
     );
 
 
+    @Query("""
+            SELECT
+            c 
+            FROM
+            Concert c
+            WHERE
+            c.concertId != :concertId
+            AND
+            c.concertPlace.concertPlaceId = :placeId
+            AND 
+            c.startDate BETWEEN :startDate AND :endDate
+            ORDER BY
+            c.startDate
+            ASC
+            """)
+    List<ConcertItem> getSimilarConcerts(
+            @Param("concertId") long concertId,
+            @Param("placeId") Long concertPlaceId,
+            @Param("startDate") LocalDate rangeStartDate,
+            @Param("endDate") LocalDate rangeEndDate
+    );
+
+    Integer countConcertsByNameContaining(String name);
+
+    @Query("""
+            SELECT
+            c
+            FROM
+            Concert c
+            JOIN FETCH
+            c.concertPlace cp
+            WHERE 
+            c.concertId IN :list
+            AND
+            c.startDate > :afterDate
+            ORDER BY 
+            c.startDate
+            asc
+            """)
+    List<ConcertItem> getConcertItemsInIdList(
+            @Param("list") List<Long> idList,
+            @Param("afterDate") LocalDate afterDate);
 }

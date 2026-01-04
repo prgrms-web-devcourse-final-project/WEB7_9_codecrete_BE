@@ -4,8 +4,6 @@ import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertUpdateReq
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -56,6 +54,8 @@ public class Concert {
     @Column(name = "api_concert_id", nullable = false)
     private String apiConcertId;
 
+    private String area;
+
     @Column(name = "poster_url",nullable = false,columnDefinition = "TEXT")
     private String posterUrl;
 
@@ -65,7 +65,7 @@ public class Concert {
 
 
 
-    public Concert(ConcertPlace concertPlace, String name, String content, LocalDate startDate, LocalDate endDate, LocalDateTime ticketTime,LocalDateTime ticketEndTime, int maxPrice, int minPrice, String posterUrl,String apiConcertId) {
+    public Concert(ConcertPlace concertPlace, String name, String content, LocalDate startDate, LocalDate endDate, LocalDateTime ticketTime,LocalDateTime ticketEndTime, int maxPrice, int minPrice, String posterUrl,String area,String apiConcertId) {
         this.concertPlace = concertPlace;
         this.name = name;
         this.content = content;
@@ -80,6 +80,7 @@ public class Concert {
         this.posterUrl = posterUrl;
         this.likeCount = 0;
         this.viewCount = 0;
+        this.area = area;
         this.apiConcertId = apiConcertId;
     }
 

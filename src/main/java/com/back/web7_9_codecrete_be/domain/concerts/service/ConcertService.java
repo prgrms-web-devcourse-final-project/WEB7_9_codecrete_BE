@@ -18,9 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -55,7 +53,7 @@ public class ConcertService {
             case REGISTERED -> concertItems = concertRepository.getConcertItemsOrderByApiId(pageable);
         }
 
-        concertRedisRepository.listSave(sort,pageable,concertItems);
+        concertRedisRepository.saveConcertsList(sort,pageable,concertItems);
         return concertItems;
     }
 
@@ -77,7 +75,15 @@ public class ConcertService {
         return concertRepository.getConcertItemsByKeyword(keyword, pageable);
     }
 
-    // 자동완성
+    // 키워드 통한 공연 제목 검색 결과 개수
+    public Integer getConcertSearchCountByKeyword(String keyword) {
+        if(keyword == null || keyword.isEmpty()){
+            throw new BusinessException(ConcertErrorCode.KEYWORD_IS_NULL);
+        }
+        return concertRepository.countConcertsByNameContaining(keyword);
+    }
+
+    // 검색어 자동 완성
     public List<AutoCompleteItem> autoCompleteSearch(String keyword, int start, int end) {
         return concertSearchRedisTemplate.getAutoCompleteWord(keyword, start, end);
     }
@@ -100,7 +106,7 @@ public class ConcertService {
     // 공연 상세 조회 조회시 조회수 1 증가 -> 캐싱에 따른 조회수 불일치 해소를 어떻게 할 것인가? V -> 이제 캐싱된거 날리고 새로운 수치 반영 어케할 것인지 + 여러번 조회수 올릴 시 처리 어떻게 할지
     @Transactional
     public ConcertDetailResponse getConcertDetail(long concertId) {
-        ConcertDetailResponse concertDetailResponse = concertRedisRepository.getDetail(concertId);
+        ConcertDetailResponse concertDetailResponse = concertRedisRepository.getCachedConcertDetail(concertId);
         if(concertDetailResponse == null){
             concertDetailResponse = concertRepository.getConcertDetailById(concertId);
             List<ConcertImage>  concertImages = concertImageRepository.getConcertImagesByConcert_ConcertId(concertId);
@@ -108,26 +114,24 @@ public class ConcertService {
             for(ConcertImage concertImage : concertImages){
                 concertImageUrls.add(concertImage.getImageUrl());
             }
-
-            concertRepository.concertViewCountUp(concertId);
             concertDetailResponse.setConcertImageUrls(concertImageUrls);
-            concertDetailResponse.setViewCount(concertDetailResponse.getViewCount() + 1);
-            concertRedisRepository.detailSave(concertId, concertDetailResponse);
         }
+        // 조회수 1 증가하고 해당 데이터를 캐시에 저장.
+        concertDetailResponse.setViewCount(concertDetailResponse.getViewCount() + 1);
+        concertRedisRepository.saveConcertDetail(concertId, concertDetailResponse);
         return concertDetailResponse;
     }
 
     // 조회수 갱신
     @Transactional
     public void viewCountUpdate(){
-        Map<Long,Integer> viewCountMap = concertRedisRepository.getViewCountMap();
+        Map<Long,Integer> viewCountMap = concertRedisRepository.getCachedViewCountMap();
         if(viewCountMap == null || viewCountMap.isEmpty()) {
             log.info("viewCountMap is empty");
         } else{
             for (Map.Entry<Long, Integer> viewCountEntry : viewCountMap.entrySet()) {
                 concertRepository.concertViewCountSet(viewCountEntry.getKey(), viewCountEntry.getValue());
             }
-            concertRedisRepository.deleteViewCountMap();
             concertRedisRepository.deleteAllConcertsList();
             log.info("viewCount updated");
         }
@@ -238,7 +242,10 @@ public class ConcertService {
         if(ticketEndTime.isAfter(concert.getEndDate().atTime(LocalTime.MAX))) throw new BusinessException(ConcertErrorCode.CONCERT_TICKETING_END_TIME_IS_NOT_AFTER_CONCERT_END_DATE);
 
         concert.ticketTimeSet(ticketTime, ticketEndTime);
+        // DB에 저장
         Concert savedConcert = concertRepository.save(concert);
+        // 캐시에도 갱신
+        concertRedisRepository.updateCachedTickingDate(concert.getConcertId(),ticketTime,ticketEndTime);
         return concertRepository.getConcertDetailById(savedConcert.getConcertId());
     }
 
@@ -258,10 +265,67 @@ public class ConcertService {
         return new PlaceDetailResponse(concertPlace);
     }
 
+    // 공연 정보 조회
     private Concert findConcertByConcertId(long concertId) {
         return concertRepository.findById(concertId).orElseThrow(
                 () -> new BusinessException(ConcertErrorCode.CONCERT_NOT_FOUND)
         );
     }
+
+    // 같은 위치에 시작하는 공연
+    public List<ConcertItem> recommendSimilarConcerts(long concertId) {
+        Concert concert = findConcertByConcertId(concertId);
+        return concertRepository.getSimilarConcerts(
+                concertId,
+                concert.getConcertPlace().getConcertPlaceId(),
+                concert.getStartDate(),
+                concert.getStartDate().plusDays(60)
+        );
+    }
+
+    // 유사한 제목을 가지는 공연 추천
+    public List<ConcertItem> recommendSimilarTitleConcerts(long concertId) {
+        Concert concert = findConcertByConcertId(concertId);
+        String name = concert.getName();
+        String match = "[^ㄱ-ㅎㅏ-ㅣ가-힣a-zA-Z0-9\\s]";
+        name = name.replaceAll(match, "");
+        log.info("name: " + name);
+        String[] words = name.split(" ");
+        List<AutoCompleteItem> result = new ArrayList<>();
+
+        for (String word : words) {
+            if(word.isEmpty()) continue;
+            log.info("word: " + word);
+            result.addAll(concertSearchRedisTemplate.getAutoCompleteWord(word,0,5));
+        }
+        List<Long> idList = new ArrayList<>();
+
+        for (AutoCompleteItem item : result) {
+            if(Objects.equals(concert.getConcertId(), item.getId())) continue;
+            idList.add(item.getId());
+        }
+
+        // 자카드 유사도를 통해 더 비슷한 항목이 위로 오게 정렬하기
+        List<ConcertItem> concertItemList = concertRepository.getConcertItemsInIdList(idList,LocalDate.now());
+        concertItemList.sort(Comparator.comparingDouble(i1 -> jaccardSimilarity(words,i1.getName().split(" "))));
+        return concertItemList;
+    }
+
+    private double jaccardSimilarity(String[] origin , String[] target) {
+        Set<String> union = new HashSet<>();
+        Set<String> intersection = new HashSet<>();
+        union.addAll(Arrays.asList(origin));
+        union.addAll(Arrays.asList(target));
+
+        for (String s : origin) {
+            for (String t : target) {
+                if (s.equals(t)) intersection.add(s);
+            }
+        }
+
+        return (double)  union.size() / intersection.size();
+    }
+
+
 
 }
