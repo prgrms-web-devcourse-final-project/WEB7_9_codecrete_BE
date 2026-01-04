@@ -57,7 +57,7 @@ public class KopisApiService {
 
     private final RestClient restClient;
 
-    private int savedIndex;
+    private int savedIndex = 0;
 
     public KopisApiService(ConcertRepository concertRepository, ConcertPlaceRepository placeRepository, TicketOfficeRepository ticketOfficeRepository, ConcertImageRepository imageRepository, ConcertUpdateTimeRepository concertUpdateTimeRepository,ConcertRedisRepository concertRedisRepository) {
         this.concertRepository = concertRepository;
