@@ -13,6 +13,7 @@ import com.back.web7_9_codecrete_be.global.error.code.ConcertErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -325,6 +326,24 @@ public class ConcertService {
         List<ConcertItem> concertItemList = concertRepository.getConcertItemsInIdList(idList,LocalDate.now());
         concertItemList.sort(Comparator.comparingDouble(i1 -> jaccardSimilarity(words,i1.getName().split(" "))));
         return concertItemList;
+    }
+
+    public List<ConcertItem> concertsRecommendByLike(User user){
+        Pageable pageable = PageRequest.of(0, 100);
+        List<ConcertItem> likeList = concertRepository.getLikedConcertsList(pageable,user.getId());
+
+
+        return null;
+    }
+
+    private class WeightedBits{
+        String bit;
+        int weight;
+
+        public WeightedBits(String bit, int weight) {
+            this.bit = bit;
+            this.weight = weight;
+        }
     }
 
     private double jaccardSimilarity(String[] origin , String[] target) {
