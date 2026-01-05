@@ -2,13 +2,10 @@ package com.back.web7_9_codecrete_be.domain.artists.controller;
 
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.*;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
-import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistLike;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistSort;
-import com.back.web7_9_codecrete_be.domain.artists.dto.request.CreateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.dto.request.SearchRequest;
-import com.back.web7_9_codecrete_be.domain.artists.dto.request.UpdateRequest;
 import com.back.web7_9_codecrete_be.domain.artists.service.ArtistService;
-import com.back.web7_9_codecrete_be.domain.artists.service.ArtistEnrichService;
+import com.back.web7_9_codecrete_be.domain.artists.service.artistEnrichService.ArtistEnrichService;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.rq.Rq;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
@@ -119,6 +116,13 @@ public class ArtistsController {
     public RsData<List<ConcertListByArtistResponse>> concertList() {
         User user = rq.getUser();
         return RsData.success("찜한 아티스트 공연 리스트 조회 성공", artistService.getConcertList(user.getId()));
+    }
+
+    @Operation(summary = "찜한 아티스트 리스트 생성", description = "로그인한 유저가 찜한 아티스트 목록을 반환합니다.")
+    @GetMapping("/likes")
+    public RsData<List<LikeArtistsResponse>> likeArtists() {
+        User user = rq.getUser();
+        return RsData.success("찜한 아티스트 목록 조회 성공", artistService.findLikeArtistsByUserid(user));
     }
 
     @Operation(summary = "아티스트 찜 여부 반환", description = "아티스트 Id 를 통해 로그인한 유저가 해당 아티스트를 찜했는지 여부를 반환합니다.")

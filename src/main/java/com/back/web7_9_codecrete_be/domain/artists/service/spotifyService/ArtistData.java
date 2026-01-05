@@ -1,4 +1,4 @@
-package com.back.web7_9_codecrete_be.domain.artists.service.seed;
+package com.back.web7_9_codecrete_be.domain.artists.service.spotifyService;
 
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
 import java.util.List;

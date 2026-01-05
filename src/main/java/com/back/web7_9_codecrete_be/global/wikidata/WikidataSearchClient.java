@@ -26,18 +26,26 @@ public class WikidataSearchClient {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final WikidataEntityClient entityClient; // For getEntityInfo and description
 
     private static final String WIKIDATA_SEARCH_API = "https://www.wikidata.org/w/api.php";
     private static final String SPARQL_ENDPOINT = "https://query.wikidata.org/sparql";
 
     /**
      * Spotify Artist ID(P1902)로 QID 찾기
+     * 
+     * P31 필터를 완화하여 P31(instance of) 또는 P279*(subclass of)로 Q5(인간) 또는 Q215380(음악 그룹)인 엔티티를 찾음
+     * 여러 후보를 반환하여 description 스코어링에 사용
      */
-    public Optional<String> searchWikidataIdBySpotifyId(String spotifyId) {
+    public List<String> searchWikidataIdsBySpotifyId(String spotifyId) {
         try {
             String escapedSpotifyId = spotifyId.replace("\\", "\\\\").replace("\"", "\\\"");
+            // QID 후보 검색 완화: P1902만 확인하고, P31 필터는 제거하여 더 넓게 수집
+            // 정답 판별은 스코어링 단계에서 수행
             String sparqlQuery = String.format(
-                    "SELECT ?item WHERE { ?item wdt:P1902 \"%s\" . ?item wdt:P31 ?inst . FILTER(?inst IN (wd:Q5, wd:Q215380)) } LIMIT 10",
+                    "SELECT ?item WHERE { " +
+                    "?item wdt:P1902 \"%s\" . " +
+                    "} LIMIT 30",
                     escapedSpotifyId
             );
 
@@ -53,7 +61,7 @@ public class WikidataSearchClient {
 
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                 log.warn("Wikidata SPARQL API 응답 실패: status={}", response.getStatusCode());
-                return Optional.empty();
+                return new ArrayList<>();
             }
 
             JsonNode root = objectMapper.readTree(response.getBody());
@@ -61,7 +69,7 @@ public class WikidataSearchClient {
 
             if (!bindings.isArray() || bindings.isEmpty()) {
                 log.debug("Spotify ID로 Wikidata 결과 없음: {}", spotifyId);
-                return Optional.empty();
+                return new ArrayList<>();
             }
 
             List<String> candidateQids = new ArrayList<>();
@@ -75,18 +83,32 @@ public class WikidataSearchClient {
 
             if (candidateQids.isEmpty()) {
                 log.warn("Wikidata URI가 비어있음: spotifyId={}", spotifyId);
-                return Optional.empty();
+                return new ArrayList<>();
             }
 
             log.debug("Spotify ID로 Wikidata 후보 {}개 발견: {}", candidateQids.size(), candidateQids);
-            String qid = candidateQids.get(0);
-            log.info("Spotify ID로 Wikidata ID 찾음: {} -> {} (후보 {}개 중 첫 번째)", spotifyId, qid, candidateQids.size());
-            return Optional.of(qid);
+            return candidateQids;
 
         } catch (Exception e) {
             log.error("Spotify ID로 Wikidata 검색 중 예외 발생: spotifyId={}", spotifyId, e);
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * Spotify Artist ID(P1902)로 QID 찾기 (단일 반환, 하위 호환성)
+     * 
+     * @deprecated 여러 후보를 반환하는 searchWikidataIdsBySpotifyId 사용 권장
+     */
+    @Deprecated
+    public Optional<String> searchWikidataIdBySpotifyId(String spotifyId) {
+        List<String> candidates = searchWikidataIdsBySpotifyId(spotifyId);
+        if (candidates.isEmpty()) {
             return Optional.empty();
         }
+        String qid = candidates.get(0);
+        log.info("Spotify ID로 Wikidata ID 찾음: {} -> {} (후보 {}개 중 첫 번째)", spotifyId, qid, candidates.size());
+        return Optional.of(qid);
     }
 
     /**
@@ -399,6 +421,136 @@ public class WikidataSearchClient {
             sb.append(entry.getKey()).append("=").append(entry.getValue());
         }
         return sb.toString();
+    }
+    
+    /**
+     * Wikidata에서 의미 정보 수집 (SPARQL)
+     * P27 (국적), P106 (직업), P463 (그룹 소속)
+     * description은 Entity API에서 직접 가져오기
+     */
+    public Optional<WikidataDescriptionInfo> getDescriptionInfoByQid(String qid) {
+        try {
+            String escapedQid = qid.replace("\\", "\\\\").replace("\"", "\\\"");
+            String sparqlQuery = String.format(
+                    "SELECT ?nationalityLabel ?occupationLabel ?groupLabel WHERE { " +
+                    "OPTIONAL { wd:%s wdt:P27 ?nationality . } " +
+                    "OPTIONAL { wd:%s wdt:P106 ?occupation . } " +
+                    "OPTIONAL { wd:%s wdt:P463 ?group . } " +
+                    "SERVICE wikibase:label { bd:serviceParam wikibase:language \"ko,en\". } " +
+                    "} LIMIT 1",
+                    escapedQid, escapedQid, escapedQid
+            );
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            headers.set("User-Agent", "CodecreteBE/1.0 (Educational Project; +https://github.com/your-repo)");
+
+            String requestBody = "query=" + URLEncoder.encode(sparqlQuery, StandardCharsets.UTF_8) + "&format=json";
+            HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(SPARQL_ENDPOINT, request, String.class);
+
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.debug("Wikidata 설명 정보 SPARQL 실패: qid={}, status={}", qid, response.getStatusCode());
+                return Optional.empty();
+            }
+
+            JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode bindings = root.path("results").path("bindings");
+
+            if (!bindings.isArray() || bindings.isEmpty()) {
+                return Optional.empty();
+            }
+
+            JsonNode binding = bindings.get(0);
+            
+            // description은 Entity API에서 직접 가져오기 (SPARQL에서는 schema:description 사용 불가)
+            String description = null;
+            try {
+                Optional<com.fasterxml.jackson.databind.JsonNode> entityOpt = entityClient.getEntityInfo(qid);
+                if (entityOpt.isPresent()) {
+                    com.fasterxml.jackson.databind.JsonNode entity = entityOpt.get();
+                    com.fasterxml.jackson.databind.JsonNode descriptions = entity.path("descriptions");
+                    
+                    // 한국어 description 우선
+                    com.fasterxml.jackson.databind.JsonNode koDesc = descriptions.path("ko");
+                    if (!koDesc.isMissingNode()) {
+                        com.fasterxml.jackson.databind.JsonNode value = koDesc.path("value");
+                        if (!value.isMissingNode() && !value.asText().isBlank()) {
+                            description = value.asText();
+                        }
+                    }
+                    
+                    // 한국어가 없으면 영어 description
+                    if (description == null) {
+                        com.fasterxml.jackson.databind.JsonNode enDesc = descriptions.path("en");
+                        if (!enDesc.isMissingNode()) {
+                            com.fasterxml.jackson.databind.JsonNode value = enDesc.path("value");
+                            if (!value.isMissingNode() && !value.asText().isBlank()) {
+                                description = value.asText();
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("Entity API에서 description 가져오기 실패: qid={}", qid, e);
+            }
+            
+            String nationality = null;
+            JsonNode nationalityNode = binding.path("nationalityLabel");
+            if (!nationalityNode.isMissingNode()) {
+                JsonNode value = nationalityNode.path("value");
+                if (!value.isMissingNode() && !value.asText().isBlank()) {
+                    nationality = value.asText();
+                }
+            }
+            
+            String occupation = null;
+            JsonNode occupationNode = binding.path("occupationLabel");
+            if (!occupationNode.isMissingNode()) {
+                JsonNode value = occupationNode.path("value");
+                if (!value.isMissingNode() && !value.asText().isBlank()) {
+                    occupation = value.asText();
+                }
+            }
+            
+            String group = null;
+            JsonNode groupNode = binding.path("groupLabel");
+            if (!groupNode.isMissingNode()) {
+                JsonNode value = groupNode.path("value");
+                if (!value.isMissingNode() && !value.asText().isBlank()) {
+                    group = value.asText();
+                }
+            }
+            
+            return Optional.of(new WikidataDescriptionInfo(description, nationality, occupation, group));
+            
+        } catch (Exception e) {
+            log.debug("Wikidata 설명 정보 수집 실패: qid={}", qid, e);
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * Wikidata 설명 정보
+     */
+    public static class WikidataDescriptionInfo {
+        private final String description;
+        private final String nationality;
+        private final String occupation;
+        private final String group;
+        
+        public WikidataDescriptionInfo(String description, String nationality, String occupation, String group) {
+            this.description = description;
+            this.nationality = nationality;
+            this.occupation = occupation;
+            this.group = group;
+        }
+        
+        public String getDescription() { return description; }
+        public String getNationality() { return nationality; }
+        public String getOccupation() { return occupation; }
+        public String getGroup() { return group; }
     }
 }
 

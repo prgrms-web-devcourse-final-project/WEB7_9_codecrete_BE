@@ -411,6 +411,103 @@ public class MusicBrainzEntityClient {
         return false;
     }
 
+    /**
+     * MusicBrainz에서 활동 시작 연도 추출 (life-span.begin)
+     * 
+     * ⚠️ 중요: 활동 시작 연도는 무조건 MusicBrainz.life-span.begin만 사용
+     * Wikidata 출생일(P569)은 절대 사용하지 않음
+     */
+    public Optional<String> extractBeginDate(JsonNode artist) {
+        try {
+            JsonNode lifeSpan = artist.path("life-span");
+            if (lifeSpan.isMissingNode()) {
+                return Optional.empty();
+            }
+            
+            JsonNode begin = lifeSpan.path("begin");
+            if (begin.isMissingNode() || begin.asText().isBlank()) {
+                return Optional.empty();
+            }
+            
+            String beginDate = begin.asText();
+            // "2013-06-13" 형식에서 연도만 추출
+            if (beginDate != null && beginDate.length() >= 4) {
+                String year = beginDate.substring(0, 4);
+                // 4자리 숫자인지 확인 (예: "2013")
+                if (year.matches("\\d{4}")) {
+                    return Optional.of(year);
+                }
+            }
+            
+            return Optional.empty();
+        } catch (Exception e) {
+            log.debug("활동 시작 연도 추출 실패", e);
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * MusicBrainz에서 활동 지역 추출 (area.name)
+     */
+    public Optional<String> extractAreaName(JsonNode artist) {
+        try {
+            JsonNode area = artist.path("area");
+            if (area.isMissingNode()) {
+                return Optional.empty();
+            }
+            
+            JsonNode areaName = area.path("name");
+            if (areaName.isMissingNode() || areaName.asText().isBlank()) {
+                return Optional.empty();
+            }
+            
+            return Optional.of(areaName.asText());
+        } catch (Exception e) {
+            log.debug("활동 지역 추출 실패", e);
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * MusicBrainz에서 상세 정보 조회 (life-span, area 포함)
+     */
+    public Optional<MusicBrainzDetailInfo> getArtistDetailInfo(String mbid) {
+        try {
+            String url = String.format(
+                    "%s/artist/%s?fmt=json",
+                    MUSICBRAINZ_API_BASE, mbid
+            );
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", USER_AGENT);
+            headers.set("Accept", "application/json");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.debug("MusicBrainz 상세 정보 조회 실패: mbid={}, status={}", mbid, response.getStatusCode());
+                return Optional.empty();
+            }
+
+            JsonNode artist = objectMapper.readTree(response.getBody());
+            
+            String type = extractArtistType(artist);
+            Optional<String> beginDateOpt = extractBeginDate(artist);
+            Optional<String> areaNameOpt = extractAreaName(artist);
+            
+            return Optional.of(new MusicBrainzDetailInfo(
+                    type,
+                    beginDateOpt.orElse(null),
+                    areaNameOpt.orElse(null)
+            ));
+
+        } catch (Exception e) {
+            log.debug("MusicBrainz 상세 정보 조회 실패: mbid={}", mbid, e);
+            return Optional.empty();
+        }
+    }
+
     public static class ArtistInfo {
         private final String mbid;
         private final String name;
@@ -445,6 +542,25 @@ public class MusicBrainzEntityClient {
         public String getArtistType() {
             return artistType;
         }
+    }
+    
+    /**
+     * MusicBrainz 상세 정보 (설명 생성용)
+     */
+    public static class MusicBrainzDetailInfo {
+        private final String type;
+        private final String beginDate;
+        private final String areaName;
+        
+        public MusicBrainzDetailInfo(String type, String beginDate, String areaName) {
+            this.type = type;
+            this.beginDate = beginDate;
+            this.areaName = areaName;
+        }
+        
+        public String getType() { return type; }
+        public String getBeginDate() { return beginDate; }
+        public String getAreaName() { return areaName; }
     }
 }
 

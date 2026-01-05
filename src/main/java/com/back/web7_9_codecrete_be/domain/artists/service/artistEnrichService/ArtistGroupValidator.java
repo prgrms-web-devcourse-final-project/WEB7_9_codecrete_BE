@@ -1,4 +1,4 @@
-package com.back.web7_9_codecrete_be.domain.artists.service;
+package com.back.web7_9_codecrete_be.domain.artists.service.artistEnrichService;
 
 import org.springframework.stereotype.Component;
 
@@ -6,9 +6,22 @@ import org.springframework.stereotype.Component;
 public class ArtistGroupValidator {
 
     /**
-     * artistGroup 검증: 멤버 이름, 출연 프로그램, 소속사 등 잘못된 값 필터링
+     * 소스 신뢰도 레벨
      */
-    public String validate(String groupName, String artistName, String nameKo) {
+    public enum SourceTrustLevel {
+        HIGH,    // Wikidata, MusicBrainz - 신뢰도 높음
+        LOW      // FLO 등 - 신뢰도 낮음
+    }
+
+    /**
+     * artistGroup 검증: 멤버 이름, 출연 프로그램, 소속사 등 잘못된 값 필터링
+     * 
+     * @param groupName 검증할 그룹명
+     * @param artistName 아티스트 이름 (중복 체크용)
+     * @param nameKo 아티스트 한국어 이름 (중복 체크용)
+     * @param trustLevel 소스 신뢰도 (HIGH: Wikidata/MB는 3글자 허용, LOW: FLO는 3글자 차단)
+     */
+    public String validate(String groupName, String artistName, String nameKo, SourceTrustLevel trustLevel) {
         if (groupName == null || groupName.isBlank()) {
             return null;
         }
@@ -16,7 +29,12 @@ public class ArtistGroupValidator {
         String normalizedGroupName = normalizeForComparison(groupName);
         String lowerGroupName = groupName.toLowerCase().trim();
         
-        if (normalizedGroupName.length() <= 3) {
+        // 신뢰도 낮은 소스(FLO)에서만 3글자 이하 차단, 신뢰도 높은 소스(Wikidata/MB)는 허용
+        if (trustLevel == SourceTrustLevel.LOW && normalizedGroupName.length() <= 3) {
+            return null;
+        }
+        // 신뢰도 높은 소스는 2글자 이하만 차단 (EXO, BTS 같은 3글자 그룹 허용)
+        if (trustLevel == SourceTrustLevel.HIGH && normalizedGroupName.length() <= 2) {
             return null;
         }
         
@@ -127,6 +145,16 @@ public class ArtistGroupValidator {
         }
         
         return groupName;
+    }
+    
+    /**
+     * artistGroup 검증 (하위 호환성, 기본값 LOW)
+     * 
+     * @deprecated 소스 신뢰도를 명시하는 validate(String, String, String, SourceTrustLevel) 사용 권장
+     */
+    @Deprecated
+    public String validate(String groupName, String artistName, String nameKo) {
+        return validate(groupName, artistName, nameKo, SourceTrustLevel.LOW);
     }
     
     /**

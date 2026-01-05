@@ -27,14 +27,14 @@ public class Artist {
     @Column(name = "artist_group")
     private String artistGroup;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = ArtistTypeConverter.class)
     @Column(name = "artist_type")
     private ArtistType artistType;
 
     @Column(name = "spotify_artist_id", unique = true)
     private String spotifyArtistId;
 
-    @Column(name = "musicbrainz_id")
+    @Column(name = "musicbrainz_id", unique = true)
     private String musicBrainzId;
 
     @Column(name = "name_ko", length = 200)
@@ -42,6 +42,9 @@ public class Artist {
 
     @Column(name = "real_name", length = 200)
     private String realName;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 
     @Column(name = "like_count", nullable = false)
     private int likeCount = 0;
