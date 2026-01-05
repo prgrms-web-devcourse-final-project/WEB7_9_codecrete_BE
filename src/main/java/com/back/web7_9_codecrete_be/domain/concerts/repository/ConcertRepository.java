@@ -37,9 +37,10 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
                 c.concertPlace cp
                 ORDER BY
                 c.apiConcertId
+                DESC
             """)
         // Kopis API의 ID 순서대로
-    List<ConcertItem> getConcertItemsOrderByApiId(Pageable pageable);
+    List<ConcertItem> getConcertItemsOrderByApiIdDesc(Pageable pageable);
 
     @Query("""
                 SELECT
