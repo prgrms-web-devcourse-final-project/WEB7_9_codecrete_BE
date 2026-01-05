@@ -64,7 +64,9 @@ public class SecurityConfig {
 					"/api/v1/reviews/**",
 					"/api/v1/join/**",
 					"/api/v1/server-time/**",
-                        "/api/v1/posts/**"
+                        "/api/v1/posts/**",
+                        "/api/v1/community/**",
+                        "/api/v1/comments/**"
 				).permitAll()
 
 				// ADMIN 전용
