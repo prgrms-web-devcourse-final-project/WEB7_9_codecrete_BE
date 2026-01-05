@@ -4,7 +4,6 @@ import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ConcertArtist;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ConcertArtistRepository;
-import com.back.web7_9_codecrete_be.domain.artists.service.ArtistService;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concert.*;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceDetailElement;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceDetailResponse;
@@ -50,7 +49,7 @@ public class KopisApiService {
 
     private final ConcertImageRepository imageRepository;
 
-    private final ConcertUpdateTimeRepository concertUpdateTimeRepository;
+    private final ConcertKopisApiLogService concertKopisApiLogService;
 
     private final ConcertRedisRepository concertRedisRepository;
 
@@ -66,24 +65,22 @@ public class KopisApiService {
 
     private final RestClient restClient;
 
-    private int savedIndex = 0;
-
     public KopisApiService(
             ConcertRepository concertRepository,
             ConcertPlaceRepository placeRepository,
             TicketOfficeRepository ticketOfficeRepository,
             ConcertImageRepository imageRepository,
-            ConcertUpdateTimeRepository concertUpdateTimeRepository,
             ConcertRedisRepository concertRedisRepository,
+            ConcertKopisApiLogService kopisApiLogService,
             ArtistRepository artistRepository,
             ConcertArtistRepository concertArtistRepository
-    ) {
+            ) {
         this.concertRepository = concertRepository;
         this.placeRepository = placeRepository;
         this.ticketOfficeRepository = ticketOfficeRepository;
         this.imageRepository = imageRepository;
-        this.concertUpdateTimeRepository = concertUpdateTimeRepository;
         this.concertRedisRepository = concertRedisRepository;
+        this.concertKopisApiLogService = kopisApiLogService;
         this.artistRepository = artistRepository;
         this.concertArtistRepository = concertArtistRepository;
         this.restClient = RestClient.builder()
@@ -97,12 +94,12 @@ public class KopisApiService {
     @Transactional
     public void setConcertsList() throws InterruptedException {
         // 최초 시작 시간 저장
-        if(concertUpdateTimeRepository.count() != 0) {
+        if(concertKopisApiLogService.isInitComplete()) {
             log.error("이미 최초 저장이 되었습니다!. UpdateConcert를 통해 데이터를 갱신해주십시오!");
             return;
         }
-        String key = "init";
 
+        String key = "kopis_lock";
         String value = concertRedisRepository.lockGet(key);
         if(value != null) {
             log.error("이미 실행중인 스레드입니다.");
@@ -111,6 +108,8 @@ public class KopisApiService {
             concertRedisRepository.lockSave(key,"running...");
         }
 
+        // 시작 시간
+        concertKopisApiLogService.saveStartLog("save","공연 데이터 초기 저장 시작",0L);
         LocalDateTime now = LocalDateTime.now();
         long startNs = System.currentTimeMillis();
 
@@ -126,25 +125,18 @@ public class KopisApiService {
         int setArtists = 0;
 
         int page = 1;
-        try{
+
+        // 이전 실패가 있으면 실패 시점에서 다시 시도 아니면 0 에서 시작
+        Long index = concertKopisApiLogService.getLastSaveFailIndex();
+        try {
             // 모든 공연을 가져오기
             totalConcertsList = getAllConcertsListFromKopisAPI(page);
-        }catch (Exception e){
-            log.error("공연 목록 저장 도중 오류 발생");
-            log.error("오류 내용 : " + e.getMessage());
-            return;
-        } finally {
-            concertRedisRepository.unlockSave(key);
-        }
+            log.info("저장할 총 공연의 수: {}", totalConcertsList.size());
+            log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
+            // 한국어 실명 기만 artistMap 가져오기
+            Map<String, Artist> artistMap = getKoNameArtistMap();
 
-        concertRedisRepository.lockSave(key,"running...");
-        log.info("저장할 총 공연의 수: {}", totalConcertsList.size());
-        log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
-        // 한국어 실명 기만 artistMap
-        Map<String, Artist> artistMap = getKoNameArtistMap();
-
-        try {
-            for(int i = savedIndex; i < totalConcertsList.size(); i++) {
+            for(int i = index.intValue(); i < totalConcertsList.size(); i++) {
                 ConcertListElement concertListElement = totalConcertsList.get(i);
                 // API에서 공연 상세 가져오기
                 ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(serviceKey, concertListElement.getApiConcertId());
@@ -167,49 +159,42 @@ public class KopisApiService {
                 // 공연 아티스트 연결
                 setArtists += setConcertArtist(artistMap,concertDetail,savedConcert);
                 addedConcerts++;
-                savedIndex++;
+                index++;
             }
+
+            concertKopisApiLogService.saveSuccessLog("save","공연 데이터 초기 저장 완료",0L);
+            log.info(now + "시 기준 " + totalConcertsList.size() + "개의 공연 데이터 저장 완료!");
+            long endNs = System.currentTimeMillis();
+            long durationSec = ((endNs - startNs) / 1000);
+            log.info(durationSec/60 + "분, " + durationSec % 60 + "초 소요되었습니다." );
+            cacheClear();
         } catch (Exception e) {
             log.error("개별 공연 세부 내용 저장 도중 오류 발생");
             log.error("오류 내용 : " + e.getMessage());
-            e.printStackTrace();
-            return ;
+            concertKopisApiLogService.saveErrorLog("save",e,index);
         } finally {
             concertRedisRepository.unlockSave(key);
         }
-        ConcertUpdateTime concertUpdateTime = new ConcertUpdateTime(now);
-        concertUpdateTimeRepository.save(concertUpdateTime);
-        savedIndex = 0;
-        log.info(now + "시 기준 " + totalConcertsList.size() + "개의 공연 데이터 저장 완료!");
-        long endNs = System.currentTimeMillis();
-        long durationSec = ((endNs - startNs) / 1000);
-        log.info(durationSec/60 + "분, " + durationSec % 60 + "초 소요되었습니다." );
     }
 
     @Transactional
     public SetResultResponse updateConcertData() throws InterruptedException {
-        String key = "init";
+        String key = "kopis_lock";
         String value = concertRedisRepository.lockGet(key);
         if(value != null) {
-            log.error("초기 업데이트가 진행중입니다.");
+            log.error("락이 걸린 작업입니다.");
             return null;
+        } else{
+            concertRedisRepository.lockSave(key,"running...");
         }
 
-        ConcertUpdateTime concertUpdateTime = concertUpdateTimeRepository.getReferenceById(1L);
-        LocalDate lastUpdatedDate = concertUpdateTime.getUpdateTime().toLocalDate();
-        ConcertUpdateTime updatedTime = concertUpdateTime.setUpdateTime(LocalDateTime.now());
+
+        LocalDate lastUpdatedDate = concertKopisApiLogService.getLastSaveTime().toLocalDate();
+        concertKopisApiLogService.saveStartLog("save","공연 데이터 업데이트 시작",0L);
         LocalDate sdate = lastUpdatedDate;
         LocalDate edate = LocalDate.now().plusYears(1);
 
-        int addedConcerts = 0;
-        int updatedConcerts = 0;
-        int addedConcertPlaces = 0;
-        int updatedConcertPlaces = 0;
-        int addedTicketOffices = 0;
-        int updatedTicketOffices = 0;
-        int addedConcertImages = 0;
-        int updatedConcertImages = 0;
-
+        SetResultResponse setResultResponse = new SetResultResponse();
 
         ConcertListResponse plr;
         List<ConcertListElement> totalConcertsList = new ArrayList<>();
@@ -227,11 +212,8 @@ public class KopisApiService {
         }
         log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
 
-        savedIndex = 0;
-
         // artist map 가져오기
         Map<String ,Artist> artistMap = getKoNameArtistMap();
-        for(int i = savedIndex; i < totalConcertsList.size(); i++) {}
         for (ConcertListElement performanceListElement : totalConcertsList) {
             ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(serviceKey, performanceListElement.getApiConcertId());
             ConcertDetailElement concertDetail = concertDetailResponse.getConcertDetail();
@@ -248,12 +230,12 @@ public class KopisApiService {
                 // 새 공연 저장
                 Concert savedConcert = saveConcert(concertPlace,concertDetail);
                 // 공연 예매처 저장
-                addedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
+                setResultResponse.addedTicketOfficeAccumulator(saveConcertTicketOffice(concertDetail, savedConcert));
                 // 공연 이미지 저장
-                addedConcertImages += saveConcertImages(concertDetail, savedConcert);
+                setResultResponse.addedConcertImagesAccumulator(saveConcertImages(concertDetail, savedConcert));
                 // 공연 아티스트 저장
                 setConcertArtist(artistMap,concertDetail,savedConcert);
-                addedConcerts ++;
+                setResultResponse.addConcerts();
             } else {
                 // 공연 데이터 갱신 후 저장
                 Concert savedConcert = updateConcert(concert, concertPlace, concertDetail);
@@ -261,21 +243,23 @@ public class KopisApiService {
                 ticketOfficeRepository.deleteByConcertId(savedConcert.getConcertId());
                 imageRepository.deleteByConcertId(savedConcert.getConcertId());
                 // 갱신된 데이터로 연관 테이블 저장
-                updatedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
-                updatedConcertImages += saveConcertImages(concertDetail, savedConcert);
-                updatedConcerts ++;
+                setResultResponse.updatedTicketOfficesAccumulator(saveConcertTicketOffice(concertDetail, savedConcert));
+                setResultResponse.updatedConcertImagesAccumulator(saveConcertImages(concertDetail, savedConcert));
+                setResultResponse.addUpdatedConcerts();
             }
 
             Thread.sleep(300);
         }
 
-        // 갱신 후 업데이트 시간 저장, 캐시의 데이터 삭제
-        concertUpdateTimeRepository.save(updatedTime);
-        concertRedisRepository.deleteAllConcertsList();
-        concertRedisRepository.deleteAllCachedConcertDetail();
-        concertRedisRepository.deleteTotalConcertsCount(ListSort.VIEW);
-        return new SetResultResponse(addedConcerts,updatedConcerts,addedConcertPlaces,updatedConcertPlaces,addedConcertImages,updatedConcertImages,addedTicketOffices,updatedTicketOffices);
+        // 갱신 후 업데이트 시간 저장
+        concertKopisApiLogService.saveSuccessLog("save","공연 데이터 업데이트 완료",0L);
+        // 락 해제
+        concertRedisRepository.unlockSave(key);
+        // 이전 캐시 데이터 삭제
+        cacheClear();
+        return setResultResponse;
     }
+
 
 
     @Transactional
@@ -434,6 +418,13 @@ public class KopisApiService {
         imageRepository.saveAll(concertImages);
 
         return concertDetail.getConcertImageUrls().size();
+    }
+
+    // 캐시를 초기화합니다.
+    private void cacheClear() {
+        concertRedisRepository.deleteAllConcertsList();
+        concertRedisRepository.deleteAllCachedConcertDetail();
+        concertRedisRepository.deleteTotalConcertsCount(ListSort.VIEW);
     }
 
     public ConcertListResponse getConcertsList() {

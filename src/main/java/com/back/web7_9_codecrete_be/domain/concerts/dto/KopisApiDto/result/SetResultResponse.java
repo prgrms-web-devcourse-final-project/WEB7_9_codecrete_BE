@@ -2,8 +2,10 @@ package com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.result;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
+@Setter
 public class SetResultResponse {
     @Schema(description = "추가된 공연 수")
     private int addedConcerts;
@@ -38,5 +40,33 @@ public class SetResultResponse {
         this.updatedConcertImages = updatedConcertImages;
         this.addedTicketOffice = addedTicketOffice;
         this.updatedTicketOffice = updatedTicketOffice;
+    }
+
+    public SetResultResponse() {
+    }
+
+    public void addConcerts() { this.addedConcerts++; }
+    public void addUpdatedConcerts() { this.updatedConcerts++; }
+    public void addConcertPlaces() { this.addedConcertPlaces++; }
+    public void addUpdatedConcertPlaces() { this.updatedConcertPlaces++; }
+    public void addConcertImages() { this.addedConcertImages++; }
+    public void addUpdatedConcertImages() { this.updatedConcertImages++; }
+    public void addTicketOffice() { this.addedTicketOffice++; }
+    public void addUpdatedTicketOffice() { this.updatedTicketOffice++; }
+
+    public void addedConcertImagesAccumulator(int addedConcertImages) {
+        this.addedConcertImages += addedConcertImages;
+    }
+
+    public void updatedConcertImagesAccumulator(int updatedConcertImages) {
+        this.updatedConcertImages += updatedConcertImages;
+    }
+
+    public void addedTicketOfficeAccumulator(int addedTicketOffice) {
+        this.addedTicketOffice += addedTicketOffice;
+    }
+
+    public void updatedTicketOfficesAccumulator(int updatedTicketOffice) {
+        this.updatedTicketOffice += updatedTicketOffice;
     }
 }
