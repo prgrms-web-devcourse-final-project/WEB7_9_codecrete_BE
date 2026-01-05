@@ -67,7 +67,7 @@ public class ConcertController {
                     <hr/>
                     <b>past :</b> 이전 공연 목록을 날짜 내림차순으로 목록을 만듭니다.<br/>
                     <b>upcoming :</b> 앞으로 예정된 공연 목록을 날짜 오름차순으로 목록을 만듭니다..<br/>
-                    <b>all :</b> 조회수 순으로 해당 아티스트의 전체 공연 목록을 시작 날짜 내림차순으로 반환합니다. <br/>
+                    <b>all :</b> 해당 아티스트의 전체 공연 목록을 시작 날짜 내림차순으로 반환합니다. <br/>
                     """)
             @RequestParam String type,
             @Schema(description = """

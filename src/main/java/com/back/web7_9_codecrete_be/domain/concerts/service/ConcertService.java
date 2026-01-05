@@ -73,10 +73,12 @@ public class ConcertService {
 
     // 아티스트 기준 공연 목록 조회
     public List<ConcertItem> getArtistConcertList(Long artistId, String type, Pageable pageable) {
-        if(type.equals("past")) return concertRepository.getPastConcertsListByArtist(artistId,pageable);
-        else if(type.equals("upcoming")) return concertRepository.getUpcomingConcertsListByArtist(artistId,pageable);
-        else if(type.equals("all")) return concertRepository.getAllConcertsListByArtist(artistId);
-        else throw new BusinessException(ConcertErrorCode.INCORRECT_TYPE);
+        return switch (type) {
+            case "past" -> concertRepository.getPastConcertsListByArtist(artistId, pageable);
+            case "upcoming" -> concertRepository.getUpcomingConcertsListByArtist(artistId, pageable);
+            case "all" -> concertRepository.getAllConcertsListByArtist(artistId);
+            default -> throw new BusinessException(ConcertErrorCode.INCORRECT_TYPE);
+        };
     }
 
     // 키워드 통한 공연 제목 검색
