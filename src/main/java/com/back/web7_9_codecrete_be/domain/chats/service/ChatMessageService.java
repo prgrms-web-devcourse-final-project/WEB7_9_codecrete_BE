@@ -5,7 +5,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +12,7 @@ import com.back.web7_9_codecrete_be.domain.chats.dto.request.ChatMessageRequest;
 import com.back.web7_9_codecrete_be.domain.chats.dto.response.ChatMessageResponse;
 import com.back.web7_9_codecrete_be.domain.chats.dto.response.ChatUserCache;
 import com.back.web7_9_codecrete_be.domain.chats.repository.ChatStreamRepository;
+import com.back.web7_9_codecrete_be.global.redis.ChatPubSubChannels;
 import com.back.web7_9_codecrete_be.global.security.CustomUserDetail;
 import com.back.web7_9_codecrete_be.global.websocket.ServerInstanceId;
 
@@ -24,12 +24,10 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class ChatMessageService {
 
-	private final SimpMessagingTemplate messagingTemplate;
 	private final ChatStreamRepository chatStreamRepository;
 	private final ChatUserCacheService chatUserCacheService;
-
-	private final RedisTemplate<String, Object> redisTemplate;
 	private final ChatPresenceService chatPresenceService;
+	private final RedisTemplate<String, Object> redisTemplate;
 
 	/**
 	 * 채팅 메시지 전송 + 세션 TTL 갱신
@@ -72,9 +70,9 @@ public class ChatMessageService {
 		// Redis Stream 저장
 		chatStreamRepository.save(response);
 
-		// WebSocket 브로드캐스트
-		messagingTemplate.convertAndSend(
-			"/topic/chat/" + request.getConcertId(),
+		// Redis Pub/Sub으로 전파
+		redisTemplate.convertAndSend(
+			ChatPubSubChannels.CHAT_MESSAGE,
 			response
 		);
 	}
