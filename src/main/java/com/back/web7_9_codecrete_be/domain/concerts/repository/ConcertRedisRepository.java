@@ -90,11 +90,12 @@ public class ConcertRedisRepository {
         return concertDetailResponse;
     }
 
+    // 공연 상세 정보를 Redis에서 가져오기
     private ConcertDetailResponse getConcertDetailResponse(long concertId) {
         Object rawObject = objectRedisTemplate.opsForValue().get(CONCERT_DETAIL_PREFIX + concertId);
-        if (rawObject == null) return null;
-        if(rawObject instanceof ConcertDetailResponse) return (ConcertDetailResponse) rawObject;
-        return objectMapper.convertValue(rawObject, ConcertDetailResponse.class);
+        if (rawObject == null) return null; // null이라면 null 반환
+        if(rawObject instanceof ConcertDetailResponse) return (ConcertDetailResponse) rawObject; // ConcertDetailResponse라면 다운캐스팅
+        return objectMapper.convertValue(rawObject, ConcertDetailResponse.class); // 아니라면 매퍼 사용 클래스 변환
     }
 
     // 공연 상세 삭제
