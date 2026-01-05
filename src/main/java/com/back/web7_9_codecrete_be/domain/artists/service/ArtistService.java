@@ -7,6 +7,7 @@ import com.back.web7_9_codecrete_be.domain.artists.entity.*;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistLikeRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ConcertArtistRepository;
+import com.back.web7_9_codecrete_be.domain.artists.service.spotifyService.SpotifyService;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
@@ -221,6 +222,14 @@ public class ArtistService {
     @Transactional(readOnly = true)
     public LikeArtistResponse findArtistLikeByUserId(Artist artist, User user) {
          return new LikeArtistResponse(artistLikeRepository.existsByArtistAndUser(artist, user));
+    }
+
+    @Transactional(readOnly = true)
+    public List<LikeArtistsResponse> findLikeArtistsByUserid(User user) {
+        List<Artist> likeArtists = artistLikeRepository.findLikeArtistsByUserId(user.getId());
+        return likeArtists.stream()
+                .map(LikeArtistsResponse::from)
+                .toList();
     }
 
 }

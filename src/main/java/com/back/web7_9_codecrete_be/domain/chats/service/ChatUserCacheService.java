@@ -10,6 +10,7 @@ import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
 import com.back.web7_9_codecrete_be.global.error.code.AuthErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,6 +22,7 @@ public class ChatUserCacheService {
 
 	private final RedisTemplate<String, Object> redisTemplate;
 	private final UserRepository userRepository;
+	private final ObjectMapper objectMapper;
 
 	private String cacheKey(String email) {
 		return "chat:user:" + email;
@@ -29,11 +31,10 @@ public class ChatUserCacheService {
 	public ChatUserCache getChatUser(String email) {
 		String key = cacheKey(email);
 
-		ChatUserCache cached =
-			(ChatUserCache)redisTemplate.opsForValue().get(key);
+		Object cached = redisTemplate.opsForValue().get(key);
 
 		if (cached != null) {
-			return cached;
+			return objectMapper.convertValue(cached, ChatUserCache.class);
 		}
 
 		User user = userRepository.findByEmail(email)

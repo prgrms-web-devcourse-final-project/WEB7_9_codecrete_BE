@@ -1,4 +1,4 @@
-package com.back.web7_9_codecrete_be.domain.artists.service.seed;
+package com.back.web7_9_codecrete_be.domain.artists.service.spotifyService;
 
 // 모든 Spotify API 호출 전에 최소 간격을 보장하여 Rate Limit 위반 방지
 

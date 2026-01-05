@@ -1,4 +1,4 @@
-package com.back.web7_9_codecrete_be.domain.artists.service.seed;
+package com.back.web7_9_codecrete_be.domain.artists.service.spotifyService;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

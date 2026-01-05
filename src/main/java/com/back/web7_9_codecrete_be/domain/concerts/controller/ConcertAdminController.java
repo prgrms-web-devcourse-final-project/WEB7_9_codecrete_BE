@@ -22,7 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/admin/concerts/")
 @Tag(name = "Concerts Admin", description = "공연에 대해서 관리하는 API입니다. ")
-public class ConcertAdminController { // todo : 인증 권한 추가하기
+public class ConcertAdminController {
     private final ConcertService concertService;
     private final KopisApiService kopisApiService;
     private final ConcertNotifyService concertNotifyService;

@@ -42,6 +42,10 @@ public class MusicBrainzClient {
     public Optional<Boolean> isSubunitOrProjectGroup(String mbid) {
         return entityClient.isSubunitOrProjectGroup(mbid);
     }
+    
+    public Optional<MusicBrainzEntityClient.MusicBrainzDetailInfo> getArtistDetailInfo(String mbid) {
+        return entityClient.getArtistDetailInfo(mbid);
+    }
 
     // ========== 실명 조회 관련 메서드 ==========
 

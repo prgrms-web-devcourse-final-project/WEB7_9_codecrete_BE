@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.artists.repository;
 
+import com.back.web7_9_codecrete_be.domain.artists.dto.response.LikeArtistsResponse;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistLike;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
@@ -23,4 +24,10 @@ public interface ArtistLikeRepository extends JpaRepository<ArtistLike, Long> {
     """)
     List<Long> findArtistIdsByUserId(@Param("userId") Long userId);
 
+    @Query("""
+        select al.artist
+        from ArtistLike al
+        where al.user.id = :userId
+    """)
+    List<Artist> findLikeArtistsByUserId(@Param("userId") Long userId);
 }
