@@ -177,15 +177,7 @@ public class KopisApiService {
         LocalDate sdate = lastUpdatedDate;
         LocalDate edate = LocalDate.now().plusYears(1);
 
-        int addedConcerts = 0;
-        int updatedConcerts = 0;
-        int addedConcertPlaces = 0;
-        int updatedConcertPlaces = 0;
-        int addedTicketOffices = 0;
-        int updatedTicketOffices = 0;
-        int addedConcertImages = 0;
-        int updatedConcertImages = 0;
-
+        SetResultResponse setResultResponse = new SetResultResponse();
 
         ConcertListResponse plr;
         List<ConcertListElement> totalConcertsList = new ArrayList<>();
@@ -220,10 +212,10 @@ public class KopisApiService {
                 // 새 공연 저장
                 Concert savedConcert = saveConcert(concertPlace,concertDetail);
                 // 공연 예매처 저장
-                addedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
+                setResultResponse.addedTicketOfficeAccumulator(saveConcertTicketOffice(concertDetail, savedConcert));
                 // 공연 이미지 저장
-                addedConcertImages += saveConcertImages(concertDetail, savedConcert);
-                addedConcerts ++;
+                setResultResponse.addedConcertImagesAccumulator(saveConcertImages(concertDetail, savedConcert));
+                setResultResponse.addConcerts();
             } else {
                 // 공연 데이터 갱신 후 저장
                 Concert savedConcert = updateConcert(concert, concertPlace, concertDetail);
@@ -231,9 +223,9 @@ public class KopisApiService {
                 ticketOfficeRepository.deleteByConcertId(savedConcert.getConcertId());
                 imageRepository.deleteByConcertId(savedConcert.getConcertId());
                 // 갱신된 데이터로 연관 테이블 저장
-                updatedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
-                updatedConcertImages += saveConcertImages(concertDetail, savedConcert);
-                updatedConcerts ++;
+                setResultResponse.updatedTicketOfficesAccumulator(saveConcertTicketOffice(concertDetail, savedConcert));
+                setResultResponse.updatedConcertImagesAccumulator(saveConcertImages(concertDetail, savedConcert));
+                setResultResponse.addUpdatedConcerts();
             }
 
             Thread.sleep(300);
@@ -245,7 +237,7 @@ public class KopisApiService {
         concertRedisRepository.unlockSave(key);
         // 이전 캐시 데이터 삭제
         cacheClear();
-        return new SetResultResponse(addedConcerts,updatedConcerts,addedConcertPlaces,updatedConcertPlaces,addedConcertImages,updatedConcertImages,addedTicketOffices,updatedTicketOffices);
+        return setResultResponse;
     }
 
 
