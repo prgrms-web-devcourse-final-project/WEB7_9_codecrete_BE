@@ -1091,8 +1091,9 @@ public class PlanService {
             throw new BusinessException(PlanErrorCode.CANNOT_REMOVE_OWNER);
         }
 
-        // 상태를 REMOVED로 변경
-        participant.updateInviteStatus(PlanParticipant.InviteStatus.REMOVED);
+        // 참가자 삭제 (Plan의 participants 리스트에서도 제거)
+        plan.removeParticipant(participant);
+        planParticipantRepository.delete(participant);
     }
 
     /**
@@ -1119,9 +1120,9 @@ public class PlanService {
                     .findByUser_IdAndPlan_PlanId(user.getId(), planId)
                     .orElseThrow(() -> new BusinessException(PlanErrorCode.PARTICIPANT_NOT_FOUND));
 
-            // 상태를 LEFT로 변경
-            participant.updateInviteStatus(PlanParticipant.InviteStatus.LEFT);
-            planParticipantRepository.save(participant);
+            // 참가자 삭제 (Plan의 participants 리스트에서도 제거)
+            plan.removeParticipant(participant);
+            planParticipantRepository.delete(participant);
             // 명시적으로 flush하여 OptimisticLockException을 즉시 감지
             planParticipantRepository.flush();
         } catch (OptimisticLockException e) {
