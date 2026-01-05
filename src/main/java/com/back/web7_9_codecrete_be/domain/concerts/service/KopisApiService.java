@@ -1,5 +1,9 @@
 package com.back.web7_9_codecrete_be.domain.concerts.service;
 
+import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
+import com.back.web7_9_codecrete_be.domain.artists.entity.ConcertArtist;
+import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
+import com.back.web7_9_codecrete_be.domain.artists.repository.ConcertArtistRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concert.*;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceDetailElement;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceDetailResponse;
