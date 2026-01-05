@@ -76,7 +76,7 @@ public class ConcertService {
         if(type.equals("past")) return concertRepository.getPastConcertsListByArtist(artistId,pageable);
         else if(type.equals("upcoming")) return concertRepository.getUpcomingConcertsListByArtist(artistId,pageable);
         else if(type.equals("all")) return concertRepository.getAllConcertsListByArtist(artistId);
-        return null;
+        else throw new BusinessException(ConcertErrorCode.INCORRECT_TYPE);
     }
 
     // 키워드 통한 공연 제목 검색
