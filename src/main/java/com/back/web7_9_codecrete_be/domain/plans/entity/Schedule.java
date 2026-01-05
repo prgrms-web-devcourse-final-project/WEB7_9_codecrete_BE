@@ -1,5 +1,8 @@
 package com.back.web7_9_codecrete_be.domain.plans.entity;
 
+import com.back.web7_9_codecrete_be.domain.plans.dto.TransportRoute;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -74,6 +77,10 @@ public class Schedule {
     @Column(name = "transport_type")
     private TransportType transportType;
 
+    // 교통 경로 상세 정보 (JSON 형태로 저장)
+    @Column(name = "transport_route", columnDefinition = "TEXT")
+    private String transportRoute;
+
     @CreationTimestamp
     @Column(name = "created_date", nullable = false, updatable = false)
     private LocalDateTime createdDate;
@@ -100,7 +107,7 @@ public class Schedule {
                     Double startPlaceLat, Double startPlaceLon,
                     Double endPlaceLat, Double endPlaceLon,
                     Integer distance, TransportType transportType,
-                    Boolean isMainEvent) {
+                    String transportRoute, Boolean isMainEvent) {
         this.plan = plan;
         this.scheduleType = scheduleType;
         this.title = title;
@@ -117,6 +124,7 @@ public class Schedule {
         this.endPlaceLon = endPlaceLon;
         this.distance = distance;
         this.transportType = transportType;
+        this.transportRoute = transportRoute;
         this.isMainEvent = isMainEvent != null ? isMainEvent : false;
     }
 
@@ -126,7 +134,8 @@ public class Schedule {
                       Integer estimatedCost, String details,
                       Double startPlaceLat, Double startPlaceLon,
                       Double endPlaceLat, Double endPlaceLon,
-                      Integer distance, TransportType transportType) {
+                      Integer distance, TransportType transportType,
+                      String transportRoute) {
         this.scheduleType = scheduleType;
         this.title = title;
         this.startAt = startAt;
@@ -142,6 +151,38 @@ public class Schedule {
         this.endPlaceLon = endPlaceLon;
         this.distance = distance;
         this.transportType = transportType;
+        this.transportRoute = transportRoute;
+    }
+
+    /**
+     * TransportRoute 객체를 JSON 문자열로 변환하여 저장
+     */
+    public void setTransportRoute(TransportRoute transportRoute) {
+        if (transportRoute == null) {
+            this.transportRoute = null;
+            return;
+        }
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            this.transportRoute = objectMapper.writeValueAsString(transportRoute);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize transportRoute", e);
+        }
+    }
+
+    /**
+     * JSON 문자열을 TransportRoute 객체로 변환하여 반환
+     */
+    public TransportRoute getTransportRouteAsObject() {
+        if (transportRoute == null || transportRoute.isEmpty()) {
+            return null;
+        }
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.readValue(transportRoute, TransportRoute.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to deserialize transportRoute", e);
+        }
     }
 
     public enum ScheduleType {
