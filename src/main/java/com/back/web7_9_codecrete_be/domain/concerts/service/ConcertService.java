@@ -71,6 +71,14 @@ public class ConcertService {
         return concertRepository.getNoTicketTimeConcertList(pageable);
     }
 
+    // 아티스트 기준 공연 목록 조회
+    public List<ConcertItem> getArtistConcertList(Long artistId, String type, Pageable pageable) {
+        if(type.equals("past")) return concertRepository.getPastConcertsListByArtist(artistId,pageable);
+        else if(type.equals("upcoming")) return concertRepository.getUpcomingConcertsListByArtist(artistId,pageable);
+        else if(type.equals("all")) return concertRepository.getAllConcertsListByArtist(artistId);
+        return null;
+    }
+
     // 키워드 통한 공연 제목 검색
     public List<ConcertItem> getConcertListByKeyword(String keyword, Pageable pageable) {
         if(keyword == null || keyword.isEmpty()){

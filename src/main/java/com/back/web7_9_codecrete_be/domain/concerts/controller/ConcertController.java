@@ -54,6 +54,31 @@ public class ConcertController {
         return RsData.success(concertService.getConcertsList(pageable, sort));
     }
 
+    @Operation(summary = "아티스트 공연 목록",
+            description = """
+                    해당 아티스트의 공연 목록을 불러옵니다<br/>
+                    """)
+    @GetMapping("/artistList")
+    public RsData<List<ConcertItem>> getConcertsListByArtist(
+            @Schema(description = "조회 기준이 될 artist의 ID입니다.")
+            @RequestParam Long artistId,
+            @Schema(description = """
+                    조회 타입입니다.<br>
+                    <hr/>
+                    <b>past :</b> 이전 공연 목록을 날짜 내림차순으로 목록을 만듭니다.<br/>
+                    <b>upcoming :</b> 앞으로 예정된 공연 목록을 날짜 오름차순으로 목록을 만듭니다..<br/>
+                    <b>all :</b> 조회수 순으로 해당 아티스트의 전체 공연 목록을 시작 날짜 내림차순으로 반환합니다. <br/>
+                    """)
+            @RequestParam String type,
+            @Schema(description = """
+                    페이징 처리 또는 무한 스크롤 구현에 쓸 Pageable 객체입니다.<br/>
+                    sort 부분은 사용하지 않으니 지워주시고 <strong>"page", "size"</strong> 만 넘겨주시면 됩니다. <font color="red">*sort 부분이 남아있으면 오류가 발생합니다.</font>
+                    """)
+            Pageable pageable
+    ){
+        return RsData.success(concertService.getArtistConcertList(artistId,type,pageable));
+    }
+
     @Operation(summary = "좋아요 한 공연 조회", description = "좋아요를 누른 공연에 대한 목록을 조회합니다. 저장 날짜를 기준으로 내림차순 정렬로 표시합니다.(최신으로 추가된 목록순입니다.)")
     @GetMapping("likedConcertList")
     public RsData<List<ConcertItem>> getLikedConcertList(
@@ -165,7 +190,6 @@ public class ConcertController {
         return RsData.success(concertService.isLikeConcert(concertId, user));
     }
 
-    // todo : 제목으로 만 검색 기능 구현 -> 추후 아티스트 정보랑 연동 <- 중요 / 정렬 기준? 최신등록순 정렬
     @Operation(summary = "공연 검색", description = "제목에 키워드를 포함하고 있는 공연 정보를 검색합니다.")
     @GetMapping("search")
     public RsData<List<ConcertItem>> searchConcert(

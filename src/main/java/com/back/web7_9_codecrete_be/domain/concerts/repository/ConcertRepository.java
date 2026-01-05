@@ -146,6 +146,73 @@ public interface ConcertRepository extends JpaRepository<Concert, Long> {
                                            @Param("userId") Long userId);
 
     @Query("""
+                SELECT 
+                c
+                FROM 
+                Concert c
+                JOIN 
+                ConcertArtist ca
+                ON 
+                ca.concert.concertId = c.concertId
+                JOIN FETCH 
+                c.concertPlace cp
+                WHERE 
+                ca.artist.id = :artistId
+                AND
+                c.endDate < now()
+                ORDER BY 
+                c.startDate
+                DESC 
+            """)
+    List<ConcertItem> getPastConcertsListByArtist(
+            @Param("artistId") Long artistId,
+            Pageable pageable);
+
+    @Query("""
+                SELECT 
+                c
+                FROM 
+                Concert c
+                JOIN 
+                ConcertArtist ca
+                ON 
+                ca.concert.concertId = c.concertId
+                JOIN FETCH 
+                c.concertPlace cp
+                WHERE 
+                ca.artist.id = :artistId
+                AND
+                c.endDate >= now()
+                ORDER BY 
+                c.startDate
+                asc 
+            """)
+    List<ConcertItem> getUpcomingConcertsListByArtist(
+            @Param("artistId") Long artistId,
+            Pageable pageable);
+
+    @Query("""
+                SELECT 
+                c
+                FROM 
+                Concert c
+                JOIN 
+                ConcertArtist ca
+                ON 
+                ca.concert.concertId = c.concertId
+                JOIN FETCH 
+                c.concertPlace cp
+                WHERE 
+                ca.artist.id = :artistId
+                ORDER BY 
+                c.startDate
+                asc 
+            """)
+    List<ConcertItem> getAllConcertsListByArtist(
+            @Param("artistId") Long artistId
+            );
+
+    @Query("""
                 SELECT
                 c
                 FROM 
