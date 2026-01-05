@@ -1,8 +1,13 @@
 package com.back.web7_9_codecrete_be.domain.location.service;
 
+import com.back.web7_9_codecrete_be.domain.location.dto.fe.TmapWalkFeResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.request.tmap.TmapRequest;
 import com.back.web7_9_codecrete_be.domain.location.dto.request.tmap.TmapSummaryRequest;
+import com.back.web7_9_codecrete_be.domain.location.dto.request.tmap.TmapWalkRequest;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.tmap.TmapSummaryAllResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.tmap.TmapWalkResponse;
+import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
+import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -47,4 +52,45 @@ public class TmapService {
                 .retrieve()
                 .body(TmapSummaryAllResponse.class);
     }
+
+    public TmapWalkResponse getWalkRoute(double startX, double startY, double endX, double endY){
+        TmapWalkRequest request = new TmapWalkRequest(
+                startX, startY,
+                endX, endY,
+                "출발지", "도착지",    //굳이 이름까지는 몰라도 되지만, null값이 되면 안되기 때문
+                "WGS84GEO",
+                "WGS84GEO"
+        );
+
+        return tmapRestClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/tmap/routes/pedestrian")
+                        .queryParam("version", 1)
+                        .build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(TmapWalkResponse.class);
+    }
+
+    public TmapWalkFeResponse getWalkSummary(double startX, double startY, double endX, double endY){
+        TmapWalkResponse response = getWalkRoute(startX, startY, endX, endY);
+
+        if(response == null || response.getFeatures() == null || response.getFeatures().isEmpty()){
+            throw new BusinessException(LocationErrorCode.ROUTE_NOT_FOUND);
+        }
+
+        TmapWalkResponse.Properties properties = response.getFeatures().get(0).getProperties();
+
+        if (properties == null) {
+            throw new BusinessException(LocationErrorCode.ROUTE_NOT_FOUND);
+        }
+
+        return new TmapWalkFeResponse(
+                properties.getTotalDistance(),
+                properties.getTotalTime()
+        );
+    }
+
 }
