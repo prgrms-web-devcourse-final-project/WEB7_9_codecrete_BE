@@ -224,4 +224,12 @@ public class ArtistService {
          return new LikeArtistResponse(artistLikeRepository.existsByArtistAndUser(artist, user));
     }
 
+    @Transactional(readOnly = true)
+    public List<LikeArtistsResponse> findLikeArtistsByUserid(User user) {
+        List<Artist> likeArtists = artistLikeRepository.findLikeArtistsByUserId(user.getId());
+        return likeArtists.stream()
+                .map(LikeArtistsResponse::from)
+                .toList();
+    }
+
 }

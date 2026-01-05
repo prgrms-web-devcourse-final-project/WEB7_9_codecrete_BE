@@ -118,6 +118,13 @@ public class ArtistsController {
         return RsData.success("찜한 아티스트 공연 리스트 조회 성공", artistService.getConcertList(user.getId()));
     }
 
+    @Operation(summary = "찜한 아티스트 리스트 생성", description = "로그인한 유저가 찜한 아티스트 목록을 반환합니다.")
+    @GetMapping("/likes")
+    public RsData<List<LikeArtistsResponse>> likeArtists() {
+        User user = rq.getUser();
+        return RsData.success("찜한 아티스트 목록 조회 성공", artistService.findLikeArtistsByUserid(user));
+    }
+
     @Operation(summary = "아티스트 찜 여부 반환", description = "아티스트 Id 를 통해 로그인한 유저가 해당 아티스트를 찜했는지 여부를 반환합니다.")
     @GetMapping("/likes/{artistId}")
     public RsData<LikeArtistResponse> isLiked(
