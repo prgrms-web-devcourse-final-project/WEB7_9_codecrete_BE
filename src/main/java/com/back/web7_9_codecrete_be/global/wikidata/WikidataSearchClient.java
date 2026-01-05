@@ -552,5 +552,61 @@ public class WikidataSearchClient {
         public String getOccupation() { return occupation; }
         public String getGroup() { return group; }
     }
+    
+    /**
+     * SPARQL을 사용하여 특정 QID가 musical group (Q215380)의 하위 개념인지 확인
+     * 
+     * wdt:P31 (instance of) 또는 wdt:P279 (subclass of) 체인을 재귀적으로 따라가며
+     * Q215380 (musical group)에 도달할 수 있는지 확인합니다.
+     * 
+     * 이 방식은 BTS처럼 P31 = Q216337 같은 하위 개념도 올바르게 인식합니다.
+     * 
+     * @param groupQid 확인할 그룹 QID (예: "Q216337" 또는 "http://www.wikidata.org/entity/Q216337")
+     * @return musical group의 하위 개념이면 true
+     */
+    public boolean isMusicalGroupBySparql(String groupQid) {
+        try {
+            // QID에서 숫자만 추출 (Q216337 -> 216337, http://www.wikidata.org/entity/Q216337 -> 216337)
+            String qidNumber = groupQid.replaceAll("[^0-9]", "");
+            if (qidNumber.isBlank()) {
+                log.warn("유효하지 않은 QID: {}", groupQid);
+                return false;
+            }
+            
+            // SPARQL 쿼리: (wdt:P31|wdt:P279)* 체인을 따라가며 Q215380에 도달 가능한지 확인
+            String sparqlQuery = String.format(
+                    "ASK { " +
+                    "wd:Q%s (wdt:P31|wdt:P279)* wd:Q215380 . " +
+                    "}",
+                    qidNumber
+            );
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            headers.set("User-Agent", "CodecreteBE/1.0 (Educational Project; +https://github.com/your-repo)");
+            
+            String requestBody = "query=" + URLEncoder.encode(sparqlQuery, StandardCharsets.UTF_8) + "&format=json";
+            HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+            
+            log.debug("Wikidata 그룹 판별 SPARQL 쿼리 실행: groupQid={}, query={}", groupQid, sparqlQuery);
+            ResponseEntity<String> response = restTemplate.postForEntity(SPARQL_ENDPOINT, request, String.class);
+            
+            if (!response.getStatusCode().is2xxSuccessful() ||
+                    response.getBody() == null || response.getBody().isBlank()) {
+                log.warn("Wikidata SPARQL API 응답 실패: groupQid={}, status={}", groupQid, response.getStatusCode());
+                return false;
+            }
+            
+            JsonNode root = objectMapper.readTree(response.getBody());
+            boolean result = root.path("boolean").asBoolean(false);
+            
+            log.info("Wikidata 그룹 판별 결과: groupQid={}, isMusicalGroup={}", groupQid, result);
+            return result;
+            
+        } catch (Exception e) {
+            log.error("Wikidata SPARQL 그룹 판별 중 예외 발생: groupQid={}", groupQid, e);
+            return false;
+        }
+    }
 }
 
