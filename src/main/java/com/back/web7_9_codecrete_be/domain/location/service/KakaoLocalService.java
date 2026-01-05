@@ -29,8 +29,8 @@ public class KakaoLocalService {
                         .path("/v2/local/search/keyword.json")
                         .queryParam("query", "음식점")
                         .queryParam("category_group_code", "FD6")
-                        .queryParam("y", lat)
                         .queryParam("x", lng)
+                        .queryParam("y", lat)
                         .queryParam("radius", 1000)  // 반경 1km
                         .queryParam("sort", "distance")
                         .build()
@@ -48,8 +48,8 @@ public class KakaoLocalService {
                         .path("/v2/local/search/keyword.json")
                         .queryParam("query", "카페")
                         .queryParam("category_group_code", "CE7")
-                        .queryParam("y", lat)
                         .queryParam("x", lng)
+                        .queryParam("y", lat)
                         .queryParam("radius", 1000)  // 반경 1km
                         .queryParam("sort", "distance")
                         .build()

@@ -42,7 +42,40 @@ public class TmapApiController {
                     )
             )
     )
-    @GetMapping("/tmap/transit")
+    @GetMapping("/tmap/summary")
+    public TmapSummaryAllResponse getSummary(
+
+            @Parameter(
+                    description = "출발지 경도 (longitude)",
+                    example = "126.9780",
+                    required = true
+            )
+            @RequestParam double startX,
+
+            @Parameter(
+                    description = "출발지 위도 (latitude)",
+                    example = "37.5665",
+                    required = true
+            )
+            @RequestParam double startY,
+
+            @Parameter(
+                    description = "도착지 경도 (longitude)",
+                    example = "127.0276",
+                    required = true
+            )
+            @RequestParam double endX,
+
+            @Parameter(
+                    description = "도착지 위도 (latitude)",
+                    example = "37.4979",
+                    required = true
+            )
+            @RequestParam double endY
+    ) {
+        return tmapService.getSummaryRoute(startX, startY, endX, endY);
+    }
+    @GetMapping("/tmap/route")
     public String getTransit(
 
             @Parameter(
@@ -75,7 +108,6 @@ public class TmapApiController {
     ) {
         return tmapService.getRoute(startX, startY, endX, endY);
     }
-
     @Operation(
             summary = "Tmap 도보만 경로 요약",
             description = "출발지와 도착지 좌표를 기준으로 Tmap 도보 경로의 총 거리와 소요 시간을 반환합니다."

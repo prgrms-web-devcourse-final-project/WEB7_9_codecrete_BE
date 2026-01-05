@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Tag(name = "Location - Kakao", description = "카카오 로컬 API 연동(주변 음식점 조회, 좌표→주소 변환) 관련 엔드포인트")
 @RestController
@@ -45,10 +46,10 @@ public class KakaoApiController {
     )
     @PostMapping("/restaurant")
     public List<KakaoLocalResponse.Document> KakaoRestaurants(
-            @RequestParam double lat,
-            @RequestParam double lon
+            @RequestParam double x,
+            @RequestParam double y
     ) {
-        return kakaoLocalService.searchNearbyRestaurants(lat, lon);
+        return kakaoLocalService.searchNearbyRestaurants(x, y);
     }
 
 
@@ -59,10 +60,10 @@ public class KakaoApiController {
     )
     @PostMapping("/cafes")
     public List<KakaoLocalResponse.Document> KakaoCafes(
-            @RequestParam double lat,
-            @RequestParam double lon
+            @RequestParam double x,
+            @RequestParam double y
     ) {
-        return kakaoLocalService.searchNearbyCafes(lat, lon);
+        return kakaoLocalService.searchNearbyCafes(x, y);
     }
 
 
@@ -190,7 +191,31 @@ public class KakaoApiController {
             )
             @RequestBody KakaoRouteTransitRequest req
     ) {
+        boolean isWayPointsExist = (req.getWaypoints() == null || req.getWaypoints().isEmpty());
 
+        if(!isWayPointsExist){
+            KakaoMobilityResponse.Summary summary = navigateSummary(req.getOrigin().getX(), req.getOrigin().getY(), req.getDestination().getX(), req.getDestination().getY());
+            List<KakaoRouteFeResponse> sections = List.of(
+                    new KakaoRouteFeResponse(
+                            0,
+                            summary.getDistance(),
+                            summary.getDuration(),
+                            Map.of("x", req.getOrigin().getX(), "y", req.getOrigin().getY()),
+                            Map.of("x", req.getDestination().getX(), "y", req.getDestination().getY())
+                    )
+            );
+            int totalTaxi = 0;
+            if (summary.getFare() != null) {
+                totalTaxi = summary.getFare().getTaxi();
+            }
+            return new KakaoRouteSectionFeResponse(
+                    summary.getDistance(),
+                    summary.getDuration(),
+                    totalTaxi,
+                    sections
+
+            );
+        }
         KakaoRouteTransitResponse res = kakaoLocalService.NaviSearchTransit(req);
         KakaoRouteTransitResponse.Route route = res.getRoutes().get(0);
 
@@ -227,10 +252,14 @@ public class KakaoApiController {
         int totalDuration = route.getSections().stream()
                 .mapToInt(KakaoRouteTransitResponse.Section::getDuration)
                 .sum();
-
+        int totalTaxi = 0;
+        if (summary.getFare() != null) {
+            totalTaxi = summary.getFare().getTaxi();
+        }
         return new KakaoRouteSectionFeResponse(
                 totalDistance,
                 totalDuration,
+                totalTaxi,
                 sections
         );
     }

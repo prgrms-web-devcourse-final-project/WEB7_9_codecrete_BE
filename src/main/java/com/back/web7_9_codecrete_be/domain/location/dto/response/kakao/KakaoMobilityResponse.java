@@ -35,8 +35,17 @@ public class KakaoMobilityResponse {
 
         @Schema(description = "총 소요 시간 (second)", example = "540")
         private int duration;
-    }
 
+        @Schema(description = "요금 정보")
+        private Fare fare;
+    }
+    @Getter
+    @Schema(description = "요금 정보")
+    public static class Fare {
+
+        @Schema(description = "택시 요금 (원)", example = "12000")
+        private int taxi;
+    }
     @Getter
     @Schema(description = "경로 구간")
     public static class Section {
