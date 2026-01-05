@@ -46,7 +46,6 @@ public class KakaoMobilityResponse {
         @Schema(description = "택시 요금 (원)", example = "12000")
         private int taxi;
     }
-
     @Getter
     @Schema(description = "경로 구간")
     public static class Section {

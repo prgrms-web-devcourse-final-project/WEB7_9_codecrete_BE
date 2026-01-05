@@ -46,10 +46,10 @@ public class KakaoApiController {
     )
     @PostMapping("/restaurant")
     public List<KakaoLocalResponse.Document> KakaoRestaurants(
-            @RequestParam double lat,
-            @RequestParam double lon
+            @RequestParam double x,
+            @RequestParam double y
     ) {
-        return kakaoLocalService.searchNearbyRestaurants(lat, lon);
+        return kakaoLocalService.searchNearbyRestaurants(x, y);
     }
 
 
@@ -60,10 +60,10 @@ public class KakaoApiController {
     )
     @PostMapping("/cafes")
     public List<KakaoLocalResponse.Document> KakaoCafes(
-            @RequestParam double lat,
-            @RequestParam double lon
+            @RequestParam double x,
+            @RequestParam double y
     ) {
-        return kakaoLocalService.searchNearbyCafes(lat, lon);
+        return kakaoLocalService.searchNearbyCafes(x, y);
     }
 
 
