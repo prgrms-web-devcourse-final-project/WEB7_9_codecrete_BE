@@ -1,5 +1,10 @@
 package com.back.web7_9_codecrete_be.domain.concerts.service;
 
+import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
+import com.back.web7_9_codecrete_be.domain.artists.entity.ConcertArtist;
+import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
+import com.back.web7_9_codecrete_be.domain.artists.repository.ConcertArtistRepository;
+import com.back.web7_9_codecrete_be.domain.artists.service.ArtistService;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concert.*;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceDetailElement;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.KopisApiDto.concertPlace.ConcertPlaceDetailResponse;
@@ -49,6 +54,10 @@ public class KopisApiService {
 
     private final ConcertRedisRepository concertRedisRepository;
 
+    private final ArtistRepository artistRepository;
+
+    private final ConcertArtistRepository concertArtistRepository;
+
     @Value("${kopis.api-key}")
     private String serviceKey;
 
@@ -59,13 +68,24 @@ public class KopisApiService {
 
     private int savedIndex = 0;
 
-    public KopisApiService(ConcertRepository concertRepository, ConcertPlaceRepository placeRepository, TicketOfficeRepository ticketOfficeRepository, ConcertImageRepository imageRepository, ConcertUpdateTimeRepository concertUpdateTimeRepository,ConcertRedisRepository concertRedisRepository) {
+    public KopisApiService(
+            ConcertRepository concertRepository,
+            ConcertPlaceRepository placeRepository,
+            TicketOfficeRepository ticketOfficeRepository,
+            ConcertImageRepository imageRepository,
+            ConcertUpdateTimeRepository concertUpdateTimeRepository,
+            ConcertRedisRepository concertRedisRepository,
+            ArtistRepository artistRepository,
+            ConcertArtistRepository concertArtistRepository
+    ) {
         this.concertRepository = concertRepository;
         this.placeRepository = placeRepository;
         this.ticketOfficeRepository = ticketOfficeRepository;
         this.imageRepository = imageRepository;
         this.concertUpdateTimeRepository = concertUpdateTimeRepository;
         this.concertRedisRepository = concertRedisRepository;
+        this.artistRepository = artistRepository;
+        this.concertArtistRepository = concertArtistRepository;
         this.restClient = RestClient.builder()
                 .baseUrl("https://kopis.or.kr/openApi/restful")
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML_VALUE)
@@ -103,6 +123,7 @@ public class KopisApiService {
         int addedConcertPlaces = 0;
         int addedTicketOffices = 0;
         int addedConcertImages = 0;
+        int setArtists = 0;
 
         int page = 1;
         try{
@@ -119,6 +140,12 @@ public class KopisApiService {
         concertRedisRepository.lockSave(key,"running...");
         log.info("저장할 총 공연의 수: {}", totalConcertsList.size());
         log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
+        List<Artist> artistList = artistRepository.findAll();
+        Map<String, Artist> artistMap = new HashMap<>();
+        for (Artist artist : artistList) {
+            artistMap.put(artist.getNameKo(), artist);
+        }
+
         try {
             for(int i = savedIndex; i < totalConcertsList.size(); i++) {
                 ConcertListElement concertListElement = totalConcertsList.get(i);
@@ -140,7 +167,8 @@ public class KopisApiService {
                 addedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
                 // 공연 이미지 저장
                 addedConcertImages += saveConcertImages(concertDetail, savedConcert);
-
+                // 공연 아티스트 연결
+                setArtists += setConcertArtist(artistMap,concertDetail,savedConcert);
                 addedConcerts++;
                 savedIndex++;
             }
@@ -159,6 +187,21 @@ public class KopisApiService {
         long endNs = System.currentTimeMillis();
         long durationSec = ((endNs - startNs) / 1000);
         log.info(durationSec/60 + "분, " + durationSec % 60 + "초 소요되었습니다." );
+    }
+
+    private int setConcertArtist(Map<String,Artist> artistMap,ConcertDetailElement concertDetail, Concert savedConcert) {
+        String rawCast = concertDetail.getConcertCast();
+        rawCast = rawCast.replace("," ,"");
+        String[] casts = rawCast.split(" ");
+        int findCount = 0;
+        for(String cast : casts) {
+            Artist artist = artistMap.get(cast);
+            if(artist == null) continue;
+            ConcertArtist concertArtist = new ConcertArtist(artist,savedConcert);
+            concertArtistRepository.save(concertArtist);
+            findCount++;
+        }
+        return findCount;
     }
 
     @Transactional

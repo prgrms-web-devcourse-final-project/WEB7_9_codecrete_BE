@@ -17,12 +17,4 @@ public class ProdInitData {
 
     }
 
-    private void getConcertDataFromKopisApi() throws InterruptedException {
-        kopisApiService.setConcertsData();
-    }
-
-    private void setConcertAutoCompletion(){
-        concertService.setAutoComplete();
-    }
-
 }
