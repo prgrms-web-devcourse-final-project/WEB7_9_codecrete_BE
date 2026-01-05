@@ -4,6 +4,7 @@ import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertDetailRes
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ConcertItem;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.ListSort;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 public class ConcertRedisRepository {
     private final RedisTemplate<String, String> redisTemplate;
     private final RedisTemplate<String, Object> objectRedisTemplate;
+    private final ObjectMapper objectMapper;
 
     private static final String LOCK_FLAG_PREFIX = "initLoad:";
 
@@ -89,9 +91,10 @@ public class ConcertRedisRepository {
     }
 
     private ConcertDetailResponse getConcertDetailResponse(long concertId) {
-        ConcertDetailResponse concertDetailResponse = (ConcertDetailResponse) objectRedisTemplate.opsForValue().get(CONCERT_DETAIL_PREFIX + concertId);
-        if (concertDetailResponse == null) return null;
-        return concertDetailResponse;
+        Object rawObject = objectRedisTemplate.opsForValue().get(CONCERT_DETAIL_PREFIX + concertId);
+        if (rawObject == null) return null;
+        if(rawObject instanceof ConcertDetailResponse) return (ConcertDetailResponse) rawObject;
+        return objectMapper.convertValue(rawObject, ConcertDetailResponse.class);
     }
 
     // 공연 상세 삭제
