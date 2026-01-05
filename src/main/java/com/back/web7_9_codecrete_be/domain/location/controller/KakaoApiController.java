@@ -192,6 +192,7 @@ public class KakaoApiController {
             @RequestBody KakaoRouteTransitRequest req
     ) {
         boolean isWayPointsExist = (req.getWaypoints() == null || req.getWaypoints().isEmpty());
+
         if(!isWayPointsExist){
             KakaoMobilityResponse.Summary summary = navigateSummary(req.getOrigin().getX(), req.getOrigin().getY(), req.getDestination().getX(), req.getDestination().getY());
             List<KakaoRouteFeResponse> sections = List.of(
@@ -203,11 +204,16 @@ public class KakaoApiController {
                             Map.of("x", req.getDestination().getX(), "y", req.getDestination().getY())
                     )
             );
-
+            int totalTaxi = 0;
+            if (summary.getFare() != null) {
+                totalTaxi = summary.getFare().getTaxi();
+            }
             return new KakaoRouteSectionFeResponse(
                     summary.getDistance(),
                     summary.getDuration(),
+                    totalTaxi,
                     sections
+
             );
         }
         KakaoRouteTransitResponse res = kakaoLocalService.NaviSearchTransit(req);
@@ -246,10 +252,14 @@ public class KakaoApiController {
         int totalDuration = route.getSections().stream()
                 .mapToInt(KakaoRouteTransitResponse.Section::getDuration)
                 .sum();
-
+        int totalTaxi = 0;
+        if (summary.getFare() != null) {
+            totalTaxi = summary.getFare().getTaxi();
+        }
         return new KakaoRouteSectionFeResponse(
                 totalDistance,
                 totalDuration,
+                totalTaxi,
                 sections
         );
     }
