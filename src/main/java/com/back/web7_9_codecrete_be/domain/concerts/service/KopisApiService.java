@@ -140,11 +140,8 @@ public class KopisApiService {
         concertRedisRepository.lockSave(key,"running...");
         log.info("저장할 총 공연의 수: {}", totalConcertsList.size());
         log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
-        List<Artist> artistList = artistRepository.findAll();
-        Map<String, Artist> artistMap = new HashMap<>();
-        for (Artist artist : artistList) {
-            artistMap.put(artist.getNameKo(), artist);
-        }
+        // 한국어 실명 기만 artistMap
+        Map<String, Artist> artistMap = getKoNameArtistMap();
 
         try {
             for(int i = savedIndex; i < totalConcertsList.size(); i++) {
@@ -189,21 +186,6 @@ public class KopisApiService {
         log.info(durationSec/60 + "분, " + durationSec % 60 + "초 소요되었습니다." );
     }
 
-    private int setConcertArtist(Map<String,Artist> artistMap,ConcertDetailElement concertDetail, Concert savedConcert) {
-        String rawCast = concertDetail.getConcertCast();
-        rawCast = rawCast.replace("," ,"");
-        String[] casts = rawCast.split(" ");
-        int findCount = 0;
-        for(String cast : casts) {
-            Artist artist = artistMap.get(cast);
-            if(artist == null) continue;
-            ConcertArtist concertArtist = new ConcertArtist(artist,savedConcert);
-            concertArtistRepository.save(concertArtist);
-            findCount++;
-        }
-        return findCount;
-    }
-
     @Transactional
     public SetResultResponse updateConcertData() throws InterruptedException {
         String key = "init";
@@ -246,6 +228,9 @@ public class KopisApiService {
         log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
 
         savedIndex = 0;
+
+        // artist map 가져오기
+        Map<String ,Artist> artistMap = getKoNameArtistMap();
         for(int i = savedIndex; i < totalConcertsList.size(); i++) {}
         for (ConcertListElement performanceListElement : totalConcertsList) {
             ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(serviceKey, performanceListElement.getApiConcertId());
@@ -266,6 +251,8 @@ public class KopisApiService {
                 addedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
                 // 공연 이미지 저장
                 addedConcertImages += saveConcertImages(concertDetail, savedConcert);
+                // 공연 아티스트 저장
+                setConcertArtist(artistMap,concertDetail,savedConcert);
                 addedConcerts ++;
             } else {
                 // 공연 데이터 갱신 후 저장
@@ -391,6 +378,35 @@ public class KopisApiService {
         }
 
         return concertPlace;
+    }
+
+    // 모든 Artist를 가져와서 실명 - Artist객체의 맵으로 변환 후 반환
+    private Map<String, Artist> getKoNameArtistMap() {
+        List<Artist> artistList = artistRepository.findAll();
+        Map<String, Artist> artistMap = new HashMap<>();
+        for (Artist artist : artistList) {
+            artistMap.put(artist.getNameKo(), artist);
+        }
+        return artistMap;
+    }
+
+    // 공연에 Artist매칭해서 저장 후 저장된 개수 반환
+    private int setConcertArtist(Map<String,Artist> artistMap,ConcertDetailElement concertDetail, Concert savedConcert) {
+        String rawCast = concertDetail.getConcertCast();
+        rawCast = rawCast.replace("," ,"");
+        String[] casts = rawCast.split(" ");
+        List<ConcertArtist> concertArtistList = new ArrayList<>();
+        for(String cast : casts) {
+            Artist artist = artistMap.get(cast);
+            if(artist == null) continue;
+            ConcertArtist concertArtist = new ConcertArtist(artist,savedConcert);
+            concertArtistList.add(concertArtist);
+        }
+        if(concertArtistList.isEmpty()) return 0;
+        else {
+            concertArtistRepository.saveAll(concertArtistList);
+            return concertArtistList.size();
+        }
     }
 
     // 콘서트 예매처를 저장합니다.
