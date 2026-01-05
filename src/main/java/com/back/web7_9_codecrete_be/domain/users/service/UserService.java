@@ -8,6 +8,7 @@ import com.back.web7_9_codecrete_be.domain.users.dto.request.UserSettingUpdateRe
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdateBirthRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdateNicknameRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdatePasswordRequest;
+import com.back.web7_9_codecrete_be.domain.users.dto.response.UserPublicResponse;
 import com.back.web7_9_codecrete_be.domain.users.dto.response.UserResponse;
 import com.back.web7_9_codecrete_be.domain.users.dto.response.UserSettingResponse;
 import com.back.web7_9_codecrete_be.domain.users.entity.SocialType;
@@ -259,5 +260,12 @@ public class UserService {
         if (req.getDarkMode() != null) {
             setting.changeDarkMode(req.getDarkMode());
         }
+    }
+
+    public UserPublicResponse  getUserById(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+        return UserPublicResponse.from(user);
     }
 }

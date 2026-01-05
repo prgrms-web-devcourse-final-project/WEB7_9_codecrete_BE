@@ -5,6 +5,7 @@ import com.back.web7_9_codecrete_be.domain.users.dto.request.UserSettingUpdateRe
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdateBirthRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdateNicknameRequest;
 import com.back.web7_9_codecrete_be.domain.users.dto.request.UserUpdatePasswordRequest;
+import com.back.web7_9_codecrete_be.domain.users.dto.response.UserPublicResponse;
 import com.back.web7_9_codecrete_be.domain.users.dto.response.UserResponse;
 import com.back.web7_9_codecrete_be.domain.users.dto.response.UserSettingResponse;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
@@ -117,5 +118,14 @@ public class UserController {
         User user = rq.getUser();
         userService.updateMySettings(user, req);
         return RsData.success("유저 설정 수정 성공");
+    }
+
+    @Operation(summary = "유저 ID로 사용자 정보 조회", description = "유저 ID를 기반으로 공개 가능한 사용자 정보를 조회합니다.")
+    @GetMapping("/{userId}")
+    public RsData<?> getUserById(
+            @PathVariable Long userId
+    ) {
+        UserPublicResponse response = userService.getUserById(userId);
+        return RsData.success("사용자 정보 조회 성공", response);
     }
 }
