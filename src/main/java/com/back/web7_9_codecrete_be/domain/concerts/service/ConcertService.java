@@ -1,5 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.concerts.service;
 
+import com.back.web7_9_codecrete_be.domain.artists.entity.ConcertArtist;
+import com.back.web7_9_codecrete_be.domain.artists.repository.ConcertArtistRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.*;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.WeightedString;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concertPlace.PlaceDetailResponse;
@@ -37,6 +39,8 @@ public class ConcertService {
     private final ConcertRedisRepository concertRedisRepository;
 
     private final ConcertSearchRedisTemplate concertSearchRedisTemplate;
+
+    private final ConcertArtistRepository concertArtistRepository;
 
     // 공연 목록 조회
     public List<ConcertItem> getConcertsList(Pageable pageable, ListSort sort) {
@@ -109,12 +113,14 @@ public class ConcertService {
         ConcertDetailResponse concertDetailResponse = concertRedisRepository.getCachedConcertDetail(concertId);
         if(concertDetailResponse == null){
             concertDetailResponse = concertRepository.getConcertDetailById(concertId);
-            List<ConcertImage>  concertImages = concertImageRepository.getConcertImagesByConcert_ConcertId(concertId);
-            List<String> concertImageUrls = new ArrayList<>();
-            for(ConcertImage concertImage : concertImages){
-                concertImageUrls.add(concertImage.getImageUrl());
-            }
+            List<String> concertImageUrls = concertImageRepository.getConcertImagesByConcert_ConcertId(concertId).stream()
+                    .map(ConcertImage::getImageUrl)
+                    .toList();
             concertDetailResponse.setConcertImageUrls(concertImageUrls);
+            List<Long> concertArtists = concertArtistRepository.getConcertArtistsByConcert_ConcertId(concertId).stream()
+                    .map(ConcertArtist::getId)
+                    .toList();
+            concertDetailResponse.setConcertArtists(concertArtists);
         }
         // 조회수 1 증가하고 해당 데이터를 캐시에 저장.
         concertDetailResponse.setViewCount(concertDetailResponse.getViewCount() + 1);
