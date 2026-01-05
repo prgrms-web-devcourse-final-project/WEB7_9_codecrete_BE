@@ -259,9 +259,13 @@ public class ReviewPostService {
 
         return ReviewItemResponse.builder()
                 .postId(postId)
+                .userId(reviewPost.getPost().getUserId())
+                .title(reviewPost.getPost().getTitle())
+                .content(reviewPost.getPost().getContent())
                 .rating(reviewPost.getRating())
                 .likeCount(postLikeService.count(postId))
                 .tags(reviewPost.getTags())
+                .createdDate(reviewPost.getPost().getCreatedDate())
                 .build();
     }
 }
