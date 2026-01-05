@@ -20,9 +20,6 @@ public class JoinPost {
     private Long postId;
 
     @Column(nullable = false)
-    private Long concertId;
-
-    @Column(nullable = false)
     private Integer maxParticipants;
 
     @Column(nullable = false)
@@ -59,7 +56,6 @@ public class JoinPost {
         JoinPost joinPost = new JoinPost();
         joinPost.post = post;
         joinPost.postId = post.getPostId();
-        joinPost.concertId = req.getConcertId();
         joinPost.maxParticipants = req.getMaxParticipants();
         joinPost.genderPreference = req.getGenderPreference();
         joinPost.ageRangeMin = req.getAgeRangeMin();

@@ -20,6 +20,13 @@ import java.util.List;
 @Schema(description = "후기 게시글 수정 요청 (multipart/form-data)")
 public class ReviewPostUpdateMultipartRequest {
 
+    @NotNull(message = "콘서트 ID는 필수입니다.")
+    @Schema(
+            description = "연관된 콘서트 ID",
+            example = "1"
+    )
+    private Long concertId;
+
     @NotBlank(message = "제목은 필수입니다.")
     @Schema(
             description = "수정할 후기 게시글 제목",
@@ -42,6 +49,12 @@ public class ReviewPostUpdateMultipartRequest {
             example = "4"
     )
     private Integer rating;
+
+    @Schema(
+            description = "후기 태그",
+            example = "[\"Sound\", \"Stage\", \"Seat\"]"
+    )
+    private List<String> tags;
 
     @Schema(
             description = """

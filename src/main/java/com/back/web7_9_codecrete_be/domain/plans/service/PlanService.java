@@ -13,6 +13,7 @@ import com.back.web7_9_codecrete_be.domain.plans.repository.ScheduleRepository;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.PlanErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
+import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PlanService {
+    
+    private static final LocalTime DEFAULT_START_TIME = LocalTime.of(0, 0);
+    private static final int DEFAULT_DURATION = 0;
+    private static final String DEFAULT_LOCATION = "공연 장소";
+    private static final String DEFAULT_DETAILS = "공연 관람";
+    private static final String SHARE_LINK_PREFIX = "/plans/share/";
     
     private final PlanRepository planRepository;
     private final ConcertRepository concertRepository;
@@ -61,19 +68,7 @@ public class PlanService {
         plan.addParticipant(owner);
         
         // 콘서트(메인 이벤트) 일정 자동 생성
-        Schedule mainEventSchedule = Schedule.builder()
-                .plan(plan)
-                .scheduleType(Schedule.ScheduleType.ACTIVITY)
-                .title(concert.getName())
-                .startAt(LocalTime.of(0, 0)) // 기본값: 00:00 (사용자가 수정 필요)
-                .duration(0) // 기본값: 0분 (사용자가 수정 필요)
-                .location(concert.getConcertPlace() != null ? concert.getConcertPlace().getPlaceName() : "공연 장소")
-                .locationLat(concert.getConcertPlace() != null ? concert.getConcertPlace().getLat() : null)
-                .locationLon(concert.getConcertPlace() != null ? concert.getConcertPlace().getLon() : null)
-                .estimatedCost(concert.getMinPrice())
-                .details("공연 관람")
-                .isMainEvent(true)
-                .build();
+        Schedule mainEventSchedule = createMainEventSchedule(plan, concert);
         
         plan.addSchedule(mainEventSchedule);
         planRepository.save(plan);
@@ -206,20 +201,28 @@ public class PlanService {
      * @param user 현재 로그인한 사용자
      * @param request 계획 수정 요청 DTO
      * @return 수정된 계획 정보
-     * @throws BusinessException 계획을 찾을 수 없는 경우
+     * @throws BusinessException 계획을 찾을 수 없는 경우, 동시 수정이 감지된 경우
      */
     @Transactional
     public PlanResponse updatePlan(Long planId, User user, PlanUpdateRequest request) {
-        Plan plan = findPlanWithEditPermissionCheck(planId, user);
-        
-        // 부분 업데이트 (null인 경우 기존 값 유지)
-        String title = request.getTitle() != null ? request.getTitle() : plan.getTitle();
-        LocalDate planDate = request.getPlanDate() != null ? request.getPlanDate() : plan.getPlanDate();
-        
-        // 엔티티의 로직을 통해 수정
-        plan.update(title, planDate);
-        
-        return toPlanResponse(plan);
+        try {
+            Plan plan = findPlanWithEditPermissionCheck(planId, user);
+            
+            // 부분 업데이트 (null인 경우 기존 값 유지)
+            String title = request.getTitle() != null ? request.getTitle() : plan.getTitle();
+            LocalDate planDate = request.getPlanDate() != null ? request.getPlanDate() : plan.getPlanDate();
+            
+            // 엔티티의 로직을 통해 수정
+            plan.update(title, planDate);
+            
+            // 명시적으로 flush하여 OptimisticLockException을 즉시 감지
+            planRepository.flush();
+            
+            return toPlanResponse(plan);
+        } catch (OptimisticLockException e) {
+            handleOptimisticLockException(e);
+            return null; // unreachable
+        }
     }
 
 
@@ -229,19 +232,25 @@ public class PlanService {
      * @param planId 계획 ID
      * @param user 현재 로그인한 사용자
      * @return 삭제된 계획 ID
-     * @throws BusinessException 계획을 찾을 수 없는 경우
+     * @throws BusinessException 계획을 찾을 수 없는 경우, 동시 수정이 감지된 경우
      */
     @Transactional
     public PlanDeleteResponse deletePlan(Long planId, User user) {
-        Plan plan = findPlanWithOwnerCheck(planId, user);
-        Long deletedPlanId = plan.getPlanId();
-        
-        // Plan 삭제 시 cascade 설정으로 인해 participants와 schedules도 함께 삭제.
-        planRepository.delete(plan);
-        
-        return PlanDeleteResponse.builder()
-                .planId(deletedPlanId)
-                .build();
+        try {
+            Plan plan = findPlanWithOwnerCheck(planId, user);
+            Long deletedPlanId = plan.getPlanId();
+            
+            // Plan 삭제 시 cascade 설정으로 인해 participants와 schedules도 함께 삭제.
+            planRepository.delete(plan);
+            // 명시적으로 flush하여 OptimisticLockException을 즉시 감지
+            planRepository.flush();
+            
+            return PlanDeleteResponse.builder()
+                    .planId(deletedPlanId)
+                    .build();
+        } catch (OptimisticLockException e) {
+            throw new BusinessException(PlanErrorCode.CONCURRENT_MODIFICATION);
+        }
     }
 
 
@@ -252,49 +261,50 @@ public class PlanService {
      * @param user 현재 로그인한 사용자
      * @param request 일정 추가 요청 DTO
      * @return 생성된 일정 정보
+     * @throws BusinessException 동시 수정이 감지된 경우
      */
     @Transactional
     public ScheduleResponse addSchedule(Long planId, User user, ScheduleAddRequest request) {
-        Plan plan = findPlanWithEditPermissionCheck(planId, user);
+        try {
+            Plan plan = findPlanWithEditPermissionCheck(planId, user);
 
-        // TRANSPORT 타입일 때 locationLat/Lon은 사용하지 않음 (endPlaceLat/Lon 사용)
-        if (request.getScheduleType() == Schedule.ScheduleType.TRANSPORT) {
-            if (request.getLocationLat() != null || request.getLocationLon() != null) {
-                throw new BusinessException(PlanErrorCode.SCHEDULE_INVALID_LOCATION_FOR_TRANSPORT);
-            }
-            // TRANSPORT 타입인 경우 필수 필드 검증
-            if (request.getStartPlaceLat() == null || request.getStartPlaceLon() == null ||
-                request.getEndPlaceLat() == null || request.getEndPlaceLon() == null ||
-                request.getDistance() == null || request.getTransportType() == null) {
-                throw new BusinessException(PlanErrorCode.SCHEDULE_INVALID_TRANSPORT_FIELDS);
-            }
+            // Schedule 검증
+            validateScheduleRequest(request.getScheduleType(), request.getLocationLat(), 
+                    request.getLocationLon(), request.getStartPlaceLat(), request.getStartPlaceLon(),
+                    request.getEndPlaceLat(), request.getEndPlaceLon(), request.getDistance(), 
+                    request.getTransportType());
+
+            Schedule schedule = Schedule.builder()
+                    .plan(plan)
+                    .scheduleType(request.getScheduleType())
+                    .title(request.getTitle())
+                    .startAt(request.getStartAt())
+                    .duration(request.getDuration())
+                    .location(request.getLocation())
+                    .locationLat(request.getLocationLat())
+                    .locationLon(request.getLocationLon())
+                    .estimatedCost(request.getEstimatedCost())
+                    .details(request.getDetails())
+                    .startPlaceLat(request.getStartPlaceLat())
+                    .startPlaceLon(request.getStartPlaceLon())
+                    .endPlaceLat(request.getEndPlaceLat())
+                    .endPlaceLon(request.getEndPlaceLon())
+                    .distance(request.getDistance())
+                    .transportType(request.getTransportType())
+                    .build();
+
+            plan.addSchedule(schedule);
+            // cascade 설정으로 인해 plan 저장 시 schedule도 함께 저장됨
+            planRepository.save(plan);
+            // 명시적으로 flush하여 OptimisticLockException을 즉시 감지
+            planRepository.flush();
+
+            // 저장 직후이므로 영속성 컨텍스트에 있는 schedule 사용 (재조회 불필요)
+            return toScheduleResponse(schedule);
+        } catch (OptimisticLockException e) {
+            handleOptimisticLockException(e);
+            return null; // unreachable
         }
-
-        Schedule schedule = Schedule.builder()
-                .plan(plan)
-                .scheduleType(request.getScheduleType())
-                .title(request.getTitle())
-                .startAt(request.getStartAt())
-                .duration(request.getDuration())
-                .location(request.getLocation())
-                .locationLat(request.getLocationLat())
-                .locationLon(request.getLocationLon())
-                .estimatedCost(request.getEstimatedCost())
-                .details(request.getDetails())
-                .startPlaceLat(request.getStartPlaceLat())
-                .startPlaceLon(request.getStartPlaceLon())
-                .endPlaceLat(request.getEndPlaceLat())
-                .endPlaceLon(request.getEndPlaceLon())
-                .distance(request.getDistance())
-                .transportType(request.getTransportType())
-                .build();
-
-        plan.addSchedule(schedule);
-        // cascade 설정으로 인해 plan 저장 시 schedule도 함께 저장됨
-        planRepository.save(plan);
-
-        // 저장 직후이므로 영속성 컨텍스트에 있는 schedule 사용 (재조회 불필요)
-        return toScheduleResponse(schedule);
     }
 
     /**
@@ -356,87 +366,39 @@ public class PlanService {
      * @param user 현재 로그인한 사용자
      * @param request 일정 수정 요청 DTO
      * @return 수정된 일정 정보
+     * @throws BusinessException 일정을 찾을 수 없는 경우, 동시 수정이 감지된 경우
      */
     @Transactional
     public ScheduleResponse updateSchedule(Long planId, Long scheduleId, User user,
                                            ScheduleUpdateRequest request) {
-        // 권한 체크 (수정 권한 확인: OWNER 또는 EDITOR)
-        findPlanWithEditPermissionCheck(planId, user);
-        
-        Schedule schedule = scheduleRepository
-                .findByScheduleIdAndPlan_PlanId(scheduleId, planId)
-                .orElseThrow(() -> new BusinessException(PlanErrorCode.SCHEDULE_NOT_FOUND));
-
-        // 부분 업데이트 지원: null인 경우 기존 값 유지
-        Schedule.ScheduleType newScheduleType = request.getScheduleType() != null 
-                ? request.getScheduleType() 
-                : schedule.getScheduleType();
-        
-        // TRANSPORT 타입일 때 locationLat/Lon은 사용하지 않음 (endPlaceLat/Lon 사용)
-        if (newScheduleType == Schedule.ScheduleType.TRANSPORT) {
-            // locationLat/Lon이 제공된 경우 에러
-            if (request.getLocationLat() != null || request.getLocationLon() != null) {
-                throw new BusinessException(PlanErrorCode.SCHEDULE_INVALID_LOCATION_FOR_TRANSPORT);
-            }
-        }
-
-        // 일반 일정일 때 위도/경도는 쌍으로만 허용 (단독 입력 방지)
-        if (newScheduleType != Schedule.ScheduleType.TRANSPORT) {
-            boolean isLatProvided = request.getLocationLat() != null;
-            boolean isLonProvided = request.getLocationLon() != null;
-            if (isLatProvided ^ isLonProvided) {
-                throw new BusinessException(PlanErrorCode.SCHEDULE_INVALID_LOCATION_COORDINATES);
-            }
-        }
-        
-        // TRANSPORT 타입인 경우 필수 필드 검증
-        if (newScheduleType == Schedule.ScheduleType.TRANSPORT) {
-            Double startPlaceLat = request.getStartPlaceLat() != null 
-                    ? request.getStartPlaceLat() 
-                    : schedule.getStartPlaceLat();
-            Double startPlaceLon = request.getStartPlaceLon() != null 
-                    ? request.getStartPlaceLon() 
-                    : schedule.getStartPlaceLon();
-            Double endPlaceLat = request.getEndPlaceLat() != null 
-                    ? request.getEndPlaceLat() 
-                    : schedule.getEndPlaceLat();
-            Double endPlaceLon = request.getEndPlaceLon() != null 
-                    ? request.getEndPlaceLon() 
-                    : schedule.getEndPlaceLon();
-            Integer distance = request.getDistance() != null 
-                    ? request.getDistance()
-                    : schedule.getDistance();
-            Schedule.TransportType transportType = request.getTransportType() != null 
-                    ? request.getTransportType() 
-                    : schedule.getTransportType();
+        try {
+            // 권한 체크 (수정 권한 확인: OWNER 또는 EDITOR)
+            findPlanWithEditPermissionCheck(planId, user);
             
-            if (startPlaceLat == null || startPlaceLon == null || 
-                endPlaceLat == null || endPlaceLon == null || 
-                distance == null || transportType == null) {
-                throw new BusinessException(PlanErrorCode.SCHEDULE_INVALID_TRANSPORT_FIELDS);
-            }
+            Schedule schedule = scheduleRepository
+                    .findByScheduleIdAndPlan_PlanId(scheduleId, planId)
+                    .orElseThrow(() -> new BusinessException(PlanErrorCode.SCHEDULE_NOT_FOUND));
+
+            // 부분 업데이트 지원: null인 경우 기존 값 유지
+            Schedule.ScheduleType newScheduleType = request.getScheduleType() != null 
+                    ? request.getScheduleType() 
+                    : schedule.getScheduleType();
+            
+            // Schedule 검증 (업데이트용 - 기존 값과 병합)
+            validateScheduleUpdate(request, schedule, newScheduleType);
+
+            // Schedule 업데이트
+            updateScheduleFields(schedule, request, newScheduleType);
+
+            // 명시적으로 flush하여 OptimisticLockException을 즉시 감지
+            scheduleRepository.flush();
+
+            // 수정 직후이므로 영속성 컨텍스트에 있는 schedule 사용 (재조회 불필요)
+            return toScheduleResponse(schedule);
+        } catch (OptimisticLockException e) {
+            handleOptimisticLockException(e);
+            return null; // unreachable
         }
-
-        schedule.update(
-                newScheduleType,
-                request.getTitle() != null ? request.getTitle() : schedule.getTitle(),
-                request.getStartAt() != null ? request.getStartAt() : schedule.getStartAt(),
-                request.getDuration() != null ? request.getDuration() : schedule.getDuration(),
-                request.getLocation() != null ? request.getLocation() : schedule.getLocation(),
-                request.getLocationLat() != null ? request.getLocationLat() : schedule.getLocationLat(),
-                request.getLocationLon() != null ? request.getLocationLon() : schedule.getLocationLon(),
-                request.getEstimatedCost() != null ? request.getEstimatedCost() : schedule.getEstimatedCost(),
-                request.getDetails() != null ? request.getDetails() : schedule.getDetails(),
-                request.getStartPlaceLat() != null ? request.getStartPlaceLat() : schedule.getStartPlaceLat(),
-                request.getStartPlaceLon() != null ? request.getStartPlaceLon() : schedule.getStartPlaceLon(),
-                request.getEndPlaceLat() != null ? request.getEndPlaceLat() : schedule.getEndPlaceLat(),
-                request.getEndPlaceLon() != null ? request.getEndPlaceLon() : schedule.getEndPlaceLon(),
-                request.getDistance() != null ? request.getDistance() : schedule.getDistance(),
-                request.getTransportType() != null ? request.getTransportType() : schedule.getTransportType()
-        );
-
-        // 수정 직후이므로 영속성 컨텍스트에 있는 schedule 사용 (재조회 불필요)
-        return toScheduleResponse(schedule);
     }
 
 
@@ -447,26 +409,34 @@ public class PlanService {
      * @param scheduleId 일정 ID
      * @param user 현재 로그인한 사용자
      * @return 삭제된 일정 ID
+     * @throws BusinessException 일정을 찾을 수 없는 경우, 동시 수정이 감지된 경우
      */
     @Transactional
     public ScheduleDeleteResponse deleteSchedule(Long planId, Long scheduleId, User user) {
-        // 권한 체크 (수정 권한 확인: OWNER 또는 EDITOR)
-        findPlanWithEditPermissionCheck(planId, user);
-        
-        Schedule schedule = scheduleRepository
-                .findByScheduleIdAndPlan_PlanId(scheduleId, planId)
-                .orElseThrow(() -> new BusinessException(PlanErrorCode.SCHEDULE_NOT_FOUND));
+        try {
+            // 권한 체크 (수정 권한 확인: OWNER 또는 EDITOR)
+            findPlanWithEditPermissionCheck(planId, user);
+            
+            Schedule schedule = scheduleRepository
+                    .findByScheduleIdAndPlan_PlanId(scheduleId, planId)
+                    .orElseThrow(() -> new BusinessException(PlanErrorCode.SCHEDULE_NOT_FOUND));
 
-        // 메인 이벤트(콘서트) 일정은 삭제 불가
-        if (isMainEvent(schedule)) {
-            throw new BusinessException(PlanErrorCode.SCHEDULE_MAIN_EVENT_NOT_DELETABLE);
+            // 메인 이벤트(콘서트) 일정은 삭제 불가
+            if (isMainEvent(schedule)) {
+                throw new BusinessException(PlanErrorCode.SCHEDULE_MAIN_EVENT_NOT_DELETABLE);
+            }
+
+            scheduleRepository.delete(schedule);
+            // 명시적으로 flush하여 OptimisticLockException을 즉시 감지
+            scheduleRepository.flush();
+            
+            return ScheduleDeleteResponse.builder()
+                    .scheduleId(scheduleId)
+                    .build();
+        } catch (OptimisticLockException e) {
+            handleOptimisticLockException(e);
+            return null; // unreachable
         }
-
-        scheduleRepository.delete(schedule);
-        
-        return ScheduleDeleteResponse.builder()
-                .scheduleId(scheduleId)
-                .build();
     }
 
 
@@ -488,8 +458,8 @@ public class PlanService {
             return plan;
         }
 
-        // 소유자가 아닌 경우 PlanParticipant에서 참가 여부 확인
-        plan.getParticipants().size();
+        // 소유자가 아닌 경우 PlanParticipant에서 참가 여부 확인 (LAZY 로딩 강제)
+        loadParticipants(plan);
 
         boolean isParticipant = plan.getParticipants().stream()
                 .anyMatch(participant -> participant.getUserId().equals(userId));
@@ -542,8 +512,8 @@ public class PlanService {
             return plan;
         }
 
-        // 소유자가 아닌 경우 PlanParticipant에서 role 확인
-        plan.getParticipants().size();
+        // 소유자가 아닌 경우 PlanParticipant에서 role 확인 (LAZY 로딩 강제)
+        loadParticipants(plan);
         
         PlanParticipant participant = plan.getParticipants().stream()
                 .filter(p -> p.getUserId().equals(userId))
@@ -572,6 +542,156 @@ public class PlanService {
                 .createdDate(plan.getCreatedDate())
                 .modifiedDate(plan.getModifiedDate())
                 .build();
+    }
+
+    /**
+     * 메인 이벤트 일정 생성
+     */
+    private Schedule createMainEventSchedule(Plan plan, Concert concert) {
+        String location = concert.getConcertPlace() != null 
+                ? concert.getConcertPlace().getPlaceName() 
+                : DEFAULT_LOCATION;
+        Double locationLat = concert.getConcertPlace() != null 
+                ? concert.getConcertPlace().getLat() 
+                : null;
+        Double locationLon = concert.getConcertPlace() != null 
+                ? concert.getConcertPlace().getLon() 
+                : null;
+
+        return Schedule.builder()
+                .plan(plan)
+                .scheduleType(Schedule.ScheduleType.ACTIVITY)
+                .title(concert.getName())
+                .startAt(DEFAULT_START_TIME)
+                .duration(DEFAULT_DURATION)
+                .location(location)
+                .locationLat(locationLat)
+                .locationLon(locationLon)
+                .estimatedCost(concert.getMinPrice())
+                .details(DEFAULT_DETAILS)
+                .isMainEvent(true)
+                .build();
+    }
+
+    /**
+     * 공유 링크 응답 생성
+     */
+    private PlanShareLinkResponse buildShareLinkResponse(Plan plan) {
+        return PlanShareLinkResponse.builder()
+                .planId(plan.getPlanId())
+                .shareToken(plan.getShareToken())
+                .shareLink(SHARE_LINK_PREFIX + plan.getShareToken())
+                .build();
+    }
+
+    /**
+     * Schedule 추가 요청 검증
+     */
+    private void validateScheduleRequest(Schedule.ScheduleType scheduleType, 
+                                        Double locationLat, Double locationLon,
+                                        Double startPlaceLat, Double startPlaceLon,
+                                        Double endPlaceLat, Double endPlaceLon,
+                                        Integer distance, Schedule.TransportType transportType) {
+        if (scheduleType == Schedule.ScheduleType.TRANSPORT) {
+            // TRANSPORT 타입일 때 locationLat/Lon은 사용하지 않음
+            if (locationLat != null || locationLon != null) {
+                throw new BusinessException(PlanErrorCode.SCHEDULE_INVALID_LOCATION_FOR_TRANSPORT);
+            }
+            // TRANSPORT 타입인 경우 필수 필드 검증
+            if (startPlaceLat == null || startPlaceLon == null ||
+                endPlaceLat == null || endPlaceLon == null ||
+                distance == null || transportType == null) {
+                throw new BusinessException(PlanErrorCode.SCHEDULE_INVALID_TRANSPORT_FIELDS);
+            }
+        }
+    }
+
+    /**
+     * Schedule 업데이트 요청 검증
+     */
+    private void validateScheduleUpdate(ScheduleUpdateRequest request, Schedule schedule, 
+                                       Schedule.ScheduleType newScheduleType) {
+        // TRANSPORT 타입일 때 locationLat/Lon은 사용하지 않음
+        if (newScheduleType == Schedule.ScheduleType.TRANSPORT) {
+            if (request.getLocationLat() != null || request.getLocationLon() != null) {
+                throw new BusinessException(PlanErrorCode.SCHEDULE_INVALID_LOCATION_FOR_TRANSPORT);
+            }
+        }
+
+        // 일반 일정일 때 위도/경도는 쌍으로만 허용 (단독 입력 방지)
+        if (newScheduleType != Schedule.ScheduleType.TRANSPORT) {
+            boolean isLatProvided = request.getLocationLat() != null;
+            boolean isLonProvided = request.getLocationLon() != null;
+            if (isLatProvided ^ isLonProvided) {
+                throw new BusinessException(PlanErrorCode.SCHEDULE_INVALID_LOCATION_COORDINATES);
+            }
+        }
+        
+        // TRANSPORT 타입인 경우 필수 필드 검증 (기존 값과 병합하여 검증)
+        if (newScheduleType == Schedule.ScheduleType.TRANSPORT) {
+            Double startPlaceLat = request.getStartPlaceLat() != null 
+                    ? request.getStartPlaceLat() 
+                    : schedule.getStartPlaceLat();
+            Double startPlaceLon = request.getStartPlaceLon() != null 
+                    ? request.getStartPlaceLon() 
+                    : schedule.getStartPlaceLon();
+            Double endPlaceLat = request.getEndPlaceLat() != null 
+                    ? request.getEndPlaceLat() 
+                    : schedule.getEndPlaceLat();
+            Double endPlaceLon = request.getEndPlaceLon() != null 
+                    ? request.getEndPlaceLon() 
+                    : schedule.getEndPlaceLon();
+            Integer distance = request.getDistance() != null 
+                    ? request.getDistance()
+                    : schedule.getDistance();
+            Schedule.TransportType transportType = request.getTransportType() != null 
+                    ? request.getTransportType() 
+                    : schedule.getTransportType();
+            
+            if (startPlaceLat == null || startPlaceLon == null || 
+                endPlaceLat == null || endPlaceLon == null || 
+                distance == null || transportType == null) {
+                throw new BusinessException(PlanErrorCode.SCHEDULE_INVALID_TRANSPORT_FIELDS);
+            }
+        }
+    }
+
+    /**
+     * Schedule 필드 업데이트
+     */
+    private void updateScheduleFields(Schedule schedule, ScheduleUpdateRequest request, 
+                                     Schedule.ScheduleType newScheduleType) {
+        schedule.update(
+                newScheduleType,
+                request.getTitle() != null ? request.getTitle() : schedule.getTitle(),
+                request.getStartAt() != null ? request.getStartAt() : schedule.getStartAt(),
+                request.getDuration() != null ? request.getDuration() : schedule.getDuration(),
+                request.getLocation() != null ? request.getLocation() : schedule.getLocation(),
+                request.getLocationLat() != null ? request.getLocationLat() : schedule.getLocationLat(),
+                request.getLocationLon() != null ? request.getLocationLon() : schedule.getLocationLon(),
+                request.getEstimatedCost() != null ? request.getEstimatedCost() : schedule.getEstimatedCost(),
+                request.getDetails() != null ? request.getDetails() : schedule.getDetails(),
+                request.getStartPlaceLat() != null ? request.getStartPlaceLat() : schedule.getStartPlaceLat(),
+                request.getStartPlaceLon() != null ? request.getStartPlaceLon() : schedule.getStartPlaceLon(),
+                request.getEndPlaceLat() != null ? request.getEndPlaceLat() : schedule.getEndPlaceLat(),
+                request.getEndPlaceLon() != null ? request.getEndPlaceLon() : schedule.getEndPlaceLon(),
+                request.getDistance() != null ? request.getDistance() : schedule.getDistance(),
+                request.getTransportType() != null ? request.getTransportType() : schedule.getTransportType()
+        );
+    }
+
+    /**
+     * Plan의 participants 컬렉션을 LAZY 로딩 (의도적인 초기화)
+     */
+    private void loadParticipants(Plan plan) {
+        plan.getParticipants().size();
+    }
+
+    /**
+     * OptimisticLockException을 BusinessException으로 변환
+     */
+    private void handleOptimisticLockException(OptimisticLockException e) {
+        throw new BusinessException(PlanErrorCode.CONCURRENT_MODIFICATION);
     }
 
     /**
@@ -606,27 +726,44 @@ public class PlanService {
      */
     private void addConcertInfoToScheduleInfoBuilder(
             PlanDetailResponse.ScheduleInfo.ScheduleInfoBuilder builder, Schedule schedule) {
-        Concert concert = getConcertFromSchedule(schedule);
-        if (concert != null) {
-            builder.concertId(concert.getConcertId())
-                    .concertName(concert.getName())
-                    .concertPosterUrl(concert.getPosterUrl())
-                    .concertPlaceName(concert.getConcertPlace() != null ? concert.getConcertPlace().getPlaceName() : null)
-                    .concertMinPrice(concert.getMinPrice())
-                    .concertMaxPrice(concert.getMaxPrice());
-        }
+        addConcertInfo(builder, schedule);
     }
 
     /**
      * ScheduleResponse.Builder에 공연 정보 추가
      */
     private void addConcertInfoToBuilder(ScheduleResponse.ScheduleResponseBuilder builder, Schedule schedule) {
+        addConcertInfo(builder, schedule);
+    }
+
+    /**
+     * 공연 정보를 Builder에 추가하는 공통 메서드
+     */
+    private void addConcertInfo(Object builder, Schedule schedule) {
         Concert concert = getConcertFromSchedule(schedule);
-        if (concert != null) {
-            builder.concertId(concert.getConcertId())
+        if (concert == null) {
+            return;
+        }
+
+        String placeName = concert.getConcertPlace() != null ? concert.getConcertPlace().getPlaceName() : null;
+        
+        // Builder 타입에 따라 다른 메서드 호출
+        if (builder instanceof PlanDetailResponse.ScheduleInfo.ScheduleInfoBuilder) {
+            PlanDetailResponse.ScheduleInfo.ScheduleInfoBuilder detailBuilder = 
+                    (PlanDetailResponse.ScheduleInfo.ScheduleInfoBuilder) builder;
+            detailBuilder.concertId(concert.getConcertId())
                     .concertName(concert.getName())
                     .concertPosterUrl(concert.getPosterUrl())
-                    .concertPlaceName(concert.getConcertPlace() != null ? concert.getConcertPlace().getPlaceName() : null)
+                    .concertPlaceName(placeName)
+                    .concertMinPrice(concert.getMinPrice())
+                    .concertMaxPrice(concert.getMaxPrice());
+        } else if (builder instanceof ScheduleResponse.ScheduleResponseBuilder) {
+            ScheduleResponse.ScheduleResponseBuilder responseBuilder = 
+                    (ScheduleResponse.ScheduleResponseBuilder) builder;
+            responseBuilder.concertId(concert.getConcertId())
+                    .concertName(concert.getName())
+                    .concertPosterUrl(concert.getPosterUrl())
+                    .concertPlaceName(placeName)
                     .concertMinPrice(concert.getMinPrice())
                     .concertMaxPrice(concert.getMaxPrice());
         }
@@ -719,11 +856,7 @@ public class PlanService {
             planRepository.save(plan);
         }
 
-        return PlanShareLinkResponse.builder()
-                .planId(plan.getPlanId())
-                .shareToken(plan.getShareToken())
-                .shareLink("/plans/share/" + plan.getShareToken())
-                .build();
+        return buildShareLinkResponse(plan);
     }
 
     /**
@@ -744,11 +877,7 @@ public class PlanService {
             throw new BusinessException(PlanErrorCode.SHARE_TOKEN_NOT_GENERATED);
         }
 
-        return PlanShareLinkResponse.builder()
-                .planId(plan.getPlanId())
-                .shareToken(plan.getShareToken())
-                .shareLink("/plans/share/" + plan.getShareToken())
-                .build();
+        return buildShareLinkResponse(plan);
     }
 
     /**
@@ -770,11 +899,7 @@ public class PlanService {
         plan.generateShareToken();
         planRepository.save(plan);
 
-        return PlanShareLinkResponse.builder()
-                .planId(plan.getPlanId())
-                .shareToken(plan.getShareToken())
-                .shareLink("/plans/share/" + plan.getShareToken())
-                .build();
+        return buildShareLinkResponse(plan);
     }
 
     /**
@@ -810,50 +935,57 @@ public class PlanService {
      * @param shareToken 공유 토큰 (UUID 기반 13자)
      * @param user 현재 로그인한 사용자
      * @return 플랜 상세 정보
-     * @throws BusinessException 공유 링크가 유효하지 않은 경우, 이미 참가자인 경우
+     * @throws BusinessException 공유 링크가 유효하지 않은 경우, 이미 참가자인 경우, 동시 수정이 감지된 경우
      */
     @Transactional
     public PlanDetailResponse acceptPlanInvitation(String shareToken, User user) {
-        // shareToken으로 Plan 찾기
-        Plan plan = planRepository.findByShareToken(shareToken)
-                .orElseThrow(() -> new BusinessException(PlanErrorCode.INVALID_SHARE_TOKEN));
+        try {
+            // shareToken으로 Plan 찾기
+            Plan plan = planRepository.findByShareToken(shareToken)
+                    .orElseThrow(() -> new BusinessException(PlanErrorCode.INVALID_SHARE_TOKEN));
 
-        // 만료 시간 검증
-        if (plan.isShareTokenExpired()) {
-            throw new BusinessException(PlanErrorCode.SHARE_TOKEN_EXPIRED);
+            // 만료 시간 검증
+            if (plan.isShareTokenExpired()) {
+                throw new BusinessException(PlanErrorCode.SHARE_TOKEN_EXPIRED);
+            }
+
+            // 자기 자신의 플랜은 참가할 수 없음
+            if (plan.getUserId().equals(user.getId())) {
+                throw new BusinessException(PlanErrorCode.USER_ALREADY_PARTICIPANT);
+            }
+
+            // DB 레벨에서 이미 참가자인지 확인 (유니크 제약조건 검증)
+            boolean isAlreadyParticipant = planParticipantRepository.existsByUser_IdAndPlan_PlanId(
+                    user.getId(), plan.getPlanId());
+
+            if (isAlreadyParticipant) {
+                // 이미 참가자인 경우 상태를 ACCEPTED로 변경
+                PlanParticipant participant = planParticipantRepository
+                        .findByUser_IdAndPlan_PlanId(user.getId(), plan.getPlanId())
+                        .orElseThrow(() -> new BusinessException(PlanErrorCode.PLAN_NOT_FOUND));
+
+                participant.updateInviteStatus(PlanParticipant.InviteStatus.ACCEPTED);
+                planParticipantRepository.save(participant);
+            } else {
+                // 새로운 참가자 추가 (기본 역할은 VIEWER, 상태는 ACCEPTED)
+                PlanParticipant participant = PlanParticipant.builder()
+                        .user(user)
+                        .plan(plan)
+                        .inviteStatus(PlanParticipant.InviteStatus.ACCEPTED)
+                        .role(PlanParticipant.ParticipantRole.VIEWER)
+                        .build();
+
+                plan.addParticipant(participant);
+                planRepository.save(plan);
+                // 명시적으로 flush하여 OptimisticLockException을 즉시 감지
+                planRepository.flush();
+            }
+
+            return getPlanDetail(plan.getPlanId(), user);
+        } catch (OptimisticLockException e) {
+            handleOptimisticLockException(e);
+            return null;
         }
-
-        // 자기 자신의 플랜은 참가할 수 없음
-        if (plan.getUserId().equals(user.getId())) {
-            throw new BusinessException(PlanErrorCode.USER_ALREADY_PARTICIPANT);
-        }
-
-        // DB 레벨에서 이미 참가자인지 확인 (유니크 제약조건 검증)
-        boolean isAlreadyParticipant = planParticipantRepository.existsByUser_IdAndPlan_PlanId(
-                user.getId(), plan.getPlanId());
-
-        if (isAlreadyParticipant) {
-            // 이미 참가자인 경우 상태를 ACCEPTED로 변경
-            PlanParticipant participant = planParticipantRepository
-                    .findByUser_IdAndPlan_PlanId(user.getId(), plan.getPlanId())
-                    .orElseThrow(() -> new BusinessException(PlanErrorCode.PLAN_NOT_FOUND));
-
-            participant.updateInviteStatus(PlanParticipant.InviteStatus.ACCEPTED);
-            planParticipantRepository.save(participant);
-        } else {
-            // 새로운 참가자 추가 (기본 역할은 VIEWER, 상태는 ACCEPTED)
-            PlanParticipant participant = PlanParticipant.builder()
-                    .user(user)
-                    .plan(plan)
-                    .inviteStatus(PlanParticipant.InviteStatus.ACCEPTED)
-                    .role(PlanParticipant.ParticipantRole.VIEWER)
-                    .build();
-
-            plan.addParticipant(participant);
-            planRepository.save(plan);
-        }
-
-        return getPlanDetail(plan.getPlanId(), user);
     }
 
     /**
@@ -879,32 +1011,38 @@ public class PlanService {
      *
      * @param shareToken 공유 토큰
      * @param user 현재 로그인한 사용자
-     * @throws BusinessException 공유 링크가 유효하지 않거나 참가자가 아닌 경우
+     * @throws BusinessException 공유 링크가 유효하지 않거나 참가자가 아닌 경우, 동시 수정이 감지된 경우
      */
     @Transactional
     public void declinePlanInvitation(String shareToken, User user) {
-        // shareToken으로 Plan 찾기
-        Plan plan = planRepository.findByShareToken(shareToken)
-                .orElseThrow(() -> new BusinessException(PlanErrorCode.INVALID_SHARE_TOKEN));
+        try {
+            // shareToken으로 Plan 찾기
+            Plan plan = planRepository.findByShareToken(shareToken)
+                    .orElseThrow(() -> new BusinessException(PlanErrorCode.INVALID_SHARE_TOKEN));
 
-        // 만료 시간 검증
-        if (plan.isShareTokenExpired()) {
-            throw new BusinessException(PlanErrorCode.SHARE_TOKEN_EXPIRED);
+            // 만료 시간 검증
+            if (plan.isShareTokenExpired()) {
+                throw new BusinessException(PlanErrorCode.SHARE_TOKEN_EXPIRED);
+            }
+
+            // 자기 자신의 플랜은 거절할 수 없음
+            if (plan.getUserId().equals(user.getId())) {
+                throw new BusinessException(PlanErrorCode.USER_ALREADY_PARTICIPANT);
+            }
+
+            // 참가자 조회
+            PlanParticipant participant = planParticipantRepository
+                    .findByUser_IdAndPlan_PlanId(user.getId(), plan.getPlanId())
+                    .orElseThrow(() -> new BusinessException(PlanErrorCode.PARTICIPANT_NOT_FOUND));
+
+            // 상태를 DECLINED로 변경
+            participant.updateInviteStatus(PlanParticipant.InviteStatus.DECLINED);
+            planParticipantRepository.save(participant);
+            // 명시적으로 flush하여 OptimisticLockException을 즉시 감지
+            planParticipantRepository.flush();
+        } catch (OptimisticLockException e) {
+            handleOptimisticLockException(e);
         }
-
-        // 자기 자신의 플랜은 거절할 수 없음
-        if (plan.getUserId().equals(user.getId())) {
-            throw new BusinessException(PlanErrorCode.USER_ALREADY_PARTICIPANT);
-        }
-
-        // 참가자 조회
-        PlanParticipant participant = planParticipantRepository
-                .findByUser_IdAndPlan_PlanId(user.getId(), plan.getPlanId())
-                .orElseThrow(() -> new BusinessException(PlanErrorCode.PARTICIPANT_NOT_FOUND));
-
-        // 상태를 DECLINED로 변경
-        participant.updateInviteStatus(PlanParticipant.InviteStatus.DECLINED);
-        planParticipantRepository.save(participant);
     }
 
     /**
@@ -938,7 +1076,6 @@ public class PlanService {
 
         // 상태를 REMOVED로 변경
         participant.updateInviteStatus(PlanParticipant.InviteStatus.REMOVED);
-        planParticipantRepository.save(participant);
     }
 
     /**
@@ -947,26 +1084,32 @@ public class PlanService {
      *
      * @param planId 계획 ID
      * @param user 현재 로그인한 사용자
-     * @throws BusinessException 계획을 찾을 수 없거나 소유자는 나갈 수 없는 경우
+     * @throws BusinessException 계획을 찾을 수 없거나 소유자는 나갈 수 없는 경우, 동시 수정이 감지된 경우
      */
     @Transactional
     public void quitPlan(Long planId, User user) {
-        Plan plan = planRepository.findById(planId)
-                .orElseThrow(() -> new BusinessException(PlanErrorCode.PLAN_NOT_FOUND));
+        try {
+            Plan plan = planRepository.findById(planId)
+                    .orElseThrow(() -> new BusinessException(PlanErrorCode.PLAN_NOT_FOUND));
 
-        // 소유자는 나갈 수 없음
-        if (plan.getUserId().equals(user.getId())) {
-            throw new BusinessException(PlanErrorCode.CANNOT_LEAVE_OWNER);
+            // 소유자는 나갈 수 없음
+            if (plan.getUserId().equals(user.getId())) {
+                throw new BusinessException(PlanErrorCode.CANNOT_LEAVE_OWNER);
+            }
+
+            // 참가자 조회
+            PlanParticipant participant = planParticipantRepository
+                    .findByUser_IdAndPlan_PlanId(user.getId(), planId)
+                    .orElseThrow(() -> new BusinessException(PlanErrorCode.PARTICIPANT_NOT_FOUND));
+
+            // 상태를 LEFT로 변경
+            participant.updateInviteStatus(PlanParticipant.InviteStatus.LEFT);
+            planParticipantRepository.save(participant);
+            // 명시적으로 flush하여 OptimisticLockException을 즉시 감지
+            planParticipantRepository.flush();
+        } catch (OptimisticLockException e) {
+            handleOptimisticLockException(e);
         }
-
-        // 참가자 조회
-        PlanParticipant participant = planParticipantRepository
-                .findByUser_IdAndPlan_PlanId(user.getId(), planId)
-                .orElseThrow(() -> new BusinessException(PlanErrorCode.PARTICIPANT_NOT_FOUND));
-
-        // 상태를 LEFT로 변경
-        participant.updateInviteStatus(PlanParticipant.InviteStatus.LEFT);
-        planParticipantRepository.save(participant);
     }
 
     /**
