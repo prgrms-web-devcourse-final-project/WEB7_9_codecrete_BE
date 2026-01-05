@@ -43,7 +43,7 @@ public class TmapApiController {
             )
     )
     @GetMapping("/tmap/transit")
-    public String getTransit(
+    public TmapSummaryAllResponse getTransit(
 
             @Parameter(
                     description = "출발지 경도 (longitude)",
@@ -73,7 +73,7 @@ public class TmapApiController {
             )
             @RequestParam double endY
     ) {
-        return tmapService.getRoute(startX, startY, endX, endY);
+        return tmapService.getSummaryRoute(startX, startY, endX, endY);
     }
 
     @Operation(
