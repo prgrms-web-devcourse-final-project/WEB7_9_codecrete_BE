@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.plans.dto.response;
 
+import com.back.web7_9_codecrete_be.domain.plans.dto.TransportRoute;
 import com.back.web7_9_codecrete_be.domain.plans.entity.Schedule;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,6 +28,7 @@ public class ScheduleResponse {
     private Double endPlaceLon;
     private Integer distance;
     private Schedule.TransportType transportType;
+    private TransportRoute transportRoute;
     private Boolean isMainEvent;
     // 공연 정보 (isMainEvent가 true인 경우)
     private Long concertId;

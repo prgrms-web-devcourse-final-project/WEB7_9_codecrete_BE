@@ -163,6 +163,7 @@ public class PlanService {
                             .endPlaceLon(item.getEndPlaceLon())
                             .distance(item.getDistance())
                             .transportType(item.getTransportType())
+                            .transportRoute(item.getTransportRouteAsObject())
                             .isMainEvent(item.getIsMainEvent())
                             .createdDate(item.getCreatedDate())
                             .modifiedDate(item.getModifiedDate());
@@ -292,6 +293,11 @@ public class PlanService {
                     .distance(request.getDistance())
                     .transportType(request.getTransportType())
                     .build();
+
+            // transportRoute 설정 (JSON 문자열로 변환)
+            if (request.getTransportRoute() != null) {
+                schedule.setTransportRoute(request.getTransportRoute());
+            }
 
             plan.addSchedule(schedule);
             // cascade 설정으로 인해 plan 저장 시 schedule도 함께 저장됨
@@ -661,6 +667,15 @@ public class PlanService {
      */
     private void updateScheduleFields(Schedule schedule, ScheduleUpdateRequest request, 
                                      Schedule.ScheduleType newScheduleType) {
+        // transportRoute는 별도로 처리 (null이 아닌 경우에만 업데이트)
+        String transportRouteJson = null;
+        if (request.getTransportRoute() != null) {
+            schedule.setTransportRoute(request.getTransportRoute());
+            transportRouteJson = schedule.getTransportRoute(); // 변환된 JSON 문자열 가져오기
+        } else {
+            transportRouteJson = schedule.getTransportRoute(); // 기존 값 유지
+        }
+
         schedule.update(
                 newScheduleType,
                 request.getTitle() != null ? request.getTitle() : schedule.getTitle(),
@@ -676,7 +691,8 @@ public class PlanService {
                 request.getEndPlaceLat() != null ? request.getEndPlaceLat() : schedule.getEndPlaceLat(),
                 request.getEndPlaceLon() != null ? request.getEndPlaceLon() : schedule.getEndPlaceLon(),
                 request.getDistance() != null ? request.getDistance() : schedule.getDistance(),
-                request.getTransportType() != null ? request.getTransportType() : schedule.getTransportType()
+                request.getTransportType() != null ? request.getTransportType() : schedule.getTransportType(),
+                transportRouteJson
         );
     }
 
@@ -787,6 +803,7 @@ public class PlanService {
                 .endPlaceLon(schedule.getEndPlaceLon())
                 .distance(schedule.getDistance())
                 .transportType(schedule.getTransportType())
+                .transportRoute(schedule.getTransportRouteAsObject())
                 .isMainEvent(schedule.getIsMainEvent())
                 .createdDate(schedule.getCreatedDate())
                 .modifiedDate(schedule.getModifiedDate());
