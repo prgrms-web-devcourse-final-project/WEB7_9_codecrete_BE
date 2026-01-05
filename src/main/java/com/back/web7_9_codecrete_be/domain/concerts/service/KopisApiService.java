@@ -47,6 +47,8 @@ public class KopisApiService {
 
     private final ConcertUpdateTimeRepository concertUpdateTimeRepository;
 
+    private final ConcertKopisApiLogRepository concertKopisApiLogRepository;
+
     private final ConcertRedisRepository concertRedisRepository;
 
     @Value("${kopis.api-key}")
@@ -59,13 +61,22 @@ public class KopisApiService {
 
     private int savedIndex;
 
-    public KopisApiService(ConcertRepository concertRepository, ConcertPlaceRepository placeRepository, TicketOfficeRepository ticketOfficeRepository, ConcertImageRepository imageRepository, ConcertUpdateTimeRepository concertUpdateTimeRepository,ConcertRedisRepository concertRedisRepository) {
+    public KopisApiService(
+            ConcertRepository concertRepository,
+            ConcertPlaceRepository placeRepository,
+            TicketOfficeRepository ticketOfficeRepository,
+            ConcertImageRepository imageRepository,
+            ConcertUpdateTimeRepository concertUpdateTimeRepository,
+            ConcertRedisRepository concertRedisRepository,
+            ConcertKopisApiLogRepository concertKopisApiLogRepository
+            ) {
         this.concertRepository = concertRepository;
         this.placeRepository = placeRepository;
         this.ticketOfficeRepository = ticketOfficeRepository;
         this.imageRepository = imageRepository;
         this.concertUpdateTimeRepository = concertUpdateTimeRepository;
         this.concertRedisRepository = concertRedisRepository;
+        this.concertKopisApiLogRepository = concertKopisApiLogRepository;
         this.restClient = RestClient.builder()
                 .baseUrl("https://kopis.or.kr/openApi/restful")
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML_VALUE)
