@@ -4,6 +4,9 @@ import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record SearchResponse(
+        @Schema(description = "아티스트 id 입니다.")
+        Long id,
+
         @Schema(description = "아티스트 이름입니다.")
         String artistName,
 
@@ -14,14 +17,21 @@ public record SearchResponse(
         String artistGroup,
 
         @Schema(description = "받은 총 좋아요 수(찜한 수) 입니다.")
-        int likeCount
+        int likeCount,
+
+        @Schema(description = "아티스트 이미지 URL 입니다.")
+        String imageUrl
+
+
 ) {
     public static SearchResponse from(Artist artist) {
         return new SearchResponse(
+                artist.getId(),
                 artist.getArtistName(),
                 artist.getNameKo(),
                 artist.getArtistGroup(),
-                artist.getLikeCount()
+                artist.getLikeCount(),
+                artist.getImageUrl()
         );
     }
 }
