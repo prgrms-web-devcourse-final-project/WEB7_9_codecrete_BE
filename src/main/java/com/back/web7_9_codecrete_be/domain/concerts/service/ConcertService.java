@@ -50,7 +50,7 @@ public class ConcertService {
             case VIEW -> concertItems = concertRepository.getConcertItemsOrderByViewCountDesc(pageable);
             case TICKETING -> concertItems = concertRepository.getUpComingTicketingConcertItemsFromDateASC(pageable, LocalDateTime.of(LocalDate.now(), LocalTime.MIN));
             case UPCOMING -> concertItems = concertRepository.getUpComingConcertItemsFromDateASC(pageable,LocalDate.now());
-            case REGISTERED -> concertItems = concertRepository.getConcertItemsOrderByApiId(pageable);
+            case REGISTERED -> concertItems = concertRepository.getConcertItemsOrderByApiIdDesc(pageable);
         }
 
         concertRedisRepository.saveConcertsList(sort,pageable,concertItems);
