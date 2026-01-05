@@ -1,0 +1,73 @@
+name: CD - Blue Green Deploy
+
+on:
+  push:
+    branches: [ release ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 소스 체크아웃
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Docker Hub 로그인
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 3. Docker 이미지 빌드 & 푸시
+      - name: Build & Push Docker Image
+        run: |
+          docker build -t heygeeji/ncb-backend:latest .
+          docker push heygeeji/ncb-backend:latest
+
+      # 4. EC2 배포 (Blue/Green + Rollback)
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/deploy
+
+            echo "🔍 Detecting active container..."
+
+            if docker ps --filter "name=concert-spring-blue" --format "{{.Status}}" | grep -q healthy; then
+              ACTIVE=blue
+              TARGET=green
+              PORT=8082
+            else
+              ACTIVE=green
+              TARGET=blue
+              PORT=8081
+            fi
+
+            echo "🟦 Active: $ACTIVE"
+            echo "🟩 Deploy target: $TARGET"
+
+            echo "📥 Pull latest image"
+            docker compose -f docker-compose-prod.yml pull spring-$TARGET
+
+            echo "🚀 Start spring-$TARGET"
+            docker compose -f docker-compose-prod.yml up -d spring-$TARGET
+
+            echo "⏳ Waiting for health check on $PORT..."
+            for i in {1..20}; do
+              if curl -sf http://localhost:$PORT/actuator/health > /dev/null; then
+                echo "✅ spring-$TARGET is healthy"
+                exit 0
+              fi
+              echo "⏳ still waiting..."
+              sleep 5
+            done
+
+            echo "❌ Health check failed for spring-$TARGET - rolling back"
+            docker compose -f docker-compose-prod.yml stop spring-$TARGET
+            exit 1
