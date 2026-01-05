@@ -1,5 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.community.post.entity;
 
+import com.back.web7_9_codecrete_be.domain.community.post.dto.request.ReviewPostMultipartRequest;
+import com.back.web7_9_codecrete_be.domain.community.post.dto.request.ReviewPostUpdateMultipartRequest;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,9 +18,6 @@ public class ReviewPost {
     @Id
     private Long postId;
 
-    @Column(name = "concert_id", nullable = false)
-    private Long concertId;
-
     @Column(nullable = false)
     private Integer rating; // 0~5
 
@@ -34,13 +33,28 @@ public class ReviewPost {
     )
     private List<ReviewImage> images = new ArrayList<>();
 
-    public static ReviewPost create(Post post, Long concertId, Integer rating) {
-        ReviewPost review = new ReviewPost();
-        review.post = post;
-        review.postId = post.getPostId();
-        review.concertId = concertId;
-        review.rating = rating;
-        return review;
+    @ElementCollection
+    @CollectionTable(
+            name = "review_tag",
+            joinColumns = @JoinColumn(name = "review_post_id")
+    )
+    @Column(name = "tag", length = 30)
+    private List<String> tags = new ArrayList<>();
+
+    public static ReviewPost create(Post post, ReviewPostMultipartRequest req) {
+        ReviewPost reviewPost = new ReviewPost();
+        reviewPost.post = post;
+        reviewPost.rating = req.getRating();
+        reviewPost.tags = req.getTags();
+        return reviewPost;
+    }
+
+    public void update(ReviewPostUpdateMultipartRequest req) {
+        this.rating = req.getRating();
+        this.tags.clear();
+        if (req.getTags() != null) {
+            this.tags.addAll(req.getTags());
+        }
     }
 
     public void updateRating(Integer rating) {

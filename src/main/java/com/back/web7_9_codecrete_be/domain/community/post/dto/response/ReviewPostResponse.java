@@ -15,9 +15,6 @@ public class ReviewPostResponse {
     @Schema(description = "공통 게시글 정보")
     private PostResponse post;
 
-    @Schema(description = "콘서트 ID", example = "100")
-    private Long concertId;
-
     @Schema(description = "평점 (0~5)", example = "4")
     private Integer rating;
 
@@ -30,7 +27,6 @@ public class ReviewPostResponse {
     ) {
         return ReviewPostResponse.builder()
                 .post(PostResponse.from(reviewPost.getPost()))
-                .concertId(reviewPost.getConcertId())
                 .rating(reviewPost.getRating())
                 .imageUrls(imageUrls)
                 .build();

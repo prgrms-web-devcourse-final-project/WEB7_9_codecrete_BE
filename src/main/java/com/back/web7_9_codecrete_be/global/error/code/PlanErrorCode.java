@@ -26,7 +26,8 @@ public enum PlanErrorCode implements ErrorCode {
 	PARTICIPANT_NOT_FOUND(HttpStatus.NOT_FOUND, "P-114", "참가자를 찾을 수 없습니다."),
 	CANNOT_REMOVE_OWNER(HttpStatus.BAD_REQUEST, "P-115", "소유자는 강퇴할 수 없습니다."),
 	CANNOT_LEAVE_OWNER(HttpStatus.BAD_REQUEST, "P-116", "소유자는 계획에서 나갈 수 없습니다."),
-	INVALID_INVITE_STATUS(HttpStatus.BAD_REQUEST, "P-117", "유효하지 않은 초대 상태입니다.");
+	INVALID_INVITE_STATUS(HttpStatus.BAD_REQUEST, "P-117", "유효하지 않은 초대 상태입니다."),
+	CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "P-118", "다른 사용자가 동시에 수정 중입니다. 페이지를 새로고침하고 다시 시도해주세요.");
 
 	private final HttpStatus status;
 	private final String code;

@@ -16,6 +16,8 @@ import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -82,12 +84,29 @@ public class KakaoApiController {
         return RsData.success("좌표를 주소로 변환했습니다.", addressName);
     }
 
-
+    @Operation(
+            summary = "자동차 길찾기 - 안내(Guide) 목록만 조회",
+            description = "카카오 모빌리티 자동차 길찾기 결과에서 Guide(안내) 목록만 flatten 해서 반환합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "조회 성공",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = KakaoMobilityResponse.Guide.class)))
+            )
+    })
     @GetMapping("/navigate/guides")
     public List<KakaoMobilityResponse.Guide> navigateGuides(
+            @Parameter(description = "출발지 경도", example = "126.977969", required = true)
             @RequestParam double startX,
+
+            @Parameter(description = "출발지 위도", example = "37.566535", required = true)
             @RequestParam double startY,
+
+            @Parameter(description = "도착지 경도", example = "126.986037", required = true)
             @RequestParam double endX,
+
+            @Parameter(description = "도착지 위도", example = "37.563617", required = true)
             @RequestParam double endY
     ) {
         KakaoMobilityResponse res = kakaoLocalService.NaviSearch(startX, startY, endX, endY);
@@ -107,12 +126,30 @@ public class KakaoApiController {
                 .toList();
     }
 
-
+    @Operation(
+            summary = "자동차 길찾기 - 요약(Summary) 조회",
+            description = "카카오 모빌리티 자동차 길찾기 결과에서 0번 route의 summary(총 거리/시간)를 반환합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "조회 성공",
+                    content = @Content(schema = @Schema(implementation = KakaoMobilityResponse.Summary.class))
+            ),
+            @ApiResponse(responseCode = "404", description = "경로를 찾을 수 없음", content = @Content)
+    })
     @GetMapping("/navigate/summary")
     public KakaoMobilityResponse.Summary navigateSummary(
+            @Parameter(description = "출발지 경도", example = "126.977969", required = true)
             @RequestParam double startX,
+
+            @Parameter(description = "출발지 위도", example = "37.566535", required = true)
             @RequestParam double startY,
+
+            @Parameter(description = "도착지 경도", example = "126.986037", required = true)
             @RequestParam double endX,
+
+            @Parameter(description = "도착지 위도", example = "37.563617", required = true)
             @RequestParam double endY
     ) {
         KakaoMobilityResponse res = kakaoLocalService.NaviSearchSummary(startX, startY, endX, endY);
@@ -131,8 +168,27 @@ public class KakaoApiController {
     }
 
     //카카오 자동차 api인데, 경유지가 존재하는 경우에 사용
+    @Operation(
+            summary = "자동차 길찾기 - 경유지 포함(구간별) 요약 FE 응답",
+            description = "경유지를 포함한 길찾기를 수행하고, 구간별(section) 거리/시간과 from→to 포인트를 FE용으로 재가공해 반환합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "조회 성공",
+                    content = @Content(schema = @Schema(implementation = KakaoRouteSectionFeResponse.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "요청값 오류", content = @Content),
+            @ApiResponse(responseCode = "404", description = "경로를 찾을 수 없음", content = @Content)
+    })
     @PostMapping("/navigate/onlyguide")
-    public KakaoRouteSectionFeResponse navigateOnlyGuides(@RequestBody KakaoRouteTransitRequest req
+    public KakaoRouteSectionFeResponse navigateOnlyGuides(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "경유지 포함 길찾기 요청 바디",
+                    required = true,
+                    content = @Content(schema = @Schema(implementation = KakaoRouteTransitRequest.class))
+            )
+            @RequestBody KakaoRouteTransitRequest req
     ) {
 
         KakaoRouteTransitResponse res = kakaoLocalService.NaviSearchTransit(req);
@@ -178,38 +234,5 @@ public class KakaoApiController {
                 sections
         );
     }
-
-
-//    @GetMapping("/raw")
-//    public KakaoMobilityResponse.Summary directionsRaw(
-//            @RequestParam double startX,
-//            @RequestParam double startY,
-//            @RequestParam double endX,
-//            @RequestParam double endY
-//    ) {
-//        PlanCostTimeResponse req = PlanCostTimeService.getCostTime(startX, startY, endX, endY);
-//        return ResponseEntity.ok(raw);
-//    }
 }
 
-//@GetMapping("/navigate/summary")
-//public KakaoMobilityResponse.Summary navigateSummary(
-//        @RequestParam double startX,
-//        @RequestParam double startY,
-//        @RequestParam double endX,
-//        @RequestParam double endY
-//) {
-//    KakaoMobilityResponse res = kakaoLocalService.NaviSearchSummary();
-//
-//    if (res == null || res.getRoutes() == null || res.getRoutes().isEmpty()) {
-//        throw new BusinessException(LocationErrorCode.ROUTE_NOT_FOUND);
-//    }
-//
-//    KakaoMobilityResponse.Route route0 = res.getRoutes().get(0);
-//    if (route0.getSummary() == null) {
-//        throw new BusinessException(LocationErrorCode.ROUTE_NOT_FOUND);
-//    }
-//
-//    return route0.getSummary();
-//
-//}

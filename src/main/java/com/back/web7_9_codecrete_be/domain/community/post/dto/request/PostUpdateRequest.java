@@ -10,6 +10,13 @@ import lombok.Getter;
 @Schema(description = "게시글 수정 요청 DTO")
 public class PostUpdateRequest {
 
+    @NotNull(message = "콘서트 ID는 필수입니다.")
+    @Schema(
+            description = "연관된 콘서트 ID",
+            example = "1"
+    )
+    private Long concertId;
+
     @NotNull(message = "카테고리는 필수입니다.")
     @Schema(
             description = "게시글 카테고리",

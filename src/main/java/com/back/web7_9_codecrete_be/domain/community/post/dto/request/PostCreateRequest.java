@@ -18,6 +18,9 @@ public class PostCreateRequest {
     )
     private PostCategory category;
 
+    @Schema(description = "연관된 콘서트 ID (선택)")
+    private Long concertId;
+
     @NotBlank(message = "제목은 필수입니다.")
     @Schema(description = "게시글 제목", example = "콘서트 후기 남깁니다!")
     private String title;

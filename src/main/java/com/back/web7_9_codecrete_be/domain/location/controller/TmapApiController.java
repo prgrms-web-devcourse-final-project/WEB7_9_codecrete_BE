@@ -1,12 +1,15 @@
 package com.back.web7_9_codecrete_be.domain.location.controller;
 
+import com.back.web7_9_codecrete_be.domain.location.dto.fe.TmapWalkFeResponse;
 import com.back.web7_9_codecrete_be.domain.location.dto.response.tmap.TmapSummaryAllResponse;
+import com.back.web7_9_codecrete_be.domain.location.dto.response.tmap.TmapWalkResponse;
 import com.back.web7_9_codecrete_be.domain.location.service.TmapService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -73,8 +76,35 @@ public class TmapApiController {
         return tmapService.getRoute(startX, startY, endX, endY);
     }
 
-    @GetMapping("/tmap/summary")
-    public TmapSummaryAllResponse getSummaryTransit(double startX, double startY, double endX, double endY){
-        return tmapService.getSummaryRoute(startX, startY, endX, endY);
+    @Operation(
+            summary = "Tmap 도보만 경로 요약",
+            description = "출발지와 도착지 좌표를 기준으로 Tmap 도보 경로의 총 거리와 소요 시간을 반환합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "도보 경로 요약 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = TmapWalkFeResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "경로를 찾을 수 없음"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Tmap 외부 API 오류"
+            )
+    })
+    @GetMapping("/tmap/walk")
+    public TmapWalkFeResponse getTmapFeWalk(
+            @RequestParam double startX,
+            @RequestParam double startY,
+            @RequestParam double endX,
+            @RequestParam double endY
+    ) {
+       return tmapService.getWalkSummary(startX, startY, endX, endY);
     }
 }

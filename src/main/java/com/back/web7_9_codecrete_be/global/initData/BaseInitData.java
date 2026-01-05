@@ -105,16 +105,33 @@ public class BaseInitData {
 			new Concert(
 				place,
 				"채팅 가능 공연",
-				"채팅 테스트용 공연 (정책 기간 중)",
+				"1/2~1/8 채팅 가능한 공연",
 				LocalDate.now().plusMonths(1),
 				LocalDate.now().plusMonths(1).plusDays(2),
-				LocalDateTime.now(),
+				LocalDateTime.now().plusDays(3),
 				LocalDateTime.now().plusDays(7),
 				150000,
 				50000,
 				"https://example.com/poster1.jpg",
 				"서울특별시",
 				"API-CONCERT-CHAT-1"
+			)
+		);
+
+		concertRepository.save(
+			new Concert(
+				place,
+				"채팅 가능 공연",
+				"1/9~1/15 채팅 가능한 공연",
+				LocalDate.now().plusMonths(1),
+				LocalDate.now().plusMonths(1).plusDays(2),
+				LocalDateTime.now().plusDays(11),
+				LocalDateTime.now().plusDays(18),
+				180000,
+				70000,
+				"https://example.com/poster1.jpg",
+				"서울특별시",
+				"API-CONCERT-CHAT-2"
 			)
 		);
 
@@ -132,7 +149,7 @@ public class BaseInitData {
 				40000,
 				"https://example.com/poster2.jpg",
 				"서울특별시",
-				"API-CONCERT-CHAT-2"
+				"API-CONCERT-CHAT-3"
 			)
 		);
 
@@ -150,7 +167,7 @@ public class BaseInitData {
 				30000,
 				"https://example.com/poster3.jpg",
 				"서울특별시",
-				"API-CONCERT-CHAT-3"
+				"API-CONCERT-CHAT-4"
 			)
 		);
 	}
