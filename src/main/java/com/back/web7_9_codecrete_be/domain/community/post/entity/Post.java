@@ -26,8 +26,8 @@ public class Post {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "nickname", nullable = false, length = 20)
-    private String nickname;
+    @Column(name = "concert_id", nullable = true)
+    private Long concertId;
 
     @Column(nullable = false, length = 30)
     private String title;
@@ -66,18 +66,18 @@ public class Post {
     }
 
     @Builder
-    private Post(Long userId, String nickname, String title, String content, PostCategory category) {
+    private Post(Long userId, Long concertId, String title, String content, PostCategory category) {
         this.userId = userId;
-        this.nickname = nickname;
+        this.concertId = concertId;
         this.title = title;
         this.content = content;
         this.category = category;
     }
 
-    public static Post create(Long userId, String nickname, String title, String content, PostCategory category) {
+    public static Post create(Long userId, Long concertId, String title, String content, PostCategory category) {
         return Post.builder()
                 .userId(userId)
-                .nickname(nickname)
+                .concertId(concertId)
                 .title(title)
                 .content(content)
                 .category(category)
@@ -85,7 +85,8 @@ public class Post {
     }
 
     // 수정
-    public void update(String title, String content, PostCategory category) {
+    public void update(Long concertId, String title, String content, PostCategory category) {
+        this.concertId = concertId;
         this.title = title;
         this.content = content;
         this.category = category;

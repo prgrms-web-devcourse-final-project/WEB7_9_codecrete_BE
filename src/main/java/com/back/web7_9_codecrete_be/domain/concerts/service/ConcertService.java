@@ -326,6 +326,12 @@ public class ConcertService {
         return (double)  union.size() / intersection.size();
     }
 
-
+    @Transactional(readOnly = true)
+    public void validateConcertExists(Long concertId) {
+        concertRepository.findById(concertId)
+                .orElseThrow(() ->
+                        new BusinessException(ConcertErrorCode.CONCERT_NOT_FOUND)
+                );
+    }
 
 }

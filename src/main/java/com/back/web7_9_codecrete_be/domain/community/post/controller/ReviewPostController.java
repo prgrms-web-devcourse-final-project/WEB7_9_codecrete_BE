@@ -68,4 +68,22 @@ public class ReviewPostController {
         reviewPostService.delete(postId, user.getId());
         return RsData.success("후기 게시글이 삭제되었습니다.");
     }
+
+    // 콘서트별 후기 목록 + 요약 조회
+    @Operation(
+            summary = "콘서트별 후기 목록 조회",
+            description = """
+                    콘서트 ID를 기준으로 후기 게시글 목록을 조회합니다.
+                    상단 요약 정보(전체 후기 개수, 평균 별점, 별점 분포)를 함께 반환합니다.
+                    """
+    )
+    @GetMapping("/concert/{concertId}")
+    public RsData<?> getReviewsByConcert(
+            @PathVariable Long concertId
+    ) {
+        return RsData.success(
+                "콘서트 후기 목록 조회 성공",
+                reviewPostService.getReviewsByConcert(concertId)
+        );
+    }
 }

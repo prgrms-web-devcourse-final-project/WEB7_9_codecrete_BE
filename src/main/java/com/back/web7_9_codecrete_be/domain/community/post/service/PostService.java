@@ -7,6 +7,7 @@ import com.back.web7_9_codecrete_be.domain.community.post.dto.response.PostRespo
 import com.back.web7_9_codecrete_be.domain.community.post.entity.Post;
 import com.back.web7_9_codecrete_be.domain.community.post.entity.PostCategory;
 import com.back.web7_9_codecrete_be.domain.community.post.repository.PostRepository;
+import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.PostErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
@@ -23,13 +24,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class PostService {
 
     private final PostRepository postRepository;
+    private final ConcertService concertService;
 
     // 게시글 작성
     @Transactional
     public Long create(PostCreateRequest req, User user) {
+
+        concertService.validateConcertExists(req.getConcertId());
+
         Post post = Post.create(
                 user.getId(),
-                user.getNickname(),
+                req.getConcertId(),
                 req.getTitle(),
                 req.getContent(),
                 req.getCategory()
@@ -67,7 +72,10 @@ public class PostService {
         Post post = findPost(postId);
         validateOwner(post, userId);
 
+        concertService.validateConcertExists(req.getConcertId());
+
         post.update(
+                req.getConcertId(),
                 req.getTitle(),
                 req.getContent(),
                 req.getCategory()
