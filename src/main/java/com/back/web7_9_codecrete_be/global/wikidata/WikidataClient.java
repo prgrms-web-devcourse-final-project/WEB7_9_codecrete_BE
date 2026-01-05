@@ -33,6 +33,10 @@ public class WikidataClient {
         return searchClient.searchWikidataIdBySpotifyId(spotifyId);
     }
 
+    public List<String> searchWikidataIdsBySpotifyId(String spotifyId) {
+        return searchClient.searchWikidataIdsBySpotifyId(spotifyId);
+    }
+
     public List<String> searchWikidataIdCandidatesBySpotifyId(String spotifyId) {
         return searchClient.searchWikidataIdCandidatesBySpotifyId(spotifyId);
     }
@@ -75,6 +79,10 @@ public class WikidataClient {
         return entityClient.getEntityLabelClaim(entity, propertyId);
     }
 
+    public Optional<String> getCountryLabelFromEntityId(JsonNode entity, String propertyId) {
+        return entityClient.getCountryLabelFromEntityId(entity, propertyId);
+    }
+
     // ========== Wikipedia 관련 메서드 ==========
 
     public Optional<String> getWikipediaKoreanTitle(JsonNode entity) {
@@ -105,5 +113,11 @@ public class WikidataClient {
 
     public Optional<String> getRealNameEnBySpotifyId(String spotifyId) {
         return realNameClient.getRealNameEnBySpotifyId(spotifyId);
+    }
+    
+    // ========== 설명 정보 조회 ==========
+    
+    public Optional<WikidataSearchClient.WikidataDescriptionInfo> getDescriptionInfoByQid(String qid) {
+        return searchClient.getDescriptionInfoByQid(qid);
     }
 }

@@ -1,4 +1,4 @@
-package com.back.web7_9_codecrete_be.domain.artists.service;
+package com.back.web7_9_codecrete_be.domain.artists.service.artistEnrichService;
 
 import com.back.web7_9_codecrete_be.global.wikidata.WikidataClient;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -46,6 +46,32 @@ public class WikidataEnrichHelper {
             JsonNode entity = entityOpt.get();
             List<String> instanceOfList = wikidataClient.getAllEntityIdClaims(entity, "P31");
             boolean isGroup = instanceOfList.contains("http://www.wikidata.org/entity/Q215380");
+            
+            // P31이 Q215380이 아니어도, P279* (subclass of)로 Q215380의 하위 유형이면 그룹으로 인정
+            if (!isGroup) {
+                // P279 (subclass of) claim 확인
+                List<String> subclassOfList = wikidataClient.getAllEntityIdClaims(entity, "P279");
+                // 직접적인 subclass of가 Q215380인지 확인
+                isGroup = subclassOfList.contains("http://www.wikidata.org/entity/Q215380");
+                
+                // P31이 하위 유형인 경우도 확인 (boy band, girl group, rock band 등)
+                // P31 값들 중 하나라도 musical group 관련이면 그룹으로 인정
+                if (!isGroup) {
+                    for (String instanceOf : instanceOfList) {
+                        // 일반적인 음악 그룹 관련 QID들 (주요 하위 유형)
+                        if (instanceOf.contains("Q215380") || // musical group
+                            instanceOf.contains("Q105543609") || // boy band
+                            instanceOf.contains("Q105543608") || // girl group
+                            instanceOf.contains("Q5741069") || // rock band
+                            instanceOf.contains("Q2088357") || // pop group
+                            instanceOf.contains("Q15975802")) { // K-pop group
+                            isGroup = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
             if (!isGroup) continue;
             
             String koLabel = entity.path("labels").path("ko").path("value").asText(null);

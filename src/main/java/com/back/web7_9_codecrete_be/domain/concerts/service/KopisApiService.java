@@ -49,6 +49,10 @@ public class KopisApiService {
 
     private final ConcertRedisRepository concertRedisRepository;
 
+    private final ArtistRepository artistRepository;
+
+    private final ConcertArtistRepository concertArtistRepository;
+
     @Value("${kopis.api-key}")
     private String serviceKey;
 
@@ -63,7 +67,9 @@ public class KopisApiService {
             TicketOfficeRepository ticketOfficeRepository,
             ConcertImageRepository imageRepository,
             ConcertRedisRepository concertRedisRepository,
-            ConcertKopisApiLogService kopisApiLogService
+            ConcertKopisApiLogService kopisApiLogService,
+            ArtistRepository artistRepository,
+            ConcertArtistRepository concertArtistRepository
             ) {
         this.concertRepository = concertRepository;
         this.placeRepository = placeRepository;
@@ -71,6 +77,8 @@ public class KopisApiService {
         this.imageRepository = imageRepository;
         this.concertRedisRepository = concertRedisRepository;
         this.concertKopisApiLogService = kopisApiLogService;
+        this.artistRepository = artistRepository;
+        this.concertArtistRepository = concertArtistRepository;
         this.restClient = RestClient.builder()
                 .baseUrl("https://kopis.or.kr/openApi/restful")
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML_VALUE)
@@ -110,6 +118,7 @@ public class KopisApiService {
         int addedConcertPlaces = 0;
         int addedTicketOffices = 0;
         int addedConcertImages = 0;
+        int setArtists = 0;
 
         int page = 1;
 
@@ -120,6 +129,8 @@ public class KopisApiService {
             totalConcertsList = getAllConcertsListFromKopisAPI(page);
             log.info("저장할 총 공연의 수: {}", totalConcertsList.size());
             log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
+            // 한국어 실명 기만 artistMap 가져오기
+            Map<String, Artist> artistMap = getKoNameArtistMap();
 
             for(int i = index.intValue(); i < totalConcertsList.size(); i++) {
                 ConcertListElement concertListElement = totalConcertsList.get(i);
@@ -133,6 +144,7 @@ public class KopisApiService {
                 String concertPlaceAPiKey = concertDetailResponse.getConcertDetail().getMt10id();
                 // 캐시로 사용하는 맵이나 DB에서 콘서트 위치가 있는지 확인하기 -> 없으면 저장
                 ConcertPlace concertPlace = getConcertPlaceOrSaveNewConcertPlace(concertPlaceMap, concertPlaceAPiKey);
+
                 addedConcertPlaces = concertPlaceMap.size();
                 // 공연 저장
                 Concert savedConcert = saveConcert(concertPlace, concertDetail);
@@ -140,7 +152,8 @@ public class KopisApiService {
                 addedTicketOffices += saveConcertTicketOffice(concertDetail, savedConcert);
                 // 공연 이미지 저장
                 addedConcertImages += saveConcertImages(concertDetail, savedConcert);
-
+                // 공연 아티스트 연결
+                setArtists += setConcertArtist(artistMap,concertDetail,savedConcert);
                 addedConcerts++;
                 index++;
             }
@@ -195,7 +208,8 @@ public class KopisApiService {
         }
         log.info("공연 목록 로드 완료, 공연 세부 내용 로드 및 저장");
 
-        for(int i = 0; i < totalConcertsList.size(); i++) {}
+        // artist map 가져오기
+        Map<String ,Artist> artistMap = getKoNameArtistMap();
         for (ConcertListElement performanceListElement : totalConcertsList) {
             ConcertDetailResponse concertDetailResponse = getConcertDetailResponse(serviceKey, performanceListElement.getApiConcertId());
             ConcertDetailElement concertDetail = concertDetailResponse.getConcertDetail();
@@ -215,6 +229,8 @@ public class KopisApiService {
                 setResultResponse.addedTicketOfficeAccumulator(saveConcertTicketOffice(concertDetail, savedConcert));
                 // 공연 이미지 저장
                 setResultResponse.addedConcertImagesAccumulator(saveConcertImages(concertDetail, savedConcert));
+                // 공연 아티스트 저장
+                setConcertArtist(artistMap,concertDetail,savedConcert);
                 setResultResponse.addConcerts();
             } else {
                 // 공연 데이터 갱신 후 저장
@@ -342,6 +358,35 @@ public class KopisApiService {
         }
 
         return concertPlace;
+    }
+
+    // 모든 Artist를 가져와서 실명 - Artist객체의 맵으로 변환 후 반환
+    private Map<String, Artist> getKoNameArtistMap() {
+        List<Artist> artistList = artistRepository.findAll();
+        Map<String, Artist> artistMap = new HashMap<>();
+        for (Artist artist : artistList) {
+            artistMap.put(artist.getNameKo(), artist);
+        }
+        return artistMap;
+    }
+
+    // 공연에 Artist매칭해서 저장 후 저장된 개수 반환
+    private int setConcertArtist(Map<String,Artist> artistMap,ConcertDetailElement concertDetail, Concert savedConcert) {
+        String rawCast = concertDetail.getConcertCast();
+        rawCast = rawCast.replace("," ,"");
+        String[] casts = rawCast.split(" ");
+        List<ConcertArtist> concertArtistList = new ArrayList<>();
+        for(String cast : casts) {
+            Artist artist = artistMap.get(cast);
+            if(artist == null) continue;
+            ConcertArtist concertArtist = new ConcertArtist(artist,savedConcert);
+            concertArtistList.add(concertArtist);
+        }
+        if(concertArtistList.isEmpty()) return 0;
+        else {
+            concertArtistRepository.saveAll(concertArtistList);
+            return concertArtistList.size();
+        }
     }
 
     // 콘서트 예매처를 저장합니다.

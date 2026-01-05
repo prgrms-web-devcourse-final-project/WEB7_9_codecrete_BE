@@ -23,13 +23,15 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     boolean existsByArtistName(String artistName);
     boolean existsByNameKo(String nameKo);
 
-    List<Artist> findTop5ByArtistGroupAndIdNot(String artistGroup, long excludeId);
+    @Query("SELECT a FROM Artist a WHERE a.artistGroup = :artistGroup AND a.id != :excludeId ORDER BY a.likeCount DESC, a.id ASC")
+    List<Artist> findTop5ByArtistGroupAndIdNot(@org.springframework.data.repository.query.Param("artistGroup") String artistGroup,
+                                               @org.springframework.data.repository.query.Param("excludeId") long excludeId);
     
     @Query("""
         SELECT DISTINCT a FROM Artist a
         JOIN a.artistGenres ag
         WHERE ag.genre.id = :genreId AND a.id != :excludeId
-        ORDER BY a.likeCount DESC
+        ORDER BY a.likeCount DESC, a.id ASC
     """)
     List<Artist> findTop5ByGenreIdAndIdNot(@org.springframework.data.repository.query.Param("genreId") Long genreId, 
                                              @org.springframework.data.repository.query.Param("excludeId") long excludeId,
@@ -57,4 +59,14 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     // 배치 조회: spotifyId 리스트로 존재하는 아티스트의 spotifyId만 반환
     @Query("SELECT a.spotifyArtistId FROM Artist a WHERE a.spotifyArtistId IN :spotifyIds")
     List<String> findSpotifyIdsBySpotifyIdsIn(@org.springframework.data.repository.query.Param("spotifyIds") List<String> spotifyIds);
+    
+    // 배치 조회: spotifyId 리스트로 존재하는 아티스트 전체 엔티티 반환 (Bulk 저장용)
+    @Query("SELECT a FROM Artist a WHERE a.spotifyArtistId IN :spotifyIds")
+    List<Artist> findBySpotifyArtistIdIn(@org.springframework.data.repository.query.Param("spotifyIds") List<String> spotifyIds);
+    
+    // 같은 artistType인 아티스트들 조회 (관련 아티스트 추천용)
+    @Query("SELECT a FROM Artist a WHERE a.artistType = :artistType AND a.id != :excludeId ORDER BY a.likeCount DESC, a.id ASC")
+    List<Artist> findByArtistTypeAndIdNot(@org.springframework.data.repository.query.Param("artistType") com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType artistType,
+                                          @org.springframework.data.repository.query.Param("excludeId") long excludeId,
+                                          Pageable pageable);
 }

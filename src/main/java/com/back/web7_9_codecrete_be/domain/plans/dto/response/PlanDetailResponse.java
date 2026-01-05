@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.plans.dto.response;
 
+import com.back.web7_9_codecrete_be.domain.plans.dto.TransportRoute;
 import com.back.web7_9_codecrete_be.domain.plans.entity.PlanParticipant;
 import com.back.web7_9_codecrete_be.domain.plans.entity.Schedule;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -86,6 +87,8 @@ public class PlanDetailResponse {
         private Integer distance;
         @Schema(description = "교통 수단 타입 (TRANSPORT 타입일 때)", example = "SUBWAY")
         private Schedule.TransportType transportType;
+        @Schema(description = "교통 경로 상세 정보 (TRANSPORT 타입일 때)", example = "{\"totalTime\":3600,\"totalDistance\":5000}")
+        private TransportRoute transportRoute;
         @Schema(description = "메인 이벤트(콘서트) 여부", example = "true")
         private Boolean isMainEvent;
         // 아래 공연 정보들은 isMainEvent가 true인 경우 필요

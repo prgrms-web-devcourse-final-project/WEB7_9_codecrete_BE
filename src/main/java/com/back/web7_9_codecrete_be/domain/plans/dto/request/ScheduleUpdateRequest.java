@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.plans.dto.request;
 
+import com.back.web7_9_codecrete_be.domain.plans.dto.TransportRoute;
 import com.back.web7_9_codecrete_be.domain.plans.entity.Schedule;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
@@ -64,6 +65,9 @@ public class ScheduleUpdateRequest {
     private Integer distance;
 
     private Schedule.TransportType transportType;
+
+    // 교통 경로 상세 정보 (TRANSPORT 타입일 때 선택적)
+    private TransportRoute transportRoute;
 
     /**
      * 위도와 경도는 함께 제공되어야 함 (둘 다 null이거나 둘 다 값이 있어야 함)

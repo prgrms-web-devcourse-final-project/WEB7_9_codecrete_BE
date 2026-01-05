@@ -92,6 +92,11 @@ public class Plan {
         participant.setPlan(this);
     }
 
+    public void removeParticipant(PlanParticipant participant) {
+        this.participants.remove(participant);
+        participant.setPlan(null);
+    }
+
     public void addSchedule(Schedule schedule) {
         this.schedules.add(schedule);
         schedule.setPlan(this);

@@ -163,6 +163,7 @@ public class PlanService {
                             .endPlaceLon(item.getEndPlaceLon())
                             .distance(item.getDistance())
                             .transportType(item.getTransportType())
+                            .transportRoute(item.getTransportRouteAsObject())
                             .isMainEvent(item.getIsMainEvent())
                             .createdDate(item.getCreatedDate())
                             .modifiedDate(item.getModifiedDate());
@@ -292,6 +293,11 @@ public class PlanService {
                     .distance(request.getDistance())
                     .transportType(request.getTransportType())
                     .build();
+
+            // transportRoute 설정 (JSON 문자열로 변환)
+            if (request.getTransportRoute() != null) {
+                schedule.setTransportRoute(request.getTransportRoute());
+            }
 
             plan.addSchedule(schedule);
             // cascade 설정으로 인해 plan 저장 시 schedule도 함께 저장됨
@@ -494,8 +500,8 @@ public class PlanService {
     }
 
     /**
-     * Plan을 조회하고 수정/삭제 권한을 체크
-     * OWNER 또는 EDITOR만 수정/삭제 가능
+     * Plan을 조회하고 수정 권한을 체크
+     * OWNER 또는 EDITOR만 수정 가능 (계획 수정, 일정 추가/수정/삭제, 참가자 관리 등)
      *
      * @param planId 계획 ID
      * @param user 현재 로그인한 사용자
@@ -661,6 +667,15 @@ public class PlanService {
      */
     private void updateScheduleFields(Schedule schedule, ScheduleUpdateRequest request, 
                                      Schedule.ScheduleType newScheduleType) {
+        // transportRoute는 별도로 처리 (null이 아닌 경우에만 업데이트)
+        String transportRouteJson = null;
+        if (request.getTransportRoute() != null) {
+            schedule.setTransportRoute(request.getTransportRoute());
+            transportRouteJson = schedule.getTransportRoute(); // 변환된 JSON 문자열 가져오기
+        } else {
+            transportRouteJson = schedule.getTransportRoute(); // 기존 값 유지
+        }
+
         schedule.update(
                 newScheduleType,
                 request.getTitle() != null ? request.getTitle() : schedule.getTitle(),
@@ -676,7 +691,8 @@ public class PlanService {
                 request.getEndPlaceLat() != null ? request.getEndPlaceLat() : schedule.getEndPlaceLat(),
                 request.getEndPlaceLon() != null ? request.getEndPlaceLon() : schedule.getEndPlaceLon(),
                 request.getDistance() != null ? request.getDistance() : schedule.getDistance(),
-                request.getTransportType() != null ? request.getTransportType() : schedule.getTransportType()
+                request.getTransportType() != null ? request.getTransportType() : schedule.getTransportType(),
+                transportRouteJson
         );
     }
 
@@ -787,6 +803,7 @@ public class PlanService {
                 .endPlaceLon(schedule.getEndPlaceLon())
                 .distance(schedule.getDistance())
                 .transportType(schedule.getTransportType())
+                .transportRoute(schedule.getTransportRouteAsObject())
                 .isMainEvent(schedule.getIsMainEvent())
                 .createdDate(schedule.getCreatedDate())
                 .modifiedDate(schedule.getModifiedDate());
@@ -1074,8 +1091,9 @@ public class PlanService {
             throw new BusinessException(PlanErrorCode.CANNOT_REMOVE_OWNER);
         }
 
-        // 상태를 REMOVED로 변경
-        participant.updateInviteStatus(PlanParticipant.InviteStatus.REMOVED);
+        // 참가자 삭제 (Plan의 participants 리스트에서도 제거)
+        plan.removeParticipant(participant);
+        planParticipantRepository.delete(participant);
     }
 
     /**
@@ -1102,9 +1120,9 @@ public class PlanService {
                     .findByUser_IdAndPlan_PlanId(user.getId(), planId)
                     .orElseThrow(() -> new BusinessException(PlanErrorCode.PARTICIPANT_NOT_FOUND));
 
-            // 상태를 LEFT로 변경
-            participant.updateInviteStatus(PlanParticipant.InviteStatus.LEFT);
-            planParticipantRepository.save(participant);
+            // 참가자 삭제 (Plan의 participants 리스트에서도 제거)
+            plan.removeParticipant(participant);
+            planParticipantRepository.delete(participant);
             // 명시적으로 flush하여 OptimisticLockException을 즉시 감지
             planParticipantRepository.flush();
         } catch (OptimisticLockException e) {

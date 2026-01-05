@@ -73,6 +73,7 @@ public class ConcertDetailResponse {
     @Schema(description = "콘서트 이미지 목록입니다.")
     private List<String> concertImageUrls;
 
-
+    @Schema(description = "콘서트 참여 아티스트 목록입니다.")
+    private List<Long> concertArtists;
 
 }
