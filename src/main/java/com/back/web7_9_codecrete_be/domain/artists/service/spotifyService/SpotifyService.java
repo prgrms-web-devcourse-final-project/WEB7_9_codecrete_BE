@@ -1874,17 +1874,33 @@ public class SpotifyService {
             selected.add(groupSlot.get(i).artist);
         }
         
-        // 2. 장르 슬롯에서 최대 3명 선택
-        for (int i = 0; i < Math.min(MAX_SAME_GENRE, genreSlot.size()) && selected.size() < TARGET_COUNT; i++) {
+        // 2. 장르 슬롯에서 선택 (그룹 슬롯 선택 후 남은 자리만큼, 최대 3명)
+        int remainingSlots = TARGET_COUNT - selected.size();
+        int genreCount = Math.min(MAX_SAME_GENRE, Math.min(genreSlot.size(), remainingSlots));
+        for (int i = 0; i < genreCount && selected.size() < TARGET_COUNT; i++) {
             selected.add(genreSlot.get(i).artist);
         }
         
-        // 3. 그 외 슬롯에서 나머지 채우기
+        // 3. 그 외 슬롯에서 나머지 채우기 (5명이 될 때까지)
         for (ScoredArtist scored : otherSlot) {
             if (selected.size() >= TARGET_COUNT) {
                 break;
             }
             selected.add(scored.artist);
+        }
+        
+        // 4. 장르 슬롯에서 추가로 채우기 (5명이 안 되면 장르 슬롯에서 더 선택)
+        if (selected.size() < TARGET_COUNT && genreSlot.size() > genreCount) {
+            for (int i = genreCount; i < genreSlot.size() && selected.size() < TARGET_COUNT; i++) {
+                selected.add(genreSlot.get(i).artist);
+            }
+        }
+        
+        // 5. 그룹 슬롯에서 추가로 채우기 (5명이 안 되면 그룹 슬롯에서 더 선택)
+        if (selected.size() < TARGET_COUNT && groupSlot.size() > MAX_SAME_GROUP) {
+            for (int i = MAX_SAME_GROUP; i < groupSlot.size() && selected.size() < TARGET_COUNT; i++) {
+                selected.add(groupSlot.get(i).artist);
+            }
         }
         
         return selected;
