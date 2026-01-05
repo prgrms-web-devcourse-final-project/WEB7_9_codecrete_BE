@@ -42,7 +42,7 @@ public class TmapApiController {
                     )
             )
     )
-    @GetMapping("/tmap/transit")
+    @GetMapping("/tmap/summary")
     public TmapSummaryAllResponse getTransit(
 
             @Parameter(
