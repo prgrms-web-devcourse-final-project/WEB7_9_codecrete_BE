@@ -59,14 +59,20 @@ jobs:
             docker compose -f docker-compose-prod.yml up -d spring-$TARGET
 
             echo "⏳ Waiting for health check on $PORT..."
+            HEALTHY=false
             for i in {1..20}; do
               if curl -sf http://localhost:$PORT/actuator/health > /dev/null; then
-                echo "✅ spring-$TARGET is healthy"
-                exit 0
+                HEALTHY=true
+                break
               fi
               echo "⏳ still waiting..."
               sleep 5
             done
+            
+            if [ "$HEALTHY" = "true" ]; then
+              echo "✅ spring-$TARGET is healthy"
+              exit 0
+            fi
 
             echo "❌ Health check failed for spring-$TARGET - rolling back"
             docker compose -f docker-compose-prod.yml stop spring-$TARGET
