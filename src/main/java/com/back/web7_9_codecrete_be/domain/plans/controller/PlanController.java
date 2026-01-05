@@ -204,7 +204,7 @@ public class PlanController {
      * @return 성공 메시지 (200 OK)
      */
     @PatchMapping("/{planId}/participants/{participantId}/role")
-    @Operation(summary = "참가자 역할 수정", description = "참가자의 역할을 수정합니다. Owner(소유자), Editor(편집자), Viewer(조회자) 중 하나로 설정할 수 있습니다. 계획의 소유자만 다른 참가자의 역할을 수정할 수 있습니다.")
+    @Operation(summary = "참가자 역할 수정", description = "참가자의 역할을 수정합니다. Owner(소유자), Editor(편집자), Viewer(조회자) 중 하나로 설정할 수 있습니다. 계획의 소유자 또는 편집 권한이 있는 사용자만 다른 참가자의 역할을 수정할 수 있습니다.")
     public RsData<Void> updateParticipantRole(
             @PathVariable Long planId,
             @PathVariable Long participantId,

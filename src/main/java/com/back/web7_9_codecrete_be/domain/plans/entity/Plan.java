@@ -51,6 +51,11 @@ public class Plan {
     @Column(name = "modified_date", nullable = false)
     private LocalDateTime modifiedDate;
 
+    // 낙관적 잠금을 위한 버전 필드
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "share_token", unique = true, length = 13)
     private String shareToken;
 
@@ -92,10 +97,13 @@ public class Plan {
         schedule.setPlan(this);
     }
 
+    private static final int SHARE_TOKEN_LENGTH = 13;
+    private static final int SHARE_TOKEN_EXPIRY_DAYS = 1;
+
     public void generateShareToken() {
-        this.shareToken = UUID.randomUUID().toString().substring(0, 13);
+        this.shareToken = UUID.randomUUID().toString().substring(0, SHARE_TOKEN_LENGTH);
         // 만료 시간: 현재 시간으로부터 1일 후
-        this.shareTokenExpiresAt = LocalDateTime.now().plusDays(1);
+        this.shareTokenExpiresAt = LocalDateTime.now().plusDays(SHARE_TOKEN_EXPIRY_DAYS);
     }
 
     public void clearShareToken() {
