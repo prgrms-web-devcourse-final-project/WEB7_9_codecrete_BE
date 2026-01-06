@@ -1,10 +1,9 @@
-package com.back.web7_9_codecrete_be.domain.artists.service.spotifyService;
+package com.back.web7_9_codecrete_be.domain.artists.service.spotify.dto;
 
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
 import java.util.List;
 
-// 아티스트 데이터 임시 저장용 클래스
-
+// 아티스트 데이터 임시 저장용 DTO : Spotify에서 받은 데이터를 내부 파이프라인에서 운반하기 위한 객체
 public class ArtistData {
     public final String spotifyId;
     public final String name;

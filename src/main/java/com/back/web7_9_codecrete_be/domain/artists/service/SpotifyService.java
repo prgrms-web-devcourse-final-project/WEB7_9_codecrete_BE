@@ -1,40 +1,38 @@
-package com.back.web7_9_codecrete_be.domain.artists.service.spotifyService;
+package com.back.web7_9_codecrete_be.domain.artists.service;
 
-import com.back.web7_9_codecrete_be.domain.artists.dto.response.AlbumResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.RelatedArtistResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.SpotifyArtistDetailCache;
-import com.back.web7_9_codecrete_be.domain.artists.dto.response.TopTrackResponse;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistGenre;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Genre;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.GenreRepository;
+import com.back.web7_9_codecrete_be.domain.artists.service.spotify.application.SpotifyDetailService;
+import com.back.web7_9_codecrete_be.domain.artists.service.spotify.rate_limit.SimpleRateLimiter;
 import com.back.web7_9_codecrete_be.global.error.code.ArtistErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import com.back.web7_9_codecrete_be.global.musicbrainz.MusicBrainzClient;
 import com.back.web7_9_codecrete_be.global.spotify.SpotifyClient;
+import com.back.web7_9_codecrete_be.domain.artists.service.spotify.cache.SpotifyCacheService;
+import com.back.web7_9_codecrete_be.domain.artists.service.spotify.dto.ArtistData;
+import com.back.web7_9_codecrete_be.domain.artists.service.spotify.genre.CategoryConfig;
+import com.back.web7_9_codecrete_be.domain.artists.service.spotify.genre.GenreNormalizationService;
+import com.back.web7_9_codecrete_be.domain.artists.service.spotify.rate_limit.SpotifyRateLimitHandler;
+import com.back.web7_9_codecrete_be.domain.artists.service.spotify.related.RelatedArtistService;
 import com.back.web7_9_codecrete_be.global.wikidata.WikidataClient;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.neovisionaries.i18n.CountryCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.aspectj.apache.bcel.classfile.Unknown;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import se.michaelthelin.spotify.SpotifyApi;
-import se.michaelthelin.spotify.enums.AlbumType;
-import se.michaelthelin.spotify.model_objects.specification.AlbumSimplified;
-import se.michaelthelin.spotify.model_objects.specification.Image;
 import se.michaelthelin.spotify.model_objects.specification.Paging;
-import se.michaelthelin.spotify.model_objects.specification.Track;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
@@ -47,17 +45,13 @@ public class SpotifyService {
     private final GenreRepository genreRepository;
     private final SpotifyClient spotifyClient;
     private final MusicBrainzClient musicBrainzClient;
-    private final RedisTemplate<String, String> redisTemplate;
-    private final RedisTemplate<String, Object> objectRedisTemplate;
-    private final ObjectMapper objectMapper;
     private final WikidataClient wikidataClient;
-    private final SpotifyRateLimitHandler rateLimitHandler;
     
-    // Redis 캐시 설정
-    private static final String CACHE_KEY_PREFIX = "artist:detail:spotify:";
-    private static final String LOCK_KEY_PREFIX = "artist:detail:spotify:lock:";
-    private static final long CACHE_TTL_SECONDS = 3600; // 1시간 (기본값, 추후 3~6시간 조정 가능)
-    private static final long LOCK_TTL_SECONDS = 30; // 락 TTL: 30초 (API 호출 완료 대기 시간)
+    // 분리된 서비스들
+    private final SpotifyCacheService spotifyCacheService;
+    private final SpotifyDetailService spotifyDetailService;
+    private final RelatedArtistService relatedArtistService;
+    private final GenreNormalizationService genreNormalizationService;
     
     // Rate Limiter 설정
     private static final long SPOTIFY_RATE_LIMIT_INTERVAL_MS = 500; // 초당 2회
@@ -150,7 +144,7 @@ public class SpotifyService {
     );
 
     @Transactional
-    public int seedKoreanArtists300() {
+    public int seedKoreanArtists() {
         try {
             SpotifyApi api = spotifyClient.getAuthorizedApi();
             Map<String, CategoryConfig> categoryConfigs = createCategoryConfigs();
@@ -200,7 +194,7 @@ public class SpotifyService {
 
     // Phase 1: FastSeed 모드 - 카테고리당 제한된 수집 (호출 폭발 방지)
     private List<ArtistData> collectArtistsRoundRobin(SpotifyApi api, Map<String, CategoryConfig> categoryConfigs) {
-        List<ArtistData> artistDataList = new ArrayList<>();
+            List<ArtistData> artistDataList = new ArrayList<>();
         Set<String> collectedSpotifyIds = new HashSet<>(); // Spotify ID 중복 제거
         Set<String> seenNormalizedNames = new HashSet<>(); // 정규화된 이름 중복 제거
         
@@ -313,11 +307,11 @@ public class SpotifyService {
         
         Paging<se.michaelthelin.spotify.model_objects.specification.Artist> paging = api.searchArtists(query)
                 .limit(SEARCH_LIMIT)
-                .offset(offset)
-                .build()
-                .execute();
+                                    .offset(offset)
+                                    .build()
+                                    .execute();
 
-        var items = paging.getItems();
+                    var items = paging.getItems();
         if (items == null || items.length == 0) {
             categoryKeywordIndex.put(categoryName, categoryKeywordIndex.get(categoryName) + 1);
             return;
@@ -325,7 +319,7 @@ public class SpotifyService {
         
         int collectedInCategory = categoryCollectedCount.get(categoryName);
 
-        for (var spotifyArtist : items) {
+                    for (var spotifyArtist : items) {
             // 카테고리당 최대 수집 수 확인
             if (collectedInCategory >= MAX_ARTISTS_PER_CATEGORY) {
                 break;
@@ -372,8 +366,8 @@ public class SpotifyService {
     private boolean shouldAddArtist(se.michaelthelin.spotify.model_objects.specification.Artist spotifyArtist,
                                    CategoryConfig config, String categoryName, 
                                    Set<String> collectedSpotifyIds, Set<String> seenNormalizedNames) {
-        String spotifyId = spotifyArtist.getId();
-        String name = spotifyArtist.getName();
+                        String spotifyId = spotifyArtist.getId();
+                        String name = spotifyArtist.getName();
         
         // Spotify ID 중복 체크
         if (spotifyId == null || name == null || name.isBlank() || collectedSpotifyIds.contains(spotifyId)) {
@@ -404,7 +398,7 @@ public class SpotifyService {
             return false;
         }
         
-        String imageUrl = pickImageUrl(spotifyArtist.getImages());
+        String imageUrl = spotifyDetailService.pickImageUrl(spotifyArtist.getImages());
         return imageUrl != null && !imageUrl.isBlank();
     }
 
@@ -470,13 +464,13 @@ public class SpotifyService {
         Integer followers = spotifyArtist.getFollowers() != null 
                 ? spotifyArtist.getFollowers().getTotal() 
                 : null;
-        String imageUrl = pickImageUrl(spotifyArtist.getImages());
-        String artistTypeStr = inferArtistType(spotifyArtist);
-        ArtistType artistType = ArtistType.valueOf(artistTypeStr);
+        String imageUrl = spotifyDetailService.pickImageUrl(spotifyArtist.getImages());
+                        String artistTypeStr = inferArtistType(spotifyArtist);
+                        ArtistType artistType = ArtistType.valueOf(artistTypeStr);
 
-        List<String> genreList = genres != null 
-                ? Arrays.stream(genres).filter(Objects::nonNull).filter(g -> !g.isBlank()).collect(toList())
-                : List.of();
+                        List<String> genreList = genres != null 
+                                ? Arrays.stream(genres).filter(Objects::nonNull).filter(g -> !g.isBlank()).collect(toList())
+                                : List.of();
 
         return new ArtistData(spotifyId, name.trim(), artistType, imageUrl, genreList, popularity, followers);
     }
@@ -630,9 +624,7 @@ public class SpotifyService {
         return selected;
     }
     
-    /**
-     * 국내/해외/Unknown 분류 결과
-     */
+    // 국내/해외 Unknown 분류 결과
     private static class KoreanClassificationResult {
         final List<ArtistData> strongKorean; // 확정 국내 (k-* 장르)
         final List<ArtistData> weakKorean;   // 가능 국내 (한글 포함)
@@ -648,9 +640,7 @@ public class SpotifyService {
         }
     }
     
-    /**
-     * 2단계: 국내/해외/Unknown 분류
-     */
+    // 2단계: 국내/해외/Unknown 분류
     private KoreanClassificationResult classifyKoreanArtists(List<ArtistData> candidates) {
         List<ArtistData> strongKorean = new ArrayList<>();
         List<ArtistData> weakKorean = new ArrayList<>();
@@ -679,9 +669,7 @@ public class SpotifyService {
         return new KoreanClassificationResult(strongKorean, weakKorean, globalArtists, unknown);
     }
     
-    /**
-     * 국내 타입 분류
-     */
+    // 국내 타입 분류
     private enum KoreanType {
         STRONG_KOREAN,  // 확정 국내 (k-* 장르)
         WEAK_KOREAN,    // 가능 국내 (한글 포함)
@@ -689,9 +677,7 @@ public class SpotifyService {
         UNKNOWN         // 애매한 경우
     }
     
-    /**
-     * 아티스트의 국내 타입 분류
-     */
+    // 아티스트의 국내 타입 분류
     private KoreanType classifyKoreanType(ArtistData data) {
         // Strong Korean: genres에 k-* 장르 포함
         if (data.genres != null && !data.genres.isEmpty()) {
@@ -725,9 +711,7 @@ public class SpotifyService {
         return KoreanType.UNKNOWN;
     }
     
-    /**
-     * 3단계: 국내를 먼저 목표 수까지 채우기
-     */
+    // 3단계: 국내를 먼저 목표 수까지 채우기
     private List<ArtistData> selectKoreanArtists(KoreanClassificationResult classification) {
         List<ArtistData> selected = new ArrayList<>();
         
@@ -765,9 +749,7 @@ public class SpotifyService {
         return selected;
     }
     
-    /**
-     * 4단계: 해외는 기준 완화 + 쿼터제 적용
-     */
+    // 4단계: 해외는 기준 완화 + 쿼터제 적용
     private List<ArtistData> selectGlobalArtists(List<ArtistData> globalCandidates, int currentCount) {
         if (globalCandidates.isEmpty()) {
             return new ArrayList<>();
@@ -803,9 +785,7 @@ public class SpotifyService {
         return qualified;
     }
     
-    /**
-     * 5단계: Fallback - 부족분 채우기
-     */
+    // 5단계: Fallback - 부족분 채우기
     private List<ArtistData> fillRemainingSlots(KoreanClassificationResult classification, 
                                                 int currentCount, Set<String> selectedSpotifyIds) {
         int remaining = MAX_SEED_COUNT - currentCount;
@@ -897,46 +877,6 @@ public class SpotifyService {
         return popScore + followerScore;
     }
     
-    // 장르로 카테고리 추론
-    private String inferCategoryFromGenres(List<String> genres) {
-        if (genres == null || genres.isEmpty()) {
-            return "유명 솔로";
-        }
-        
-        String genresStr = String.join(" ", genres).toLowerCase();
-        
-        // 아이돌
-        if (genresStr.contains("k-pop") && (genresStr.contains("girl group") || 
-            genresStr.contains("boy group") || genresStr.contains("idol"))) {
-            return "아이돌(걸그룹/보이그룹)";
-        }
-        
-        // 힙합/R&B
-        if (genresStr.contains("hip hop") || genresStr.contains("k-rap") || 
-            genresStr.contains("k-r&b") || genresStr.contains("r&b")) {
-            return "힙합/인디/R&B";
-        }
-        
-        // 밴드
-        if (genresStr.contains("rock") || genresStr.contains("band") || 
-            genresStr.contains("indie") || genresStr.contains("alternative")) {
-            return "밴드";
-        }
-        
-        // 발라드/OST
-        if (genresStr.contains("ballad") || genresStr.contains("ost") || 
-            genresStr.contains("k-ballad")) {
-            return "발라드/OST";
-        }
-        
-        // 글로벌
-        if (!genresStr.contains("k-pop") && !genresStr.contains("korean")) {
-            return "글로벌";
-        }
-        
-        return "유명 솔로";
-    }
-    
     private int saveArtistsToDatabase(List<ArtistData> finalArtists) {
         Map<String, Artist> artistMap = upsertArtists(finalArtists);
         Map<String, Genre> genreMap = processGenres(finalArtists);
@@ -981,20 +921,20 @@ public class SpotifyService {
             
             if (artist != null) {
                 // 기존 아티스트 업데이트
-                artist.setArtistName(data.name);
-                artist.setArtistType(data.artistType);
-                artist.setImageUrl(data.imageUrl);
-                artist.getArtistGenres().clear();
-            } else {
+                    artist.setArtistName(data.name);
+                    artist.setArtistType(data.artistType);
+                    artist.setImageUrl(data.imageUrl);
+                    artist.getArtistGenres().clear();
+                } else {
                 // 신규 아티스트 생성
-                artist = new Artist(data.spotifyId, data.name, null, data.artistType);
-                artist.setImageUrl(data.imageUrl);
-            }
-            
+                    artist = new Artist(data.spotifyId, data.name, null, data.artistType);
+                    artist.setImageUrl(data.imageUrl);
+                }
+                
             toSave.add(artist);
-            artistMap.put(data.spotifyId, artist);
-        }
-        
+                artistMap.put(data.spotifyId, artist);
+            }
+
         // 4. Bulk 저장 (한 번에 저장)
         if (!toSave.isEmpty()) {
             artistRepository.saveAll(toSave);
@@ -1009,7 +949,7 @@ public class SpotifyService {
                     .flatMap(data -> data.genres.stream())
                     .filter(Objects::nonNull)
                     .filter(g -> !g.isBlank())
-                    .map(this::normalizeGenre)
+                    .map(genreNormalizationService::normalizeGenre)
                     .filter(Objects::nonNull)
                     .filter(g -> !g.isBlank())
                     .collect(Collectors.toSet());
@@ -1041,88 +981,7 @@ public class SpotifyService {
                     .collect(Collectors.toMap(Genre::getGenreName, g -> g, (g1, g2) -> g1));
     }
     
-    /**
-     * 원본 장르명을 통합된 카테고리로 변환
-     * 우선순위 순서대로 체크하여 매칭되는 첫 번째 카테고리 반환
-     */
-    private String normalizeGenre(String originalGenre) {
-        if (originalGenre == null || originalGenre.isBlank()) {
-            return null;
-        }
-        
-        String lowerGenre = originalGenre.toLowerCase().trim();
-        
-        // 1순위: KOREAN (k-로 시작)
-        if (lowerGenre.startsWith("k-")) {
-            return "KOREAN";
-        }
-        
-        // 2순위: HIPHOP/RAP
-        if (containsAny(lowerGenre, "hip hop", "rap", "drill", "grime", "boom bap", "hip-hop", "hiphop")) {
-            return "HIPHOP/RAP";
-        }
-        
-        // 3순위: R&B/SOUL
-        if (containsAny(lowerGenre, "r&b", "rnb", "soul", "r and b")) {
-            return "R&B/SOUL";
-        }
-        
-        // 4순위: METAL
-        if (lowerGenre.contains("metal")) {
-            return "METAL";
-        }
-        
-        // 5순위: ROCK
-        if (containsAny(lowerGenre, "rock", "grunge", "shoegaze", "britpop", "classic rock")) {
-            return "ROCK";
-        }
-        
-        // 6순위: INDIE/ALT
-        if (containsAny(lowerGenre, "indie", "alternative", "art rock", "neo-psychedelic", "jangle pop", "alt")) {
-            return "INDIE/ALT";
-        }
-        
-        // 7순위: LATIN
-        if (containsAny(lowerGenre, "latin", "reggaeton", "urbano", "bachata", "latin afrobeats")) {
-            return "LATIN";
-        }
-        
-        // 8순위: REGGAE
-        if (lowerGenre.contains("reggae")) {
-            return "REGGAE";
-        }
-        
-        // 9순위: JAPAN
-        if (containsAny(lowerGenre, "j-pop", "j-rock", "jpop", "jrock", "vocaloid", "shibuya-kei", "japanese", "city pop", "japanese indie")) {
-            return "JAPAN";
-        }
-        
-        // 10순위: SOUNDTRACK/ANIME
-        if (containsAny(lowerGenre, "soundtrack", "anime", "bollywood", "tollywood", "kollywood", "ost")) {
-            return "SOUNDTRACK/ANIME";
-        }
-        
-        // 11순위: POP (pop이 포함된 경우)
-        if (lowerGenre.contains("pop")) {
-            return "POP";
-        }
-        
-        // 12순위: ETC (그 외 모든 경우)
-        return "ETC";
-    }
-    
-    /**
-     * 문자열이 주어진 키워드들 중 하나라도 포함하는지 확인
-     */
-    private boolean containsAny(String text, String... keywords) {
-        for (String keyword : keywords) {
-            if (text.contains(keyword)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
+    // 우선순위 순서대로 체크하여 매칭되는 첫 번째 카테고리 반환
     // Batch 저장: ArtistGenre를 별도로 수집하여 saveAll로 한 번에 저장
     private int createArtistGenreMappings(List<ArtistData> finalArtists, Map<String, Artist> artistMap,
                                          Map<String, Genre> genreMap) {
@@ -1130,10 +989,10 @@ public class SpotifyService {
         Set<String> seenMappings = new HashSet<>(); // 중복 매핑 방지
         
         for (ArtistData data : finalArtists) {
-            Artist artist = artistMap.get(data.spotifyId);
-            if (artist == null) {
-                continue;
-            }
+                Artist artist = artistMap.get(data.spotifyId);
+                if (artist == null) {
+                    continue;
+                }
 
             for (String originalGenreName : data.genres) {
                 if (originalGenreName == null || originalGenreName.isBlank()) {
@@ -1141,25 +1000,25 @@ public class SpotifyService {
                 }
                 
                 // 원본 장르명을 통합된 카테고리로 변환
-                String unifiedGenreName = normalizeGenre(originalGenreName);
+                String unifiedGenreName = genreNormalizationService.normalizeGenre(originalGenreName);
                 if (unifiedGenreName == null || unifiedGenreName.isBlank()) {
                     continue;
                 }
                 
                 Genre genre = genreMap.get(unifiedGenreName);
-                if (genre == null) {
-                    continue;
-                }
-                
+                    if (genre == null) {
+                        continue;
+                    }
+
                 // 중복 매핑 체크 (artistId-genreId 조합)
                 String mappingKey = artist.getId() + "-" + genre.getId();
                 if (seenMappings.contains(mappingKey)) {
                     continue;
                 }
                 
-                ArtistGenre artistGenre = new ArtistGenre(artist, genre);
+                        ArtistGenre artistGenre = new ArtistGenre(artist, genre);
                 artistGenresToSave.add(artistGenre);
-                artist.getArtistGenres().add(artistGenre);
+                        artist.getArtistGenres().add(artistGenre);
                 seenMappings.add(mappingKey);
             }
         }
@@ -1333,180 +1192,6 @@ public class SpotifyService {
         
         return false;
     }
-    
-    private static class MusicBrainzFilterResult {
-        private final List<ArtistData> activeArtists;
-        private final List<ArtistData> mbFailedArtists;
-        
-        MusicBrainzFilterResult(List<ArtistData> activeArtists, List<ArtistData> mbFailedArtists) {
-            this.activeArtists = activeArtists;
-            this.mbFailedArtists = mbFailedArtists;
-        }
-        
-        List<ArtistData> getActiveArtists() {
-            return activeArtists;
-        }
-        
-        List<ArtistData> getMbFailedArtists() {
-            return mbFailedArtists;
-        }
-    }
-    
-    private MusicBrainzFilterResult filterByMusicBrainzEnded(List<ArtistData> candidates) {
-        List<ArtistData> activeArtists = new ArrayList<>();
-        List<ArtistData> mbFailedArtists = new ArrayList<>();
-        
-        final double UNCONDITIONAL_SCORE = calculatePopularityScore(UNCONDITIONAL_POPULARITY, UNCONDITIONAL_FOLLOWERS);
-        final double KOREAN_LEGACY_SCORE = calculatePopularityScore(KOREAN_LEGACY_POPULARITY, KOREAN_LEGACY_FOLLOWERS);
-        final double GLOBAL_LEGACY_SCORE = calculatePopularityScore(GLOBAL_LEGACY_POPULARITY, GLOBAL_LEGACY_FOLLOWERS);
-        
-        for (ArtistData data : candidates) {
-            double score = calculatePopularityScore(data.popularity, data.followers);
-            
-            if (score >= UNCONDITIONAL_SCORE) {
-                activeArtists.add(data);
-                continue;
-            }
-            
-            musicBrainzRateLimiter.acquire();
-            
-            Boolean isEnded = null;
-            boolean mbSucceeded = false;
-            
-            try {
-                Optional<com.back.web7_9_codecrete_be.global.musicbrainz.MusicBrainzClient.ArtistInfo> artistInfoOpt = 
-                        musicBrainzClient.searchArtist(data.name);
-                
-                if (artistInfoOpt.isPresent()) {
-                    String mbid = artistInfoOpt.get().getMbid();
-                    if (mbid != null && !mbid.isBlank()) {
-                        Optional<Boolean> endedOpt = musicBrainzClient.isEnded(mbid);
-                        if (endedOpt.isPresent()) {
-                            isEnded = endedOpt.get();
-                            mbSucceeded = true;
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                // MusicBrainz 조회 실패는 Wikidata로 확인 대상에 추가
-            }
-            
-            if (!mbSucceeded) {
-                boolean isVeryLowPopularity = (data.popularity == null || data.popularity < MB_FAILED_MIN_POPULARITY) && 
-                                             (data.followers == null || data.followers < MB_FAILED_MIN_FOLLOWERS);
-                if (!isVeryLowPopularity) {
-                    activeArtists.add(data);
-                } else {
-                    mbFailedArtists.add(data);
-                }
-                continue;
-            }
-            
-            if (isEnded != null && !isEnded) {
-                activeArtists.add(data);
-                continue;
-            }
-            
-            if (isEnded != null && isEnded) {
-                boolean isKorean = data.genres.stream()
-                        .anyMatch(g -> g != null && (g.toLowerCase().contains("k-pop") || 
-                                g.toLowerCase().contains("korean")));
-                
-                double legacyThreshold = isKorean ? KOREAN_LEGACY_SCORE : GLOBAL_LEGACY_SCORE;
-                
-                if (score >= legacyThreshold) {
-                    activeArtists.add(data);
-                }
-                continue;
-            }
-            
-            activeArtists.add(data);
-        }
-        
-        return new MusicBrainzFilterResult(activeArtists, mbFailedArtists);
-    }
-    
-    private double calculatePopularityScore(Integer popularity, Integer followers) {
-        double popularityNorm = (popularity != null && popularity >= 0) ? popularity / 100.0 : 0.0;
-        
-        double followersNorm = 0.0;
-        if (followers != null && followers > 0) {
-            double logFollowers = Math.log10(followers);
-            followersNorm = Math.max(0.0, Math.min(1.0, (logFollowers - 3.0) / 5.0));
-        }
-        
-        return popularityNorm * 0.6 + followersNorm * 0.4;
-    }
-    
-    private List<ArtistData> filterByWikidataDissolved(List<ArtistData> candidates) {
-        List<ArtistData> activeArtists = new ArrayList<>();
-        
-        for (ArtistData data : candidates) {
-            boolean isDissolved = false;
-            
-            try {
-                Optional<String> qidOpt = wikidataClient.searchWikidataIdBySpotifyId(data.spotifyId);
-                if (qidOpt.isEmpty()) {
-                    activeArtists.add(data);
-                    continue;
-                }
-                
-                String qid = qidOpt.get();
-                
-                Optional<JsonNode> entityOpt = wikidataClient.getEntityInfo(qid);
-                if (entityOpt.isEmpty()) {
-                    activeArtists.add(data);
-                    continue;
-                }
-                
-                JsonNode entity = entityOpt.get();
-                
-                Optional<String> p576Opt = getTimeClaim(entity, "P576");
-                if (p576Opt.isPresent()) {
-                    isDissolved = true;
-                }
-                
-                if (!isDissolved) {
-                    Optional<String> p582Opt = getTimeClaim(entity, "P582");
-                    if (p582Opt.isPresent()) {
-                        isDissolved = true;
-                    }
-                }
-                
-            } catch (Exception e) {
-                // Wikidata 조회 실패는 다음 단계로 진행 (보수적 접근)
-            }
-            
-            if (!isDissolved) {
-                activeArtists.add(data);
-            }
-        }
-        
-        return activeArtists;
-    }
-    
-    private Optional<String> getTimeClaim(JsonNode entity, String propertyId) {
-        try {
-            JsonNode claims = entity.path("claims").path(propertyId);
-            if (!claims.isArray() || claims.isEmpty()) {
-                return Optional.empty();
-            }
-            
-            JsonNode value = claims.get(0)
-                    .path("mainsnak")
-                    .path("datavalue")
-                    .path("value");
-            
-            JsonNode timeNode = value.path("time");
-            if (!timeNode.isMissingNode() && !timeNode.asText().isBlank()) {
-                return Optional.of(timeNode.asText());
-            }
-            
-            return Optional.empty();
-        } catch (Exception e) {
-            return Optional.empty();
-        }
-    }
 
     @Transactional(readOnly = true)
     public ArtistDetailResponse getArtistDetail(
@@ -1519,7 +1204,7 @@ public class SpotifyService {
     ) {
         try {
             // 1. Redis 캐시에서 조회 시도
-            SpotifyArtistDetailCache cached = getCachedSpotifyDetail(spotifyArtistId);
+            SpotifyArtistDetailCache cached = spotifyCacheService.getCached(spotifyArtistId);
             
             SpotifyArtistDetailCache spotifyData;
             if (cached != null) {
@@ -1528,7 +1213,10 @@ public class SpotifyService {
             } else {
                 log.debug("Spotify 상세 정보 캐시 MISS: spotifyArtistId={}", spotifyArtistId);
                 // 2. 캐시 스탬피드 방지: Redis 락으로 동시 API 호출 제한
-                spotifyData = fetchSpotifyDetailWithLock(spotifyArtistId);
+                spotifyData = spotifyCacheService.getOrFetchWithLock(
+                        spotifyArtistId,
+                        () -> spotifyDetailService.fetchDetailFromApi(spotifyArtistId)
+                );
             }
 
             // 4. DB에서 추가 정보 조회 (캐시하지 않는 데이터)
@@ -1537,7 +1225,7 @@ public class SpotifyService {
             String nameKo = dbArtist != null ? dbArtist.getNameKo() : null;
 
             // 5. Related Artists 조회 (DB 기반 로직, 캐시하지 않음)
-            List<RelatedArtistResponse> relatedResponses = getRelatedArtists(
+            List<RelatedArtistResponse> relatedResponses = relatedArtistService.getRelatedArtists(
                     artistId,
                     artistGroup,
                     artistType,
@@ -1570,595 +1258,6 @@ public class SpotifyService {
             log.error("Spotify 상세 조회 실패: artistId={}", spotifyArtistId, e);
             throw new BusinessException(ArtistErrorCode.SPOTIFY_API_ERROR);
         }
-    }
-    
-    /**
-     * Redis 캐시에서 Spotify 상세 정보 조회
-     */
-    private SpotifyArtistDetailCache getCachedSpotifyDetail(String spotifyArtistId) {
-        try {
-            String cacheKey = getCacheKey(spotifyArtistId);
-            Object cached = objectRedisTemplate.opsForValue().get(cacheKey);
-            
-            if (cached == null) {
-                return null;
-            }
-            
-            // Object를 SpotifyArtistDetailCache로 변환
-            if (cached instanceof SpotifyArtistDetailCache) {
-                return (SpotifyArtistDetailCache) cached;
-            }
-            
-            // LinkedHashMap 등으로 역직렬화된 경우 ObjectMapper로 변환
-            return objectMapper.convertValue(cached, SpotifyArtistDetailCache.class);
-        } catch (Exception e) {
-            log.warn("Redis 캐시 조회 실패: spotifyArtistId={}", spotifyArtistId, e);
-            return null;
-        }
-    }
-    
-    /**
-     * Spotify API에서 상세 정보 조회
-     */
-    private SpotifyArtistDetailCache fetchSpotifyDetailFromApi(String spotifyArtistId) {
-        SpotifyApi api = spotifyClient.getAuthorizedApi();
-
-        // 아티스트 기본 정보
-        se.michaelthelin.spotify.model_objects.specification.Artist artist = rateLimitHandler.callWithRateLimitRetry(() -> {
-            try {
-                spotifyRateLimiter.acquire();
-                return api.getArtist(spotifyArtistId).build().execute();
-            } catch (RuntimeException e) {
-                throw e;
-            } catch (Exception e) {
-                throw new RuntimeException("Exception during getArtist API call", e);
-            }
-        }, "getArtistDetail getArtist spotifyId=" + spotifyArtistId);
-
-        // Top Tracks
-        Track[] topTracks = safeGetTopTracks(api, spotifyArtistId);
-        
-        // 앨범 목록
-        Paging<AlbumSimplified> albums = safeGetAlbums(api, spotifyArtistId);
-
-        return new SpotifyArtistDetailCache(
-                artist.getName(),
-                pickImageUrl(artist.getImages()),
-                artist.getPopularity(),
-                toTopTrackResponses(topTracks),
-                toAlbumResponses(albums != null ? albums.getItems() : null, spotifyArtistId),
-                albums != null ? albums.getTotal() : 0
-        );
-    }
-    
-    /**
-     * Redis 캐시에 Spotify 상세 정보 저장
-     */
-    private void saveSpotifyDetailToCache(String spotifyArtistId, SpotifyArtistDetailCache data) {
-        try {
-            String cacheKey = getCacheKey(spotifyArtistId);
-            objectRedisTemplate.opsForValue().set(
-                    cacheKey,
-                    data,
-                    CACHE_TTL_SECONDS,
-                    TimeUnit.SECONDS
-            );
-            log.debug("Spotify 상세 정보 캐시 저장: spotifyArtistId={}, ttl={}초", spotifyArtistId, CACHE_TTL_SECONDS);
-        } catch (Exception e) {
-            log.warn("Redis 캐시 저장 실패: spotifyArtistId={}", spotifyArtistId, e);
-            // 캐시 저장 실패해도 API 호출은 성공했으므로 계속 진행
-        }
-    }
-    
-    /**
-     * 캐시 스탬피드 방지: Redis 락을 사용하여 동시 API 호출 제한
-     * 
-     * 1. 락 획득 시도
-     * 2. 락 획득 성공 → Spotify API 호출 → 캐시 저장 → 락 해제
-     * 3. 락 획득 실패 → 짧은 대기 후 캐시 재조회 (다른 스레드가 저장했을 수 있음)
-     */
-    private SpotifyArtistDetailCache fetchSpotifyDetailWithLock(String spotifyArtistId) {
-        String lockKey = getLockKey(spotifyArtistId);
-        
-        // 락 획득 시도 (SETNX 방식)
-        Boolean lockAcquired = redisTemplate.opsForValue().setIfAbsent(
-                lockKey, 
-                "locked", 
-                LOCK_TTL_SECONDS, 
-                TimeUnit.SECONDS
-        );
-        
-        if (Boolean.TRUE.equals(lockAcquired)) {
-            // 락 획득 성공: 이 스레드가 API 호출 담당
-            try {
-                log.debug("Spotify API 호출 락 획득: spotifyArtistId={}", spotifyArtistId);
-                
-                // 다시 한 번 캐시 확인 (락 획득 대기 중 다른 스레드가 저장했을 수 있음)
-                SpotifyArtistDetailCache doubleCheck = getCachedSpotifyDetail(spotifyArtistId);
-                if (doubleCheck != null) {
-                    log.debug("락 획득 후 캐시 재조회 HIT: spotifyArtistId={}", spotifyArtistId);
-                    return doubleCheck;
-                }
-                
-                // Spotify API 호출
-                SpotifyArtistDetailCache spotifyData = fetchSpotifyDetailFromApi(spotifyArtistId);
-                
-                // 캐시에 저장
-                saveSpotifyDetailToCache(spotifyArtistId, spotifyData);
-                
-                return spotifyData;
-            } finally {
-                // 락 해제
-                redisTemplate.delete(lockKey);
-            }
-        } else {
-            // 락 획득 실패: 다른 스레드가 API 호출 중
-            log.debug("Spotify API 호출 락 획득 실패 (다른 스레드가 처리 중): spotifyArtistId={}", spotifyArtistId);
-            
-            // 짧은 대기 후 캐시 재조회 (다른 스레드가 저장 완료했을 수 있음)
-            try {
-                Thread.sleep(100); // 100ms 대기
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            
-            // 캐시 재조회
-            SpotifyArtistDetailCache retryCache = getCachedSpotifyDetail(spotifyArtistId);
-            if (retryCache != null) {
-                log.debug("락 대기 후 캐시 재조회 HIT: spotifyArtistId={}", spotifyArtistId);
-                return retryCache;
-            }
-            
-            // 여전히 캐시가 없으면 최대 3초까지 대기하며 재시도
-            int maxRetries = 30; // 100ms * 30 = 3초
-            for (int i = 0; i < maxRetries; i++) {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-                
-                retryCache = getCachedSpotifyDetail(spotifyArtistId);
-                if (retryCache != null) {
-                    log.debug("락 대기 중 캐시 재조회 HIT ({}ms 후): spotifyArtistId={}", (i + 1) * 100, spotifyArtistId);
-                    return retryCache;
-                }
-            }
-            
-            // 최종적으로도 캐시가 없으면 직접 API 호출 (락이 만료되었을 수 있음)
-            log.warn("락 대기 후에도 캐시 없음, 직접 API 호출: spotifyArtistId={}", spotifyArtistId);
-            SpotifyArtistDetailCache spotifyData = fetchSpotifyDetailFromApi(spotifyArtistId);
-            saveSpotifyDetailToCache(spotifyArtistId, spotifyData);
-            return spotifyData;
-        }
-    }
-    
-    /**
-     * 캐시 키 생성
-     */
-    private String getCacheKey(String spotifyArtistId) {
-        return CACHE_KEY_PREFIX + spotifyArtistId;
-    }
-    
-    /**
-     * 락 키 생성
-     */
-    private String getLockKey(String spotifyArtistId) {
-        return LOCK_KEY_PREFIX + spotifyArtistId;
-    }
-
-    private Track[] safeGetTopTracks(SpotifyApi api, String artistId) {
-        try {
-            return rateLimitHandler.callWithRateLimitRetry(() -> {
-                try {
-                    spotifyRateLimiter.acquire();
-                    return api.getArtistsTopTracks(artistId, CountryCode.KR)
-                            .build()
-                            .execute();
-                } catch (RuntimeException e) {
-                    throw e;
-                } catch (Exception e) {
-                    throw new RuntimeException("Exception during getArtistsTopTracks API call", e);
-                }
-            }, "safeGetTopTracks artistId=" + artistId);
-        } catch (RuntimeException e) {
-            return new Track[0];
-        } catch (Exception e) {
-            return new Track[0];
-        }
-    }
-
-    private Paging<AlbumSimplified> safeGetAlbums(SpotifyApi api, String artistId) {
-        try {
-            return rateLimitHandler.callWithRateLimitRetry(() -> {
-                try {
-                    spotifyRateLimiter.acquire();
-                    return api.getArtistsAlbums(artistId)
-                            .market(CountryCode.KR)
-                            .limit(20)
-                            .build()
-                            .execute();
-                } catch (RuntimeException e) {
-                    throw e;
-                } catch (Exception e) {
-                    throw new RuntimeException("Exception during getArtistsAlbums API call", e);
-                }
-            }, "safeGetAlbums artistId=" + artistId);
-        } catch (RuntimeException e) {
-            return null;
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /**
-     * 관련 아티스트 추천 (3단계: Recall -> Score -> Diversity)
-     */
-    private List<RelatedArtistResponse> getRelatedArtists(
-            long artistId,
-            String artistGroup,
-            ArtistType artistType,
-            Long genreId
-    ) {
-        try {
-            // 1단계: 후보 뽑기 (Recall)
-            Set<Artist> candidates = collectRelatedCandidates(artistId, artistGroup, artistType, genreId);
-            
-            if (candidates.isEmpty()) {
-                return List.of();
-            }
-            
-            // 2단계: 점수 매기기 (Score)
-            List<ScoredArtist> scoredArtists = scoreCandidates(candidates, artistGroup, artistType, genreId, artistId);
-            
-            // 3단계: 4~5명 뽑기 + 도배 방지 (Diversity)
-            List<Artist> selectedArtists = selectWithDiversity(scoredArtists, artistGroup, genreId);
-            
-            // RelatedArtistResponse로 변환
-            return selectedArtists.stream()
-                        .map(a -> new RelatedArtistResponse(
-                                a.getId(),
-                                a.getArtistName(),
-                                a.getNameKo(),
-                                a.getImageUrl(),
-                                a.getSpotifyArtistId()
-                        ))
-                        .toList();
-                    
-        } catch (Exception e) {
-            log.error("관련 아티스트 조회 실패: artistId={}", artistId, e);
-            return List.of();
-        }
-    }
-    
-    /**
-     * 1단계: 후보 뽑기 (Recall)
-     * - 같은 genre인 아티스트들 (최대 200명, 결정론적 다양성을 위해 넓은 후보 풀 확보)
-     * - 같은 artistGroup인 아티스트들 (최대 5명, artistGroup이 있을 때만)
-     * - 같은 artistType인 아티스트들 (최대 50명, fallback: 장르/그룹 후보가 부족할 때만)
-     */
-    private Set<Artist> collectRelatedCandidates(
-            long artistId,
-            String artistGroup,
-            ArtistType artistType,
-            Long genreId
-    ) {
-        Set<Artist> candidates = new HashSet<>();
-        final int MAX_GENRE_CANDIDATES = 200; // 결정론적 다양성을 위해 후보 풀 확장
-        final int MAX_GROUP_CANDIDATES = 5;
-        final int MAX_TYPE_CANDIDATES = 50;
-        final int MIN_CANDIDATES_FOR_FALLBACK = 10; // 이보다 적으면 타입 후보 추가
-        
-        // 같은 genre인 아티스트들
-        if (genreId != null) {
-            List<Artist> sameGenre = artistRepository.findByGenreIdAndIdNot(
-                    genreId, artistId, 
-                    org.springframework.data.domain.PageRequest.of(0, MAX_GENRE_CANDIDATES)
-            );
-            candidates.addAll(sameGenre);
-        }
-        
-        // 같은 artistGroup인 아티스트들 (artistGroup이 있을 때만)
-        if (artistGroup != null && !artistGroup.isBlank()) {
-            List<Artist> sameGroup = artistRepository.findByArtistGroupAndIdNot(
-                    artistGroup, artistId,
-                    org.springframework.data.domain.PageRequest.of(0, MAX_GROUP_CANDIDATES)
-            );
-            candidates.addAll(sameGroup);
-        }
-        
-        // 같은 artistType인 아티스트들 (fallback: 후보가 부족할 때만)
-        if (artistType != null && candidates.size() < MIN_CANDIDATES_FOR_FALLBACK) {
-            List<Artist> sameType = artistRepository.findByArtistTypeAndIdNot(
-                    artistType, artistId,
-                    org.springframework.data.domain.PageRequest.of(0, MAX_TYPE_CANDIDATES)
-            );
-            candidates.addAll(sameType);
-        }
-        
-        return candidates;
-    }
-    
-    /**
-     * 2단계: 점수 매기기 (Score)
-     * - 같은 그룹: +80
-     * - 같은 장르: +60 (그룹 점수가 있을 때는 +30으로 완화)
-     * - 같은 타입: +15
-     * - likeCount 보정: + 5 * log(likeCount+1), 최대 15점 (기본 연관 점수가 30 이상일 때만 적용)
-     * - hash 기반 미세 조정: 점수에 직접 반영하여 기준 아티스트별로 다른 결과 보장
-     * 
-     * 정렬: 점수(내부에 hash 반영) → likeCount → 이름 → Spotify ID → id
-     * hash를 점수에 직접 반영하여 같은 점수/likeCount를 가진 아티스트들도 기준 아티스트별로 다른 순서를 보장
-     */
-    private List<ScoredArtist> scoreCandidates(
-            Set<Artist> candidates,
-            String artistGroup,
-            ArtistType artistType,
-            Long genreId,
-            long baseArtistId  // 기준 아티스트 ID (hash 계산용)
-    ) {
-        List<ScoredArtist> scored = new ArrayList<>();
-        final double MAX_LIKECOUNT_BONUS = 15.0;
-        final double MIN_BASE_SCORE_FOR_LIKECOUNT = 30.0; // 기본 연관 점수가 이 이상일 때만 likeCount 보정 적용
-        
-        for (Artist candidate : candidates) {
-            double score = 0.0;
-            boolean hasGroupScore = false;
-            
-            // 같은 그룹이면 +80
-            if (artistGroup != null && !artistGroup.isBlank() && 
-                candidate.getArtistGroup() != null && 
-                candidate.getArtistGroup().equals(artistGroup)) {
-                score += 80;
-                hasGroupScore = true;
-            }
-            
-            // 같은 장르면 +60 (그룹 점수가 있을 때는 +30으로 완화하여 중복 가산 완화)
-            if (genreId != null) {
-                boolean hasSameGenre = candidate.getArtistGenres().stream()
-                        .anyMatch(ag -> ag.getGenre().getId() == genreId);
-                if (hasSameGenre) {
-                    // 그룹 점수가 있으면 장르 점수를 절반으로 완화
-                    score += hasGroupScore ? 30 : 60;
-                }
-            }
-            
-            // 같은 타입이면 +15
-            if (artistType != null && candidate.getArtistType() == artistType) {
-                score += 15;
-            }
-            
-            // likeCount 보정: 기본 연관 점수가 일정 수준 이상일 때만 적용, 최대 15점
-            double baseScore = score; // likeCount 보정 전 점수
-            if (baseScore >= MIN_BASE_SCORE_FOR_LIKECOUNT && candidate.getLikeCount() > 0) {
-                double likeCountBonus = 5.0 * Math.log(candidate.getLikeCount() + 1);
-                score += Math.min(likeCountBonus, MAX_LIKECOUNT_BONUS);
-            }
-            
-            // hash 기반 tie-breaker 값 계산 (기준 아티스트 ID와 후보 아티스트 ID 조합)
-            int hashValue = calculateHashForTieBreaker(baseArtistId, candidate.getId());
-            
-            // hash를 점수에 반영하여 기준 아티스트별로 다른 순서 보장
-            // hashValue를 0~1 범위로 정규화하여 점수에 더함 (최대 약 1점 차이)
-            // 음수 hash도 처리하기 위해 절댓값 사용 후 modulo 연산
-            double normalizedHash = (Math.abs(hashValue) % 10000) / 10000.0; // 0.0 ~ 0.9999
-            score += normalizedHash; // 최대 약 1점 차이로 같은 점수/likeCount를 가진 아티스트들도 순서가 달라짐
-            
-            scored.add(new ScoredArtist(candidate, score, hashValue));
-        }
-        
-        // 점수 내림차순 정렬, 동점일 때는 의미 있는 기준으로 정렬
-        scored.sort((a, b) -> {
-            // 1순위: 점수 내림차순 (이미 hash가 반영되어 있음)
-            int scoreCompare = Double.compare(b.score, a.score);
-            if (scoreCompare != 0) {
-                return scoreCompare;
-            }
-            
-            // 2순위: likeCount 내림차순
-            int likeCountCompare = Integer.compare(b.artist.getLikeCount(), a.artist.getLikeCount());
-            if (likeCountCompare != 0) {
-                return likeCountCompare;
-            }
-            
-            // 3순위: 이름 오름차순 (nameKo 우선, 없으면 artistName)
-            String nameA = a.artist.getNameKo() != null && !a.artist.getNameKo().isBlank() 
-                    ? a.artist.getNameKo() 
-                    : a.artist.getArtistName();
-            String nameB = b.artist.getNameKo() != null && !b.artist.getNameKo().isBlank() 
-                    ? b.artist.getNameKo() 
-                    : b.artist.getArtistName();
-            int nameCompare = nameA.compareTo(nameB);
-            if (nameCompare != 0) {
-                return nameCompare;
-            }
-            
-            // 4순위: Spotify ID 오름차순
-            if (a.artist.getSpotifyArtistId() != null && b.artist.getSpotifyArtistId() != null) {
-                int spotifyIdCompare = a.artist.getSpotifyArtistId().compareTo(b.artist.getSpotifyArtistId());
-                if (spotifyIdCompare != 0) {
-                    return spotifyIdCompare;
-                }
-            }
-            
-            // 최종 tie-breaker: id 오름차순
-            return Long.compare(a.artist.getId(), b.artist.getId());
-        });
-        
-        return scored;
-    }
-    
-    /**
-     * 기준 아티스트 ID와 후보 아티스트 ID를 조합하여 hash 값 계산
-     * 
-     * 같은 기준 아티스트에 대해서는 항상 동일한 hash 값을 반환하지만,
-     * 기준 아티스트가 다르면 같은 후보라도 다른 hash 값을 가져 결정론적 다양성을 보장합니다.
-     * 
-     * @param baseArtistId 기준 아티스트 ID
-     * @param candidateArtistId 후보 아티스트 ID
-     * @return hash 값 (정렬용)
-     */
-    private int calculateHashForTieBreaker(long baseArtistId, long candidateArtistId) {
-        // 두 ID를 조합하여 hash 계산
-        String combined = baseArtistId + "-" + candidateArtistId;
-        return combined.hashCode();
-    }
-    
-    /**
-     * 3단계: 슬롯 기반 최종 선택 (Diversity)
-     * 
-     * 슬롯 구조로 구성 비율을 강제하여 장르 편향을 완화합니다.
-     * 랜덤 요소 없이 점수 순으로 고정적으로 선별하므로, 동일한 아티스트 조회 시 항상 동일한 결과를 보장합니다.
-     * 
-     * 슬롯 구성:
-     * - 그룹 슬롯: 같은 그룹 최대 2명
-     * - 장르 슬롯: 같은 장르(그룹 아님) 최대 3명
-     * - 그 외 슬롯: 나머지
-     * 
-     * 목표: 최대 5명
-     */
-    private List<Artist> selectWithDiversity(
-            List<ScoredArtist> scoredArtists,
-            String artistGroup,
-            Long genreId
-    ) {
-        final int MAX_SAME_GROUP = 2;
-        final int MAX_SAME_GENRE = 3;
-        final int TARGET_COUNT = 5;
-        
-        // 슬롯별로 후보 분류
-        List<ScoredArtist> groupSlot = new ArrayList<>();
-        List<ScoredArtist> genreSlot = new ArrayList<>();
-        List<ScoredArtist> otherSlot = new ArrayList<>();
-        
-        for (ScoredArtist scored : scoredArtists) {
-            Artist candidate = scored.artist;
-            
-            // 같은 그룹 체크
-            boolean isSameGroup = artistGroup != null && !artistGroup.isBlank() &&
-                    candidate.getArtistGroup() != null &&
-                    candidate.getArtistGroup().equals(artistGroup);
-            
-            // 같은 장르 체크
-            boolean isSameGenre = genreId != null && candidate.getArtistGenres().stream()
-                    .anyMatch(ag -> ag.getGenre().getId() == genreId);
-            
-            if (isSameGroup) {
-                groupSlot.add(scored);
-            } else if (isSameGenre) {
-                genreSlot.add(scored);
-            } else {
-                otherSlot.add(scored);
-            }
-        }
-        
-        // 슬롯별로 최종 선택 (각 슬롯 내에서는 이미 점수 순으로 정렬되어 있음)
-        List<Artist> selected = new ArrayList<>();
-        
-        // 1. 그룹 슬롯에서 최대 2명 선택
-        for (int i = 0; i < Math.min(MAX_SAME_GROUP, groupSlot.size()) && selected.size() < TARGET_COUNT; i++) {
-            selected.add(groupSlot.get(i).artist);
-        }
-        
-        // 2. 장르 슬롯에서 선택 (그룹 슬롯 선택 후 남은 자리만큼, 최대 3명)
-        int remainingSlots = TARGET_COUNT - selected.size();
-        int genreCount = Math.min(MAX_SAME_GENRE, Math.min(genreSlot.size(), remainingSlots));
-        for (int i = 0; i < genreCount && selected.size() < TARGET_COUNT; i++) {
-            selected.add(genreSlot.get(i).artist);
-        }
-        
-        // 3. 그 외 슬롯에서 나머지 채우기 (5명이 될 때까지)
-        for (ScoredArtist scored : otherSlot) {
-            if (selected.size() >= TARGET_COUNT) {
-                break;
-            }
-            selected.add(scored.artist);
-        }
-        
-        // 4. 장르 슬롯에서 추가로 채우기 (5명이 안 되면 장르 슬롯에서 더 선택)
-        if (selected.size() < TARGET_COUNT && genreSlot.size() > genreCount) {
-            for (int i = genreCount; i < genreSlot.size() && selected.size() < TARGET_COUNT; i++) {
-                selected.add(genreSlot.get(i).artist);
-            }
-        }
-        
-        // 5. 그룹 슬롯에서 추가로 채우기 (5명이 안 되면 그룹 슬롯에서 더 선택)
-        if (selected.size() < TARGET_COUNT && groupSlot.size() > MAX_SAME_GROUP) {
-            for (int i = MAX_SAME_GROUP; i < groupSlot.size() && selected.size() < TARGET_COUNT; i++) {
-                selected.add(groupSlot.get(i).artist);
-            }
-        }
-        
-        return selected;
-    }
-    
-    /**
-     * 점수가 매겨진 아티스트
-     */
-    private static class ScoredArtist {
-        final Artist artist;
-        final double score;
-        final int hashValue; // hash 기반 tie-breaker 값
-        
-        ScoredArtist(Artist artist, double score) {
-            this.artist = artist;
-            this.score = score;
-            this.hashValue = 0; // 하위 호환성
-        }
-        
-        ScoredArtist(Artist artist, double score, int hashValue) {
-            this.artist = artist;
-            this.score = score;
-            this.hashValue = hashValue;
-        }
-    }
-
-    private String pickImageUrl(Image[] images) {
-        if (images == null || images.length == 0) return null;
-        return Arrays.stream(images)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .map(Image::getUrl)
-                .orElse(null);
-    }
-
-    private List<AlbumResponse> toAlbumResponses(AlbumSimplified[] items, String artistId) {
-        if (items == null) return List.of();
-        return Stream.of(items)
-                .filter(Objects::nonNull)
-                .filter(a -> a.getAlbumType() == AlbumType.ALBUM
-                        || a.getAlbumType() == AlbumType.SINGLE
-                        || a.getAlbumType() == AlbumType.COMPILATION)
-                .filter(a -> {
-                    if (a.getArtists() == null) return false;
-                    return Arrays.stream(a.getArtists())
-                            .anyMatch(ar -> ar != null && artistId != null && artistId.equals(ar.getId()));
-                })
-                .map(a -> new AlbumResponse(
-                        a.getName(),
-                        a.getReleaseDate(),
-                        albumTypeToString(a.getAlbumType()),
-                        pickImageUrl(a.getImages()),
-                        a.getExternalUrls() != null ? a.getExternalUrls().get("spotify") : null
-                ))
-                .collect(toList());
-    }
-
-    private String albumTypeToString(AlbumType type) {
-        if (type == null) return null;
-        return type.getType();
-    }
-
-    private List<TopTrackResponse> toTopTrackResponses(Track[] tracks) {
-        if (tracks == null) return List.of();
-        return Stream.of(tracks)
-                .filter(Objects::nonNull)
-                .map(t -> new TopTrackResponse(
-                        t.getName(),
-                        t.getExternalUrls() != null ? t.getExternalUrls().get("spotify") : null
-                ))
-                .collect(toList());
     }
 
 }

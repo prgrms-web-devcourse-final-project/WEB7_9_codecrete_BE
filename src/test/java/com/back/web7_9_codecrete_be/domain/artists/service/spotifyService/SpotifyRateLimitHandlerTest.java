@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.artists.service.spotifyService;
 
+import com.back.web7_9_codecrete_be.domain.artists.service.spotify.rate_limit.SpotifyRateLimitHandler;
 import com.back.web7_9_codecrete_be.global.spotify.SpotifyClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

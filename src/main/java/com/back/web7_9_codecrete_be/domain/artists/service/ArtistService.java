@@ -7,7 +7,6 @@ import com.back.web7_9_codecrete_be.domain.artists.entity.*;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistLikeRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ConcertArtistRepository;
-import com.back.web7_9_codecrete_be.domain.artists.service.spotifyService.SpotifyService;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
@@ -46,7 +45,7 @@ public class ArtistService {
 
     @Transactional
     public int setArtist() {
-        return spotifyService.seedKoreanArtists300();
+        return spotifyService.seedKoreanArtists();
     }
 
     @Transactional
