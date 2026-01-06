@@ -49,7 +49,7 @@ public class KakaoApiController {
             @RequestParam double x,
             @RequestParam double y
     ) {
-        return kakaoLocalService.searchNearbyRestaurants(x, y);
+        return kakaoLocalService.searchNearbyRestaurants(y, x);
     }
 
 
@@ -63,7 +63,7 @@ public class KakaoApiController {
             @RequestParam double x,
             @RequestParam double y
     ) {
-        return kakaoLocalService.searchNearbyCafes(x, y);
+        return kakaoLocalService.searchNearbyCafes(y, x);
     }
 
 
