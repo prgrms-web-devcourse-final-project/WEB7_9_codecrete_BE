@@ -21,8 +21,7 @@ public class ConcertSearchRedisTemplate {
     private final RedisTemplate<String,String> redisTemplate;
 
     private static final String INDEX_KEY = "index:";
-    private static final String DATE_KEY  = "data:";
-    private static final String CONCERT_ID_KEY = "concertName:";
+    private static final String CONCERT_ID_KEY = "concertId:";
 
     public void addAllWordsWithWeight(List<WeightedString> weightedStrings) {
         // PipeLine 사용해서 한번에 처리 -> IO 시간 감소
@@ -32,18 +31,18 @@ public class ConcertSearchRedisTemplate {
                 String word = weightedString.getWord();
                 double score = weightedString.getScore();
 
-                // 개별 문자들에 대한 키-값 설정
-                connection.commands().set((CONCERT_ID_KEY + word).getBytes(StandardCharsets.UTF_8), id.getBytes(StandardCharsets.UTF_8));
+                // 검색 결과를 ID - 제목 쌍으로 저장
+                connection.commands().set((CONCERT_ID_KEY + id).getBytes(StandardCharsets.UTF_8),word.getBytes(StandardCharsets.UTF_8));
 
+                // 역 인덱싱
                 for(int i = 0 ;i<word.length();i++){
                     for(int j = i+1;j<= word.length();j++ ){
                         String subWord = word.substring(i,j);
-
                         // 공백은 검색어 인덱스에서 제외
                         if(subWord.isBlank()) continue;
-
+                        // 서브 문자열을 인덱스 키, 값은 ID 값으로 해서 저장
                         byte[] indexKey = (INDEX_KEY + subWord).getBytes(StandardCharsets.UTF_8);
-                        connection.zAdd(indexKey,score,word.getBytes(StandardCharsets.UTF_8));
+                        connection.zAdd(indexKey,score,id.getBytes(StandardCharsets.UTF_8));
                     }
                 }
             }
@@ -54,15 +53,15 @@ public class ConcertSearchRedisTemplate {
     public List<AutoCompleteItem> getAutoCompleteWord(String keyword, int start, int end) {
         Set<String> results = redisTemplate.opsForZSet().reverseRange(INDEX_KEY + keyword, start, end);
         List<String> resultList = new ArrayList<>(results);
-        return resultList.stream().map(name ->{
-            Long id = Long.valueOf(redisTemplate.opsForValue().get(CONCERT_ID_KEY + name));
-            return new AutoCompleteItem(name,id);
+        return resultList.stream().map(id ->{
+            String name = redisTemplate.opsForValue().get(CONCERT_ID_KEY + id);
+            return new AutoCompleteItem(name,Long.valueOf(id));
         }).toList();
     }
 
     public void deleteAutoCompleteWords() {
         Set<String> keys = redisTemplate.keys("index:*");
-        Set<String> concertIdKeys = redisTemplate.keys("concertName:*");
+        Set<String> concertIdKeys = redisTemplate.keys("concertId:*");
         redisTemplate.delete(keys);
         redisTemplate.delete(concertIdKeys);
         log.info("자동 검색 키워드 삭제: " + keys.size() + "개의 키워드, " + concertIdKeys.size() + "개의 제목이 삭제되었습니다.");
