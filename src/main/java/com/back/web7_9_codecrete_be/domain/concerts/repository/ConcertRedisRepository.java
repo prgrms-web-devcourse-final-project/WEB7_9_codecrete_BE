@@ -122,14 +122,12 @@ public class ConcertRedisRepository {
 
     // 공연의 조회수 조회
     public Long getCachedViewCount(Long concertId) {
-        Long viewCount = Long.valueOf(redisTemplate.opsForHash()
-                .get(
-                        CONCERTS_VIEW_COUNTS,
-                        concertId.toString()
-                )
+        return Long.valueOf(Objects.requireNonNull(redisTemplate.opsForHash()
+                        .get(
+                                CONCERTS_VIEW_COUNTS,
+                                concertId.toString()
+                        ))
                 .toString());
-
-        return viewCount;
     }
 
     // 캐시된 조회수 삭제

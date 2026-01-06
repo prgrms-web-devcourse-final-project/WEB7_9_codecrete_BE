@@ -62,9 +62,10 @@ public class ConcertSearchRedisTemplate {
 
     public void deleteAutoCompleteWords() {
         Set<String> keys = redisTemplate.keys("index:*");
-        Set<String> datas = redisTemplate.keys("data:*");
-        if (keys != null || !keys.isEmpty()) redisTemplate.delete(keys);
-        if (datas != null || !keys.isEmpty()) redisTemplate.delete(datas);
+        Set<String> concertIdKeys = redisTemplate.keys("concertName:*");
+        redisTemplate.delete(keys);
+        redisTemplate.delete(concertIdKeys);
+        log.info("자동 검색 키워드 삭제: " + keys.size() + "개의 키워드, " + concertIdKeys.size() + "개의 제목이 삭제되었습니다.");
     }
 
     public Long getConcertIdByName(String concertName) {
