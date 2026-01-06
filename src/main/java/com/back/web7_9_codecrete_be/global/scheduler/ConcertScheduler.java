@@ -27,8 +27,6 @@ public class ConcertScheduler {
     @Scheduled(cron = "0 10 3 * * *")
     public void concertDataUpdateSchedule() {
         concertService.viewCountUpdate();
-        concertService.resetAutoComplete();
-        concertService.setAutoComplete();
     }
 
     // 이메일 알림을 전송합니다.

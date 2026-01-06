@@ -264,6 +264,7 @@ public class KopisApiService {
             log.error("공연 정보 갱신 도중 오류 발생 : " +e.getMessage());
             concertKopisApiLogService.saveErrorLog("save",e,0L);
         } finally {
+            // 락 해제
             concertRedisRepository.unlockSave(key);
         }
         return setResultResponse;
