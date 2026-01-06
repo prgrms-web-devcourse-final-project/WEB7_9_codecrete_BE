@@ -1,18 +1,18 @@
 package com.back.web7_9_codecrete_be.domain.artists.repository;
 
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
+import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
 public interface ArtistRepository extends JpaRepository<Artist, Long> {
-    boolean existsBySpotifyArtistId(String spotifyArtistId);
-    java.util.Optional<Artist> findBySpotifyArtistId(String spotifyArtistId);
     
     @Query("SELECT a FROM Artist a WHERE a.nameKo IS NULL ORDER BY a.id ASC")
     List<Artist> findByNameKoIsNullOrderByIdAsc(Pageable pageable);
@@ -23,10 +23,7 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     boolean existsByArtistName(String artistName);
     boolean existsByNameKo(String nameKo);
 
-    /**
-     * 같은 artistGroup인 아티스트들 조회 (관련 아티스트 추천용)
-     * artistGenres를 fetch join하여 N+1 문제 방지
-     */
+    // 같은 artistGroup인 아티스트들 조회 (관련 아티스트 추천용) - artistGenres를 fetch join하여 N+1 문제 방지
     @Query("""
         SELECT DISTINCT a FROM Artist a
         LEFT JOIN FETCH a.artistGenres ag
@@ -34,14 +31,11 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
         WHERE a.artistGroup = :artistGroup AND a.id != :excludeId
         ORDER BY a.likeCount DESC, a.id ASC
     """)
-    List<Artist> findByArtistGroupAndIdNot(@org.springframework.data.repository.query.Param("artistGroup") String artistGroup,
-                                           @org.springframework.data.repository.query.Param("excludeId") long excludeId,
+    List<Artist> findByArtistGroupAndIdNot(@Param("artistGroup") String artistGroup,
+                                           @Param("excludeId") long excludeId,
                                            Pageable pageable);
     
-    /**
-     * 같은 genre인 아티스트들 조회 (관련 아티스트 추천용)
-     * artistGenres와 genre를 fetch join하여 N+1 문제 방지
-     */
+    // 같은 genre인 아티스트들 조회 (관련 아티스트 추천용) - artistGenres와 genre를 fetch join하여 N+1 문제 방지
     @Query("""
         SELECT DISTINCT a FROM Artist a
         JOIN FETCH a.artistGenres ag
@@ -49,9 +43,19 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
         WHERE ag.genre.id = :genreId AND a.id != :excludeId
         ORDER BY a.likeCount DESC, a.id ASC
     """)
-    List<Artist> findByGenreIdAndIdNot(@org.springframework.data.repository.query.Param("genreId") Long genreId, 
-                                        @org.springframework.data.repository.query.Param("excludeId") long excludeId,
+    List<Artist> findByGenreIdAndIdNot(@Param("genreId") Long genreId, 
+                                        @Param("excludeId") long excludeId,
                                         Pageable pageable);
+
+    // 장르별 아티스트 목록 조회 - artistGenres와 genre를 fetch join하여 N+1 문제 방지
+    @Query("""
+        SELECT DISTINCT a FROM Artist a
+        JOIN FETCH a.artistGenres ag
+        JOIN FETCH ag.genre g
+        WHERE g.id = :genreId
+        ORDER BY a.likeCount DESC, a.id ASC
+    """)
+    List<Artist> findArtistsByGenreId(@Param("genreId") Long genreId);
 
     List<Artist> findAllByArtistNameContainingIgnoreCaseOrNameKoContainingIgnoreCase(String artistName1, String artistName2);
 
@@ -74,16 +78,13 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
 
     // 배치 조회: spotifyId 리스트로 존재하는 아티스트의 spotifyId만 반환
     @Query("SELECT a.spotifyArtistId FROM Artist a WHERE a.spotifyArtistId IN :spotifyIds")
-    List<String> findSpotifyIdsBySpotifyIdsIn(@org.springframework.data.repository.query.Param("spotifyIds") List<String> spotifyIds);
+    List<String> findSpotifyIdsBySpotifyIdsIn(@Param("spotifyIds") List<String> spotifyIds);
     
     // 배치 조회: spotifyId 리스트로 존재하는 아티스트 전체 엔티티 반환 (Bulk 저장용)
     @Query("SELECT a FROM Artist a WHERE a.spotifyArtistId IN :spotifyIds")
-    List<Artist> findBySpotifyArtistIdIn(@org.springframework.data.repository.query.Param("spotifyIds") List<String> spotifyIds);
+    List<Artist> findBySpotifyArtistIdIn(@Param("spotifyIds") List<String> spotifyIds);
     
-    /**
-     * 같은 artistType인 아티스트들 조회 (관련 아티스트 추천용, fallback)
-     * artistGenres를 fetch join하여 N+1 문제 방지
-     */
+    // 같은 artistType인 아티스트들 조회 (관련 아티스트 추천용, fallback) - artistGenres를 fetch join하여 N+1 문제 방지
     @Query("""
         SELECT DISTINCT a FROM Artist a
         LEFT JOIN FETCH a.artistGenres ag
@@ -91,7 +92,7 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
         WHERE a.artistType = :artistType AND a.id != :excludeId
         ORDER BY a.likeCount DESC, a.id ASC
     """)
-    List<Artist> findByArtistTypeAndIdNot(@org.springframework.data.repository.query.Param("artistType") com.back.web7_9_codecrete_be.domain.artists.entity.ArtistType artistType,
-                                          @org.springframework.data.repository.query.Param("excludeId") long excludeId,
+    List<Artist> findByArtistTypeAndIdNot(@Param("artistType") ArtistType artistType,
+                                          @Param("excludeId") long excludeId,
                                           Pageable pageable);
 }

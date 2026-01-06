@@ -1,12 +1,15 @@
 package com.back.web7_9_codecrete_be.domain.artists.controller;
 
+import com.back.web7_9_codecrete_be.domain.artists.dto.response.GenreArtistsResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.GenreResponse;
+import com.back.web7_9_codecrete_be.domain.artists.service.ArtistService;
 import com.back.web7_9_codecrete_be.domain.artists.service.GenreService;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,10 +22,19 @@ import java.util.List;
 public class GenreController {
 
     private final GenreService genreService;
+    private final ArtistService artistService;
 
     @Operation(summary = "전체 장르 목록", description = "DB에 저장되어있는 전체 장르 목록을 반환합니다.")
     @GetMapping()
     public RsData<List<GenreResponse>> genreList() {
         return RsData.success("전체 장르 조회 성공", genreService.genreList());
+    }
+
+    @Operation(summary = "장르별 아티스트 목록", description = "각 장르에 해당하는 아티스트 목록을 반환합니다.")
+    @GetMapping("/{genreId}")
+    public RsData<List<GenreArtistsResponse>> recommendArtist(
+            @PathVariable Long genreId
+    ) {
+        return RsData.success("해당 장르 아티스트 목록 조회 성공", artistService.findArtistsByGenreId(genreId));
     }
 }

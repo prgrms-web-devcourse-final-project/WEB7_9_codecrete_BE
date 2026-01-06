@@ -135,28 +135,7 @@ public class ArtistsController {
         return RsData.success("해당 아티스트 찜 여부 조회 성공", artistService.findArtistLikeByUserId(artist, user));
     }
 
-    @Operation(summary = "아티스트 인기 순위(구현 전)", description = "Spotify 인기도를 바탕으로 아티스트 인기 순위 랭킹을 제공합니다.")
-    @GetMapping("/ranking")
-    public void artistRanking() {}
 
-    @Operation(summary = "장르 기반 아티스트 추천(구현 전)", description = "찜한 장르를 기반으로 아티스트 추천 리스트를 제공합니다.")
-    @GetMapping("/recommendation/{genreId}")
-    public void recommendArtist(
-            @PathVariable Long genreId
-    ) {}
 
-    @Operation(summary = "공연 셋리스트 생성(구현 전)", description = "사용자가 공연 셋리스트를 생성합니다.")
-    @PostMapping("/setlist/{concertId}/{artistId}")
-    public void makeSetlist(
-            @PathVariable Long concertId,
-            @PathVariable Long artistId
-    ) {}
-
-    @Operation(summary = "공연 셋리스트 조회(구현 전)", description = "다른 사용자들이 생성한 셋리스트를 조회합니다.")
-    @GetMapping("/setlist/{concertId}/{artistId}")
-    public void getSetlist(
-            @PathVariable Long concertId,
-            @PathVariable Long artistId
-    ) {}
 }
 
