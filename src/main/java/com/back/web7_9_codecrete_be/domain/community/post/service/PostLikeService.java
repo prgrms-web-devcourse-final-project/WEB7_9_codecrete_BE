@@ -38,4 +38,8 @@ public class PostLikeService {
     public long count(Long postId) {
         return postLikeRepository.countByPostId(postId);
     }
+
+    public boolean isLiked(Long postId, Long userId) {
+        return postLikeRepository.existsByPostIdAndUserId(postId, userId);
+    }
 }
