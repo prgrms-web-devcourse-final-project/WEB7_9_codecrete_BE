@@ -226,9 +226,7 @@ public class SpotifyRateLimitHandler {
         throw new RuntimeException(context + ": rate limit retry exhausted");
     }
     
-    /**
-     * 401 Unauthorized 에러인지 확인
-     */
+    // 401 에러인지 확인
     private boolean is401Error(Throwable e) {
         Throwable current = e;
         while (current != null) {
