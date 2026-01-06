@@ -3,6 +3,7 @@ package com.back.web7_9_codecrete_be.domain.artists.service.spotifyService;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.AlbumResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.ArtistDetailResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.RelatedArtistResponse;
+import com.back.web7_9_codecrete_be.domain.artists.dto.response.SpotifyArtistDetailCache;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.TopTrackResponse;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ArtistGenre;
@@ -22,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import se.michaelthelin.spotify.SpotifyApi;
 import se.michaelthelin.spotify.enums.AlbumType;
 import se.michaelthelin.spotify.model_objects.specification.AlbumSimplified;
@@ -30,6 +32,7 @@ import se.michaelthelin.spotify.model_objects.specification.Paging;
 import se.michaelthelin.spotify.model_objects.specification.Track;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -45,8 +48,16 @@ public class SpotifyService {
     private final SpotifyClient spotifyClient;
     private final MusicBrainzClient musicBrainzClient;
     private final RedisTemplate<String, String> redisTemplate;
+    private final RedisTemplate<String, Object> objectRedisTemplate;
+    private final ObjectMapper objectMapper;
     private final WikidataClient wikidataClient;
     private final SpotifyRateLimitHandler rateLimitHandler;
+    
+    // Redis 캐시 설정
+    private static final String CACHE_KEY_PREFIX = "artist:detail:spotify:";
+    private static final String LOCK_KEY_PREFIX = "artist:detail:spotify:lock:";
+    private static final long CACHE_TTL_SECONDS = 3600; // 1시간 (기본값, 추후 3~6시간 조정 가능)
+    private static final long LOCK_TTL_SECONDS = 30; // 락 TTL: 30초 (API 호출 완료 대기 시간)
     
     // Rate Limiter 설정
     private static final long SPOTIFY_RATE_LIMIT_INTERVAL_MS = 500; // 초당 2회
@@ -1507,26 +1518,25 @@ public class SpotifyService {
             Long genreId
     ) {
         try {
-            SpotifyApi api = spotifyClient.getAuthorizedApi();
+            // 1. Redis 캐시에서 조회 시도
+            SpotifyArtistDetailCache cached = getCachedSpotifyDetail(spotifyArtistId);
+            
+            SpotifyArtistDetailCache spotifyData;
+            if (cached != null) {
+                log.debug("Spotify 상세 정보 캐시 HIT: spotifyArtistId={}", spotifyArtistId);
+                spotifyData = cached;
+            } else {
+                log.debug("Spotify 상세 정보 캐시 MISS: spotifyArtistId={}", spotifyArtistId);
+                // 2. 캐시 스탬피드 방지: Redis 락으로 동시 API 호출 제한
+                spotifyData = fetchSpotifyDetailWithLock(spotifyArtistId);
+            }
 
-            se.michaelthelin.spotify.model_objects.specification.Artist artist = rateLimitHandler.callWithRateLimitRetry(() -> {
-                try {
-                    spotifyRateLimiter.acquire();
-                    return api.getArtist(spotifyArtistId).build().execute();
-                } catch (RuntimeException e) {
-                    throw e;
-                } catch (Exception e) {
-                    throw new RuntimeException("Exception during getArtist API call", e);
-                }
-            }, "getArtistDetail getArtist spotifyId=" + spotifyArtistId);
-
+            // 4. DB에서 추가 정보 조회 (캐시하지 않는 데이터)
             Artist dbArtist = artistRepository.findById(artistId)
                     .orElse(null);
             String nameKo = dbArtist != null ? dbArtist.getNameKo() : null;
 
-            Track[] topTracks = safeGetTopTracks(api, spotifyArtistId);
-            Paging<AlbumSimplified> albums = safeGetAlbums(api, spotifyArtistId);
-
+            // 5. Related Artists 조회 (DB 기반 로직, 캐시하지 않음)
             List<RelatedArtistResponse> relatedResponses = getRelatedArtists(
                     artistId,
                     artistGroup,
@@ -1534,19 +1544,20 @@ public class SpotifyService {
                     genreId
             );
 
+            // 6. 최종 Response 구성
             return new ArtistDetailResponse(
                     (long) artistId,
-                    artist.getName(),
+                    spotifyData.artistName(),
                     nameKo,
                     artistGroup,
                     artistType,
-                    pickImageUrl(artist.getImages()),
+                    spotifyData.profileImageUrl(),
                     likeCount,
-                    albums != null ? albums.getTotal() : 0,
-                    artist.getPopularity(),
+                    spotifyData.totalAlbums(),
+                    spotifyData.popularity(),
                     "",
-                    toAlbumResponses(albums != null ? albums.getItems() : null, spotifyArtistId),
-                    toTopTrackResponses(topTracks),
+                    spotifyData.albums(),
+                    spotifyData.topTracks(),
                     relatedResponses
             );
         } catch (RuntimeException e) {
@@ -1559,6 +1570,182 @@ public class SpotifyService {
             log.error("Spotify 상세 조회 실패: artistId={}", spotifyArtistId, e);
             throw new BusinessException(ArtistErrorCode.SPOTIFY_API_ERROR);
         }
+    }
+    
+    /**
+     * Redis 캐시에서 Spotify 상세 정보 조회
+     */
+    private SpotifyArtistDetailCache getCachedSpotifyDetail(String spotifyArtistId) {
+        try {
+            String cacheKey = getCacheKey(spotifyArtistId);
+            Object cached = objectRedisTemplate.opsForValue().get(cacheKey);
+            
+            if (cached == null) {
+                return null;
+            }
+            
+            // Object를 SpotifyArtistDetailCache로 변환
+            if (cached instanceof SpotifyArtistDetailCache) {
+                return (SpotifyArtistDetailCache) cached;
+            }
+            
+            // LinkedHashMap 등으로 역직렬화된 경우 ObjectMapper로 변환
+            return objectMapper.convertValue(cached, SpotifyArtistDetailCache.class);
+        } catch (Exception e) {
+            log.warn("Redis 캐시 조회 실패: spotifyArtistId={}", spotifyArtistId, e);
+            return null;
+        }
+    }
+    
+    /**
+     * Spotify API에서 상세 정보 조회
+     */
+    private SpotifyArtistDetailCache fetchSpotifyDetailFromApi(String spotifyArtistId) {
+        SpotifyApi api = spotifyClient.getAuthorizedApi();
+
+        // 아티스트 기본 정보
+        se.michaelthelin.spotify.model_objects.specification.Artist artist = rateLimitHandler.callWithRateLimitRetry(() -> {
+            try {
+                spotifyRateLimiter.acquire();
+                return api.getArtist(spotifyArtistId).build().execute();
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new RuntimeException("Exception during getArtist API call", e);
+            }
+        }, "getArtistDetail getArtist spotifyId=" + spotifyArtistId);
+
+        // Top Tracks
+        Track[] topTracks = safeGetTopTracks(api, spotifyArtistId);
+        
+        // 앨범 목록
+        Paging<AlbumSimplified> albums = safeGetAlbums(api, spotifyArtistId);
+
+        return new SpotifyArtistDetailCache(
+                artist.getName(),
+                pickImageUrl(artist.getImages()),
+                artist.getPopularity(),
+                toTopTrackResponses(topTracks),
+                toAlbumResponses(albums != null ? albums.getItems() : null, spotifyArtistId),
+                albums != null ? albums.getTotal() : 0
+        );
+    }
+    
+    /**
+     * Redis 캐시에 Spotify 상세 정보 저장
+     */
+    private void saveSpotifyDetailToCache(String spotifyArtistId, SpotifyArtistDetailCache data) {
+        try {
+            String cacheKey = getCacheKey(spotifyArtistId);
+            objectRedisTemplate.opsForValue().set(
+                    cacheKey,
+                    data,
+                    CACHE_TTL_SECONDS,
+                    TimeUnit.SECONDS
+            );
+            log.debug("Spotify 상세 정보 캐시 저장: spotifyArtistId={}, ttl={}초", spotifyArtistId, CACHE_TTL_SECONDS);
+        } catch (Exception e) {
+            log.warn("Redis 캐시 저장 실패: spotifyArtistId={}", spotifyArtistId, e);
+            // 캐시 저장 실패해도 API 호출은 성공했으므로 계속 진행
+        }
+    }
+    
+    /**
+     * 캐시 스탬피드 방지: Redis 락을 사용하여 동시 API 호출 제한
+     * 
+     * 1. 락 획득 시도
+     * 2. 락 획득 성공 → Spotify API 호출 → 캐시 저장 → 락 해제
+     * 3. 락 획득 실패 → 짧은 대기 후 캐시 재조회 (다른 스레드가 저장했을 수 있음)
+     */
+    private SpotifyArtistDetailCache fetchSpotifyDetailWithLock(String spotifyArtistId) {
+        String lockKey = getLockKey(spotifyArtistId);
+        
+        // 락 획득 시도 (SETNX 방식)
+        Boolean lockAcquired = redisTemplate.opsForValue().setIfAbsent(
+                lockKey, 
+                "locked", 
+                LOCK_TTL_SECONDS, 
+                TimeUnit.SECONDS
+        );
+        
+        if (Boolean.TRUE.equals(lockAcquired)) {
+            // 락 획득 성공: 이 스레드가 API 호출 담당
+            try {
+                log.debug("Spotify API 호출 락 획득: spotifyArtistId={}", spotifyArtistId);
+                
+                // 다시 한 번 캐시 확인 (락 획득 대기 중 다른 스레드가 저장했을 수 있음)
+                SpotifyArtistDetailCache doubleCheck = getCachedSpotifyDetail(spotifyArtistId);
+                if (doubleCheck != null) {
+                    log.debug("락 획득 후 캐시 재조회 HIT: spotifyArtistId={}", spotifyArtistId);
+                    return doubleCheck;
+                }
+                
+                // Spotify API 호출
+                SpotifyArtistDetailCache spotifyData = fetchSpotifyDetailFromApi(spotifyArtistId);
+                
+                // 캐시에 저장
+                saveSpotifyDetailToCache(spotifyArtistId, spotifyData);
+                
+                return spotifyData;
+            } finally {
+                // 락 해제
+                redisTemplate.delete(lockKey);
+            }
+        } else {
+            // 락 획득 실패: 다른 스레드가 API 호출 중
+            log.debug("Spotify API 호출 락 획득 실패 (다른 스레드가 처리 중): spotifyArtistId={}", spotifyArtistId);
+            
+            // 짧은 대기 후 캐시 재조회 (다른 스레드가 저장 완료했을 수 있음)
+            try {
+                Thread.sleep(100); // 100ms 대기
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            
+            // 캐시 재조회
+            SpotifyArtistDetailCache retryCache = getCachedSpotifyDetail(spotifyArtistId);
+            if (retryCache != null) {
+                log.debug("락 대기 후 캐시 재조회 HIT: spotifyArtistId={}", spotifyArtistId);
+                return retryCache;
+            }
+            
+            // 여전히 캐시가 없으면 최대 3초까지 대기하며 재시도
+            int maxRetries = 30; // 100ms * 30 = 3초
+            for (int i = 0; i < maxRetries; i++) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+                
+                retryCache = getCachedSpotifyDetail(spotifyArtistId);
+                if (retryCache != null) {
+                    log.debug("락 대기 중 캐시 재조회 HIT ({}ms 후): spotifyArtistId={}", (i + 1) * 100, spotifyArtistId);
+                    return retryCache;
+                }
+            }
+            
+            // 최종적으로도 캐시가 없으면 직접 API 호출 (락이 만료되었을 수 있음)
+            log.warn("락 대기 후에도 캐시 없음, 직접 API 호출: spotifyArtistId={}", spotifyArtistId);
+            SpotifyArtistDetailCache spotifyData = fetchSpotifyDetailFromApi(spotifyArtistId);
+            saveSpotifyDetailToCache(spotifyArtistId, spotifyData);
+            return spotifyData;
+        }
+    }
+    
+    /**
+     * 캐시 키 생성
+     */
+    private String getCacheKey(String spotifyArtistId) {
+        return CACHE_KEY_PREFIX + spotifyArtistId;
+    }
+    
+    /**
+     * 락 키 생성
+     */
+    private String getLockKey(String spotifyArtistId) {
+        return LOCK_KEY_PREFIX + spotifyArtistId;
     }
 
     private Track[] safeGetTopTracks(SpotifyApi api, String artistId) {
