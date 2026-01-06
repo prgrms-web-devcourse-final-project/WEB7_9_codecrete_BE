@@ -21,6 +21,9 @@ public class ReviewPostResponse {
     @Schema(description = "후기 이미지 URL 목록")
     private List<String> imageUrls;
 
+    @Schema(description = "후기 태그 목록")
+    private List<String> tags;
+
     public static ReviewPostResponse from(
             ReviewPost reviewPost,
             List<String> imageUrls
@@ -29,6 +32,7 @@ public class ReviewPostResponse {
                 .post(PostResponse.from(reviewPost.getPost()))
                 .rating(reviewPost.getRating())
                 .imageUrls(imageUrls)
+                .tags(reviewPost.getTags())
                 .build();
     }
 }
