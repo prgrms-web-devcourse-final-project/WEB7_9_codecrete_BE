@@ -1,7 +1,9 @@
 package com.back.web7_9_codecrete_be.domain.artists.service.artistEnrichService;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class ArtistGroupValidator {
 
@@ -22,7 +24,11 @@ public class ArtistGroupValidator {
      * @param trustLevel 소스 신뢰도 (HIGH: Wikidata/MB는 3글자 허용, LOW: FLO는 3글자 차단)
      */
     public String validate(String groupName, String artistName, String nameKo, SourceTrustLevel trustLevel) {
+        log.debug("ArtistGroupValidator.validate 시작: groupName={}, artistName={}, nameKo={}, trustLevel={}", 
+                groupName, artistName, nameKo, trustLevel);
+        
         if (groupName == null || groupName.isBlank()) {
+            log.debug("ArtistGroupValidator.validate 결과: groupName이 null이거나 비어있음 -> null 반환");
             return null;
         }
         
@@ -31,10 +37,14 @@ public class ArtistGroupValidator {
         
         // 신뢰도 낮은 소스(FLO)에서만 3글자 이하 차단, 신뢰도 높은 소스(Wikidata/MB)는 허용
         if (trustLevel == SourceTrustLevel.LOW && normalizedGroupName.length() <= 3) {
+            log.debug("ArtistGroupValidator.validate 결과: LOW 신뢰도에서 3글자 이하 차단 -> null 반환 (groupName={}, length={})", 
+                    groupName, normalizedGroupName.length());
             return null;
         }
         // 신뢰도 높은 소스는 2글자 이하만 차단 (EXO, BTS 같은 3글자 그룹 허용)
         if (trustLevel == SourceTrustLevel.HIGH && normalizedGroupName.length() <= 2) {
+            log.debug("ArtistGroupValidator.validate 결과: HIGH 신뢰도에서 2글자 이하 차단 -> null 반환 (groupName={}, length={})", 
+                    groupName, normalizedGroupName.length());
             return null;
         }
         
@@ -44,6 +54,8 @@ public class ArtistGroupValidator {
             
             if (normalizedGroupName.equals(normalizedArtistName) || 
                 lowerGroupName.equals(lowerArtistName)) {
+                log.debug("ArtistGroupValidator.validate 결과: 그룹명과 아티스트명 동일 -> null 반환 (groupName={}, artistName={})", 
+                        groupName, artistName);
                 return null;
             }
             
@@ -141,9 +153,11 @@ public class ArtistGroupValidator {
         
         // 숫자만 있는 경우 (예: "101", "2020" 등)
         if (normalizedGroupName.matches("^\\d+$")) {
+            log.debug("ArtistGroupValidator.validate 결과: 숫자만 있음 -> null 반환 (groupName={})", groupName);
             return null;
         }
         
+        log.debug("ArtistGroupValidator.validate 결과: 검증 통과 -> groupName 반환 (groupName={})", groupName);
         return groupName;
     }
     

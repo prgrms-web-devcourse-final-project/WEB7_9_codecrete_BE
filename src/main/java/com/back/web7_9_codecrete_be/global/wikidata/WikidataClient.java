@@ -120,4 +120,14 @@ public class WikidataClient {
     public Optional<WikidataSearchClient.WikidataDescriptionInfo> getDescriptionInfoByQid(String qid) {
         return searchClient.getDescriptionInfoByQid(qid);
     }
+    
+    // ========== 그룹 판별 관련 메서드 ==========
+    
+    /**
+     * SPARQL을 사용하여 특정 QID가 musical group (Q215380)의 하위 개념인지 확인
+     * wdt:P31 / wdt:P279* 체인을 따라가며 Q215380에 도달할 수 있는지 확인
+     */
+    public boolean isMusicalGroupBySparql(String groupQid) {
+        return searchClient.isMusicalGroupBySparql(groupQid);
+    }
 }

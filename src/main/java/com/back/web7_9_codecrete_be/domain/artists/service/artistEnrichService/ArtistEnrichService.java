@@ -26,6 +26,7 @@ public class ArtistEnrichService {
     private final ManiaDBClient maniaDBClient;
     private final EnrichStepExecutor stepExecutor;
     private final ArtistGroupValidator groupValidator;
+    private final WikidataEnrichHelper wikidataHelper;
 
     // MusicBrainz ID만 받아오기
     public int fetchMusicBrainzIds(int limit) {
@@ -53,6 +54,11 @@ public class ArtistEnrichService {
         return updated;
     }
 
+    /**
+     * MusicBrainz ID만 수집 (ArtistGroup 저장하지 않음)
+     * 
+     * ArtistGroup은 enrichSingleArtist()에서만 최종 저장됩니다.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void fetchMusicBrainzId(Artist artist) {
         // nameKo를 우선 사용, 없으면 artistName 사용
@@ -65,21 +71,8 @@ public class ArtistEnrichService {
             if (mbInfoOpt.isPresent() && mbInfoOpt.get().getMbid() != null && !mbInfoOpt.get().getMbid().isBlank()) {
                 String mbid = mbInfoOpt.get().getMbid();
                 artist.setMusicBrainzId(mbid);
-                
-                Optional<MusicBrainzClient.ArtistInfo> mbDetailOpt = musicBrainzClient.getArtistByMbid(mbid);
-                if (mbDetailOpt.isPresent()) {
-                    String artistGroup = mbDetailOpt.get().getArtistGroup();
-                    if (artistGroup != null && !artistGroup.isBlank()) {
-                        // 소속사, 출연 프로그램, 이벤트성 그룹 필터링 (MusicBrainz는 HIGH 신뢰도)
-                        String validatedGroup = groupValidator.validate(artistGroup, artist.getArtistName(), artist.getNameKo(), 
-                                ArtistGroupValidator.SourceTrustLevel.HIGH);
-                        if (validatedGroup != null) {
-                            artist.setArtistGroup(validatedGroup);
-                        }
-                    }
-                }
-                
                 artistRepository.save(artist);
+                // ArtistGroup은 저장하지 않음 (enrichSingleArtist()에서만 저장)
             }
         } catch (Exception e) {
             // 개별 실패는 로그 생략
@@ -115,8 +108,45 @@ public class ArtistEnrichService {
         return updated;
     }
 
+    /**
+     * 확정된 QID 정보
+     */
+    private static class ResolvedQid {
+        final String qid;
+        final com.fasterxml.jackson.databind.JsonNode entity;
+        final String source; // "P1902", "P434", "NAME", null
+        
+        ResolvedQid(String qid, com.fasterxml.jackson.databind.JsonNode entity, String source) {
+            this.qid = qid;
+            this.entity = entity;
+            this.source = source;
+        }
+        
+        boolean hasQid() {
+            return qid != null && !qid.isBlank() && entity != null;
+        }
+    }
+    
+    /**
+     * ArtistGroup 후보 정보
+     */
+    private static class ArtistGroupCandidate {
+        final String groupName;
+        final ArtistGroupValidator.SourceTrustLevel trustLevel;
+        final String source; // "Wikidata", "MusicBrainz", "FLO" 등
+        
+        ArtistGroupCandidate(String groupName, ArtistGroupValidator.SourceTrustLevel trustLevel, String source) {
+            this.groupName = groupName;
+            this.trustLevel = trustLevel;
+            this.source = source;
+        }
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void enrichSingleArtist(Artist artist) {
+        // 제일 먼저: QID 확정 (Spotify ID → MusicBrainz ID → 이름 순)
+        ResolvedQid resolvedQid = resolveQidOnce(artist);
+        
         EnrichResult result = enrichArtist(artist);
 
         if (result == null) {
@@ -137,30 +167,337 @@ public class ArtistEnrichService {
             artistType = artist.getArtistType();
         }
 
-        String finalArtistGroup = result.artistGroup != null ? result.artistGroup : artist.getArtistGroup();
+        // ArtistGroup 최종 결정 (SOLO일 때만, 신뢰도 기준으로 선택)
+        String finalArtistGroup = determineFinalArtistGroup(artist, artistType, result, resolvedQid);
         
-        if (artistType == ArtistType.GROUP) {
-            finalArtistGroup = null;
-        }
-        
-        if (finalArtistGroup != null) {
-            // 소스 신뢰도 판단: source에 "FLO"가 포함되어 있으면 LOW, 그 외는 HIGH
-            ArtistGroupValidator.SourceTrustLevel trustLevel = 
-                    (result.source != null && result.source.contains("FLO")) 
-                    ? ArtistGroupValidator.SourceTrustLevel.LOW 
-                    : ArtistGroupValidator.SourceTrustLevel.HIGH;
-            finalArtistGroup = groupValidator.validate(finalArtistGroup, artist.getArtistName(), artist.getNameKo(), trustLevel);
-        }
-
         artist.updateProfile(result.nameKo, finalArtistGroup, artistType);
         
         // 실명 수집 (1순위: Wikidata, 2순위: MusicBrainz)
         fetchRealName(artist);
         
-        // 설명 수집 (1순위: Wikidata ko, 2순위: Wikidata en, 3순위: MusicBrainz+Wikidata 메타)
-        fetchDescription(artist);
+        // 설명 수집 (확정된 QID 재사용, 이미 description이 있으면 스킵)
+        fetchDescription(artist, resolvedQid);
         
         artistRepository.save(artist);
+    }
+    
+    /**
+     * ArtistGroup 최종 결정 (단일 저장 지점)
+     * 
+     * 덮어쓰기 규칙:
+     * - GROUP 타입이면 항상 null
+     * - 기존 값이 HIGH 신뢰도면 유지 (덮어쓰기 금지)
+     * - 기존 값이 null이거나 LOW 신뢰도면 교체 허용
+     * 
+     * 신뢰도 우선순위: Wikidata > MusicBrainz > FLO
+     */
+    private String determineFinalArtistGroup(Artist artist, ArtistType artistType, 
+                                             EnrichResult result, ResolvedQid resolvedQid) {
+        // GROUP 타입이면 항상 null
+        if (artistType == ArtistType.GROUP) {
+            return null;
+        }
+        
+        // SOLO일 때만 그룹 수집
+        if (artistType != ArtistType.SOLO && artistType != null) {
+            return artist.getArtistGroup(); // 기존 값 유지
+        }
+        
+        // 기존 값 확인 및 신뢰도 판단
+        String existingGroup = artist.getArtistGroup();
+        boolean hasHighTrustExisting = false;
+        
+        if (existingGroup != null && !existingGroup.isBlank()) {
+            // 기존 값의 신뢰도 판단 (source 정보가 없으므로 보수적으로 처리)
+            // FLO가 아닌 경우 HIGH로 간주 (Wikidata/MusicBrainz 기반)
+            // 실제로는 source 정보를 저장해야 정확히 판단 가능하지만, 
+            // 현재 구조에서는 기존 값이 있으면 HIGH로 간주
+            hasHighTrustExisting = true;
+        }
+        
+        // 기존 값이 HIGH 신뢰도면 덮어쓰기 금지
+        if (hasHighTrustExisting) {
+            log.debug("기존 ArtistGroup 유지 (HIGH 신뢰도): artistId={}, group={}", 
+                    artist.getId(), existingGroup);
+            return existingGroup;
+        }
+        
+        // 후보 수집 (신뢰도 순서대로)
+        List<ArtistGroupCandidate> candidates = new ArrayList<>();
+        
+        // 1순위: Wikidata (QID가 확정된 경우)
+        if (resolvedQid.hasQid()) {
+            try {
+                log.info("Wikidata에서 그룹 추출 시도: artistId={}, artistName={}, qid={}", 
+                        artist.getId(), artist.getArtistName(), resolvedQid.qid);
+                String wikidataGroup = wikidataHelper.resolveGroupName(resolvedQid.entity);
+                log.info("Wikidata에서 그룹 추출 결과: artistId={}, qid={}, group={}", 
+                        artist.getId(), resolvedQid.qid, wikidataGroup);
+                if (wikidataGroup != null && !wikidataGroup.isBlank()) {
+                    candidates.add(new ArtistGroupCandidate(wikidataGroup, 
+                            ArtistGroupValidator.SourceTrustLevel.HIGH, "Wikidata"));
+                    log.info("Wikidata 그룹 후보 추가: artistId={}, group={}", artist.getId(), wikidataGroup);
+                } else {
+                    log.warn("Wikidata에서 그룹을 찾을 수 없음: artistId={}, qid={}", 
+                            artist.getId(), resolvedQid.qid);
+                }
+            } catch (Exception e) {
+                log.error("Wikidata에서 그룹 추출 실패: artistId={}, qid={}", 
+                        artist.getId(), resolvedQid.qid, e);
+            }
+        } else {
+            log.debug("QID가 없어서 Wikidata 그룹 추출 스킵: artistId={}", artist.getId());
+        }
+        
+        // 2순위: enrichArtist 결과 (Wikidata/MusicBrainz/FLO)
+        if (result.artistGroup != null && !result.artistGroup.isBlank()) {
+            // 소스명 추출 (하드 고정)
+            String sourceName = extractSourceName(result.source);
+            // trustLevel은 후보 수집 시점에는 임시로 설정 (실제 검증 시 하드 고정)
+            ArtistGroupValidator.SourceTrustLevel tempTrustLevel = 
+                    determineTrustLevelBySource(sourceName);
+            candidates.add(new ArtistGroupCandidate(result.artistGroup, tempTrustLevel, sourceName));
+        }
+        
+        // 3순위: MusicBrainz (MBID가 있고 QID에서 못 찾은 경우)
+        if (resolvedQid.hasQid() == false && artist.getMusicBrainzId() != null && !artist.getMusicBrainzId().isBlank()) {
+            try {
+                Optional<MusicBrainzClient.ArtistInfo> mbInfoOpt = musicBrainzClient.getArtistByMbid(artist.getMusicBrainzId());
+                if (mbInfoOpt.isPresent() && mbInfoOpt.get().getArtistGroup() != null && 
+                    !mbInfoOpt.get().getArtistGroup().isBlank()) {
+                    String mbGroup = mbInfoOpt.get().getArtistGroup();
+                    // 이미 후보에 포함되어 있는지 확인
+                    boolean alreadyExists = candidates.stream()
+                            .anyMatch(c -> c.groupName.equals(mbGroup));
+                    if (!alreadyExists) {
+                        candidates.add(new ArtistGroupCandidate(mbGroup, 
+                                ArtistGroupValidator.SourceTrustLevel.HIGH, "MusicBrainz"));
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("MusicBrainz에서 그룹 추출 실패: artistId={}, mbid={}", 
+                        artist.getId(), artist.getMusicBrainzId(), e);
+            }
+        }
+        
+        // 후보가 없으면 기존 값 유지 (null이면 null)
+        if (candidates.isEmpty()) {
+            return existingGroup;
+        }
+        
+        // 신뢰도 기준으로 정렬 (HIGH > LOW, 같은 신뢰도면 순서 유지)
+        candidates.sort((a, b) -> {
+            if (a.trustLevel != b.trustLevel) {
+                return b.trustLevel.compareTo(a.trustLevel); // HIGH > LOW
+            }
+            // 같은 신뢰도면 source 우선순위: Wikidata > MusicBrainz > FLO
+            int aPriority = getSourcePriority(a.source);
+            int bPriority = getSourcePriority(b.source);
+            return Integer.compare(bPriority, aPriority);
+        });
+        
+        // 최고 신뢰도 후보 선택 및 검증
+        ArtistGroupCandidate bestCandidate = candidates.get(0);
+        
+        // validate 직전 groupName 전처리 (괄호/설명 제거)
+        String preprocessedGroupName = preprocessGroupName(bestCandidate.groupName);
+        
+        log.info("ArtistGroup 검증 시작: artistId={}, artistName={}, nameKo={}, " +
+                "원본그룹명={}, 전처리그룹명={}, source={}, trustLevel={}", 
+                artist.getId(), artist.getArtistName(), artist.getNameKo(),
+                bestCandidate.groupName, preprocessedGroupName, bestCandidate.source, bestCandidate.trustLevel);
+        
+        // trustLevel을 소스별로 하드 고정
+        ArtistGroupValidator.SourceTrustLevel fixedTrustLevel = determineTrustLevelBySource(bestCandidate.source);
+        
+        String validatedGroup = groupValidator.validate(
+                preprocessedGroupName, 
+                artist.getArtistName(), 
+                artist.getNameKo(), 
+                fixedTrustLevel
+        );
+        
+        log.info("ArtistGroup 검증 결과: artistId={}, 전처리그룹명={}, 검증결과={}, source={}, " +
+                "원래trustLevel={}, 고정trustLevel={}", 
+                artist.getId(), preprocessedGroupName, validatedGroup, bestCandidate.source,
+                bestCandidate.trustLevel, fixedTrustLevel);
+        
+        if (validatedGroup != null) {
+            log.info("ArtistGroup 최종 선택: artistId={}, group={}, source={}, trustLevel={}", 
+                    artist.getId(), validatedGroup, bestCandidate.source, fixedTrustLevel);
+            return validatedGroup;
+        }
+        
+        // 검증 실패 시 기존 값 유지
+        log.warn("ArtistGroup 검증 실패: artistId={}, 전처리그룹명={}, source={}, trustLevel={}, 기존값={}", 
+                artist.getId(), preprocessedGroupName, bestCandidate.source, fixedTrustLevel, existingGroup);
+        return existingGroup;
+    }
+    
+    /**
+     * 소스 우선순위 (높을수록 우선)
+     */
+    private int getSourcePriority(String source) {
+        if (source == null) return 0;
+        if (source.contains("Wikidata")) return 3;
+        if (source.contains("MusicBrainz")) return 2;
+        if (source.contains("FLO")) return 1;
+        return 0;
+    }
+    
+    /**
+     * groupName 전처리: 괄호/설명 제거
+     * 
+     * 예: "BTS(방탄소년단)" -> "BTS"
+     *     "BTS member" -> "BTS"
+     *     "NewJeans (뉴진스)" -> "NewJeans"
+     */
+    private String preprocessGroupName(String groupName) {
+        if (groupName == null || groupName.isBlank()) {
+            return groupName;
+        }
+        
+        String processed = groupName.trim();
+        
+        // 괄호 및 내용 제거: "BTS(방탄소년단)" -> "BTS"
+        processed = processed.replaceAll("\\([^)]*\\)", "").trim();
+        processed = processed.replaceAll("\\[[^\\]]*\\]", "").trim();
+        processed = processed.replaceAll("\\{[^}]*\\}", "").trim();
+        
+        // "member", "of" 같은 설명 제거
+        processed = processed.replaceAll("\\s+member\\s*$", "").trim();
+        processed = processed.replaceAll("\\s+of\\s+.*$", "").trim();
+        processed = processed.replaceAll("^.*\\s+of\\s+", "").trim();
+        
+        // 앞뒤 공백 정리
+        processed = processed.trim();
+        
+        return processed;
+    }
+    
+    /**
+     * result.source에서 소스명 추출
+     */
+    private String extractSourceName(String source) {
+        if (source == null || source.isBlank()) {
+            return "Unknown";
+        }
+        
+        String lowerSource = source.toLowerCase();
+        
+        if (lowerSource.contains("wikidata")) {
+            return "Wikidata";
+        }
+        
+        if (lowerSource.contains("musicbrainz")) {
+            return "MusicBrainz";
+        }
+        
+        if (lowerSource.contains("flo")) {
+            return "FLO";
+        }
+        
+        return "Unknown";
+    }
+    
+    /**
+     * 소스별 trustLevel 하드 고정
+     * 
+     * - Wikidata: 항상 HIGH
+     * - MusicBrainz: 항상 HIGH
+     * - FLO: 항상 LOW
+     */
+    private ArtistGroupValidator.SourceTrustLevel determineTrustLevelBySource(String source) {
+        if (source == null || source.isBlank()) {
+            log.warn("source가 null이거나 비어있음, 기본값 LOW 사용");
+            return ArtistGroupValidator.SourceTrustLevel.LOW;
+        }
+        
+        String lowerSource = source.toLowerCase();
+        
+        if (lowerSource.contains("wikidata")) {
+            return ArtistGroupValidator.SourceTrustLevel.HIGH;
+        }
+        
+        if (lowerSource.contains("musicbrainz")) {
+            return ArtistGroupValidator.SourceTrustLevel.HIGH;
+        }
+        
+        if (lowerSource.contains("flo")) {
+            return ArtistGroupValidator.SourceTrustLevel.LOW;
+        }
+        
+        // 알 수 없는 소스는 보수적으로 LOW
+        log.warn("알 수 없는 source: {}, 기본값 LOW 사용", source);
+        return ArtistGroupValidator.SourceTrustLevel.LOW;
+    }
+    
+    /**
+     * QID 확정 (한 번만)
+     * Spotify ID → MusicBrainz ID → 이름 순으로 시도
+     */
+    private ResolvedQid resolveQidOnce(Artist artist) {
+        // 1순위: Spotify ID로 QID 찾기 (P1902)
+        if (artist.getSpotifyArtistId() != null && !artist.getSpotifyArtistId().isBlank()) {
+            try {
+                List<String> candidateQids = wikidataClient.searchWikidataIdsBySpotifyId(artist.getSpotifyArtistId());
+                if (!candidateQids.isEmpty()) {
+                    // 첫 번째 후보 사용 (P1902로 찾은 것이므로 신뢰도 높음)
+                    for (String qid : candidateQids) {
+                        Optional<com.fasterxml.jackson.databind.JsonNode> entityOpt = wikidataClient.getEntityInfo(qid);
+                        if (entityOpt.isPresent()) {
+                            log.debug("QID 확정 (P1902): artistId={}, spotifyId={}, qid={}", 
+                                    artist.getId(), artist.getSpotifyArtistId(), qid);
+                            return new ResolvedQid(qid, entityOpt.get(), "P1902");
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("P1902로 QID 검색 실패: artistId={}, spotifyId={}", 
+                        artist.getId(), artist.getSpotifyArtistId(), e);
+            }
+        }
+        
+        // 2순위: MusicBrainz ID로 QID 찾기 (P434)
+        if (artist.getMusicBrainzId() != null && !artist.getMusicBrainzId().isBlank()) {
+            try {
+                Optional<String> qidOpt = wikidataClient.searchWikidataIdByMusicBrainzId(artist.getMusicBrainzId());
+                if (qidOpt.isPresent()) {
+                    Optional<com.fasterxml.jackson.databind.JsonNode> entityOpt = wikidataClient.getEntityInfo(qidOpt.get());
+                    if (entityOpt.isPresent()) {
+                        log.debug("QID 확정 (P434): artistId={}, mbid={}, qid={}", 
+                                artist.getId(), artist.getMusicBrainzId(), qidOpt.get());
+                        return new ResolvedQid(qidOpt.get(), entityOpt.get(), "P434");
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("P434로 QID 검색 실패: artistId={}, mbid={}", 
+                        artist.getId(), artist.getMusicBrainzId(), e);
+            }
+        }
+        
+        // 3순위: 이름 기반 검색 (최후의 수단)
+        String searchName = (artist.getNameKo() != null && !artist.getNameKo().isBlank()) 
+                ? artist.getNameKo() 
+                : artist.getArtistName();
+        if (searchName != null && !searchName.isBlank()) {
+            try {
+                Optional<String> qidOpt = wikidataClient.searchWikidataId(searchName);
+                if (qidOpt.isPresent()) {
+                    Optional<com.fasterxml.jackson.databind.JsonNode> entityOpt = wikidataClient.getEntityInfo(qidOpt.get());
+                    if (entityOpt.isPresent()) {
+                        log.debug("QID 확정 (이름 기반): artistId={}, name={}, qid={}", 
+                                artist.getId(), searchName, qidOpt.get());
+                        return new ResolvedQid(qidOpt.get(), entityOpt.get(), "NAME");
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("이름 기반 QID 검색 실패: artistId={}, name={}", artist.getId(), searchName, e);
+            }
+        }
+        
+        // QID를 찾지 못함
+        return new ResolvedQid(null, null, null);
     }
     
     /**
@@ -288,15 +625,38 @@ public class ArtistEnrichService {
     }
     
     /**
-     * 설명 수집 (Wikidata description만 사용)
+     * 설명 수집 (확정된 QID 재사용)
      * 
-     * 여러 QID 후보를 스코어링하여 가장 적합한 description 선택
-     * - QID 후보 검색: P1902만 확인 (넓게 수집)
-     * - 스코어링: 신뢰도 중심 + 언어 보너스
-     * - 실패 시: 이름 기반 2차 탐색 (선택적)
+     * 이미 확정된 QID의 entity에서 description 추출
+     * - description이 이미 있으면 스킵 (덮어쓰기 방지)
+     * - QID가 있으면 해당 entity에서 바로 추출
+     * - QID가 없으면 기존 로직 사용 (fallback)
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void fetchDescription(Artist artist) {
+    protected void fetchDescription(Artist artist, ResolvedQid resolvedQid) {
+        // 이미 description이 있으면 스킵 (덮어쓰기 방지)
+        if (artist.getDescription() != null && !artist.getDescription().isBlank()) {
+            log.debug("Description이 이미 존재하여 스킵: artistId={}, description={}", 
+                    artist.getId(), artist.getDescription());
+            return;
+        }
+        
+        // QID가 확정되었으면 해당 entity에서 바로 추출
+        if (resolvedQid.hasQid()) {
+            Optional<String> descriptionOpt = extractDescriptionFromEntity(resolvedQid.entity);
+            if (descriptionOpt.isPresent()) {
+                String description = descriptionOpt.get();
+                artist.setDescription(description);
+                log.info("Wikidata에서 설명 수집 성공 (확정된 QID 재사용): artistId={}, qid={}, source={}, description={}", 
+                        artist.getId(), resolvedQid.qid, resolvedQid.source, description);
+                return;
+            } else {
+                log.debug("확정된 QID entity에서 description 추출 실패: artistId={}, qid={}, source={}", 
+                        artist.getId(), resolvedQid.qid, resolvedQid.source);
+            }
+        }
+        
+        // QID가 없거나 description 추출 실패 시 기존 로직 사용 (fallback)
         // Spotify ID가 없으면 수집 불가
         if (artist.getSpotifyArtistId() == null || artist.getSpotifyArtistId().isBlank()) {
             logDescriptionFailure(artist, DescriptionFailureReason.NO_SPOTIFY_ID);
@@ -307,7 +667,7 @@ public class ArtistEnrichService {
         DescriptionResult result = getWikidataDescriptionWithScoring(artist.getSpotifyArtistId(), artist.getArtistName(), artist.getNameKo());
         if (result.success) {
             artist.setDescription(result.description);
-            log.info("Wikidata에서 설명 수집 성공: artistId={}, spotifyId={}, qid={}, 언어={}, 점수={}, description={}", 
+            log.info("Wikidata에서 설명 수집 성공 (fallback): artistId={}, spotifyId={}, qid={}, 언어={}, 점수={}, description={}", 
                     artist.getId(), artist.getSpotifyArtistId(), result.qid, result.language, result.score, result.description);
             return;
         }
@@ -321,7 +681,7 @@ public class ArtistEnrichService {
                 DescriptionResult nameResult = getWikidataDescriptionByName(searchName, artist.getSpotifyArtistId());
                 if (nameResult.success && nameResult.score >= 50) { // 신뢰도 50 이상만 채택
                     artist.setDescription(nameResult.description);
-                    log.info("Wikidata에서 설명 수집 성공 (이름 기반): artistId={}, spotifyId={}, qid={}, 언어={}, 점수={}, description={}", 
+                    log.info("Wikidata에서 설명 수집 성공 (이름 기반 fallback): artistId={}, spotifyId={}, qid={}, 언어={}, 점수={}, description={}", 
                             artist.getId(), artist.getSpotifyArtistId(), nameResult.qid, nameResult.language, nameResult.score, nameResult.description);
                     return;
                 }
@@ -330,6 +690,57 @@ public class ArtistEnrichService {
         
         // 모든 시도 실패
         logDescriptionFailure(artist, result.failureReason);
+    }
+    
+    /**
+     * Entity에서 description 추출 (ko → en → 기타 언어 순서)
+     */
+    private Optional<String> extractDescriptionFromEntity(com.fasterxml.jackson.databind.JsonNode entity) {
+        try {
+            com.fasterxml.jackson.databind.JsonNode descriptions = entity.path("descriptions");
+            
+            if (descriptions.isMissingNode()) {
+                return Optional.empty();
+            }
+            
+            // 한국어 description 우선
+            com.fasterxml.jackson.databind.JsonNode koDesc = descriptions.path("ko");
+            if (!koDesc.isMissingNode()) {
+                com.fasterxml.jackson.databind.JsonNode value = koDesc.path("value");
+                if (!value.isMissingNode() && !value.asText().isBlank()) {
+                    return Optional.of(value.asText());
+                }
+            }
+            
+            // 영어 description 차순
+            com.fasterxml.jackson.databind.JsonNode enDesc = descriptions.path("en");
+            if (!enDesc.isMissingNode()) {
+                com.fasterxml.jackson.databind.JsonNode value = enDesc.path("value");
+                if (!value.isMissingNode() && !value.asText().isBlank()) {
+                    return Optional.of(value.asText());
+                }
+            }
+            
+            // 기타 언어 description
+            java.util.Iterator<String> languageIterator = descriptions.fieldNames();
+            while (languageIterator.hasNext()) {
+                String lang = languageIterator.next();
+                if (!lang.equals("ko") && !lang.equals("en")) {
+                    com.fasterxml.jackson.databind.JsonNode langDesc = descriptions.path(lang);
+                    if (!langDesc.isMissingNode()) {
+                        com.fasterxml.jackson.databind.JsonNode value = langDesc.path("value");
+                        if (!value.isMissingNode() && !value.asText().isBlank()) {
+                            return Optional.of(value.asText());
+                        }
+                    }
+                }
+            }
+            
+            return Optional.empty();
+        } catch (Exception e) {
+            log.debug("Entity에서 description 추출 실패: {}", e);
+            return Optional.empty();
+        }
     }
     
     private void logDescriptionFailure(Artist artist, DescriptionFailureReason reason) {
