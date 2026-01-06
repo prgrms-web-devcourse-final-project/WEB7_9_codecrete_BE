@@ -24,7 +24,7 @@ public class ConcertScheduler {
     }
 
     // 공연 관련 정보를 갱신합니다.
-    @Scheduled(cron = "0 0 3 * * *")
+    @Scheduled(cron = "0 10 3 * * *")
     public void concertDataUpdateSchedule() {
         concertService.viewCountUpdate();
         concertService.resetAutoComplete();
