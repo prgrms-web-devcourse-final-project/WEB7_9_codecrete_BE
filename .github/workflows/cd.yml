@@ -37,14 +37,13 @@ jobs:
             set -e
             cd ~/deploy
 
-            echo "🔍 Detecting active container..."
+            echo "🔍 Reading active slot..."
+            ACTIVE=$(cat active-slot.txt)
 
-            if docker ps --filter "name=concert-spring-blue" --format "{{.Status}}" | grep -q healthy; then
-              ACTIVE=blue
+            if [ "$ACTIVE" = "blue" ]; then
               TARGET=green
               PORT=8082
             else
-              ACTIVE=green
               TARGET=blue
               PORT=8081
             fi
@@ -68,12 +67,20 @@ jobs:
               echo "⏳ still waiting..."
               sleep 5
             done
-            
-            if [ "$HEALTHY" = "true" ]; then
-              echo "✅ spring-$TARGET is healthy"
-              exit 0
+          
+            if [ "$HEALTHY" != "true" ]; then
+              echo "❌ Health check failed for spring-$TARGET - rolling back"
+              docker compose -f docker-compose-prod.yml stop spring-$TARGET
+              exit 1
             fi
-
-            echo "❌ Health check failed for spring-$TARGET - rolling back"
-            docker compose -f docker-compose-prod.yml stop spring-$TARGET
-            exit 1
+          
+            echo "✅ spring-$TARGET is healthy"
+          
+            echo "🔀 (MANUAL) Switch NPM forward port to $PORT"
+            echo "✍️ Update active slot"
+            echo "$TARGET" > active-slot.txt
+    
+            echo "🛑 Stop old container: spring-$ACTIVE"
+            docker compose -f docker-compose-prod.yml stop spring-$ACTIVE
+          
+            echo "🎉 Blue/Green deployment completed"
