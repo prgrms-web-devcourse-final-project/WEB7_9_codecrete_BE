@@ -72,8 +72,8 @@ public class WebClientConfig {
     public RestClient kakaoRestClient(){
 
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
-        factory.setConnectionRequestTimeout(3_000);
-        factory.setReadTimeout(5_000);
+        factory.setConnectionRequestTimeout(3000);
+        factory.setReadTimeout(5000);
 
         return RestClient.builder()
                 .requestFactory(factory)
