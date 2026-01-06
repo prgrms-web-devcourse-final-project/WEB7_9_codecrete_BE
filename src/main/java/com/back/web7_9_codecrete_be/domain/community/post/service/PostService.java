@@ -121,4 +121,17 @@ public class PostService {
 
         return PostPageResponse.from(result);
     }
+
+    @Transactional(readOnly = true)
+    public void validatePostExists(Long postId) {
+        if (!postRepository.existsById(postId)) {
+            throw new BusinessException(PostErrorCode.POST_NOT_FOUND);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public Post getPostOrThrow(Long postId) {
+        return postRepository.findById(postId)
+                .orElseThrow(() -> new BusinessException(PostErrorCode.POST_NOT_FOUND));
+    }
 }
