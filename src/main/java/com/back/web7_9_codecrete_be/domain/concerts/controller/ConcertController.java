@@ -79,6 +79,14 @@ public class ConcertController {
         return RsData.success(concertService.getArtistConcertList(artistId,type,pageable));
     }
 
+    @Operation(summary = "좋아요 기반 추천 공연 목록", description = "좋아요 데이터 기반으로 공연을 추천합니다.")
+    @GetMapping("recommendByLike")
+    public RsData<List<ConcertItem>> getRecommendByLike(){
+        User user = rq.getUser();
+        List<ConcertItem> likedList = concertService.concertsRecommendByLike(user);
+        return RsData.success(likedList);
+    }
+
     @Operation(summary = "좋아요 한 공연 조회", description = "좋아요를 누른 공연에 대한 목록을 조회합니다. 저장 날짜를 기준으로 내림차순 정렬로 표시합니다.(최신으로 추가된 목록순입니다.)")
     @GetMapping("likedConcertList")
     public RsData<List<ConcertItem>> getLikedConcertList(

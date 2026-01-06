@@ -355,7 +355,7 @@ public class ConcertService {
         Set<Long> resultIdSet = new HashSet<>();
         for (AutoCompleteItem item : result) {
             if(idSet.contains(item.getId())) continue; // 찜한 목록 제거
-            resultIdSet.add(item.getId());
+            resultIdSet.add(item.getId()); // 중복 제거
         }
 
         List<Long> idList = new ArrayList<>();
@@ -375,6 +375,7 @@ public class ConcertService {
         for (String word : words) {
             if(word.isEmpty()) continue;
             WeightedBits weightedBits = weightedBitsMap.get(word);
+            if(weightedBits == null) continue;
             intersection += weightedBits.weight;
         }
         int union = weightedBitsMap.size() + words.length;
@@ -411,6 +412,7 @@ public class ConcertService {
         return (double)  union.size() / intersection.size();
     }
 
+    // 특수 문자를 제거합니다.
     private static String simplifyKeyword(String name) {
         String match = "[^ㄱ-ㅎㅏ-ㅣ가-힣a-zA-Z0-9\\s]";
         name = name.replaceAll(match, "");
