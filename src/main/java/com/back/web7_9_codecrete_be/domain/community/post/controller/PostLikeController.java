@@ -35,4 +35,14 @@ public class PostLikeController {
         long count = postLikeService.count(postId);
         return RsData.success("게시글 좋아요 수 조회 성공", count);
     }
+
+    @Operation(summary = "게시글 좋아요 여부 조회", description = "현재 로그인한 사용자가 해당 게시글을 좋아요 했는지 여부를 반환합니다.")
+    @GetMapping("/me")
+    public RsData<?> isLikedByMe(@PathVariable Long postId) {
+        User user = rq.getUser();
+        boolean liked = postLikeService.isLiked(postId, user.getId());
+        return RsData.success("게시글 좋아요 여부 조회 성공", liked);
+    }
+
+
 }
