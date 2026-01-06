@@ -9,7 +9,11 @@ import com.back.web7_9_codecrete_be.domain.location.dto.response.kakao.KakaoRout
 import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
@@ -22,15 +26,23 @@ public class KakaoLocalService {
     private final RestClient kakaoMobilityClient;
 
     // 해당 좌표의 1km 근방에 존재하는 음식점를 거리순으로 나타냄
+    @Retryable(     //최초 1번, 재시도 2번 시도
+            retryFor = {HttpServerErrorException.class, ResourceAccessException.class},     //외부 서버의 문제, 네트워크, 타임아웃 문제인 경우에 재시도
+            backoff = @Backoff(delay = 200, multiplier = 2.0)   //0.2초, 0.4초, 0.8초 순으로 재시도
+    )
     public List<KakaoLocalResponse.Document> searchNearbyRestaurants(double lat, double lng) {
-
+        //좌표의 소수점 숫자가 다르면 매번 다른 캐싱을 해야하니, 통일시켜줌
+        lat = Math.round(lat * 10000) / 10000.0;
+        lng = Math.round(lng * 10000) / 10000.0;
+        final double y = lat;
+        final double x = lng;
         return kakaoRestClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/v2/local/search/keyword.json")
                         .queryParam("query", "음식점")
                         .queryParam("category_group_code", "FD6")
-                        .queryParam("x", lng)
-                        .queryParam("y", lat)
+                        .queryParam("x", x)
+                        .queryParam("y", y)
                         .queryParam("radius", 1000)  // 반경 1km
                         .queryParam("sort", "distance")
                         .build()
@@ -41,15 +53,24 @@ public class KakaoLocalService {
     }
 
     // 해당 좌표의 1km 근방에 존재하는 카페를 거리순으로 나타냄
-    public List<KakaoLocalResponse.Document> searchNearbyCafes(double lat, double lng) {
+    @Retryable(     //최초 1번, 재시도 2번 시도
+            retryFor = {HttpServerErrorException.class, ResourceAccessException.class},     //외부 서버의 문제, 네트워크, 타임아웃 문제인 경우에 재시도
+            backoff = @Backoff(delay = 200, multiplier = 2.0)   //0.2초, 0.4초, 0.8초 순으로 재시도
+    )
+     public List<KakaoLocalResponse.Document> searchNearbyCafes(double lat, double lng) {
 
+        //좌표의 소수점 숫자가 다르면 매번 다른 캐싱을 해야하니, 통일시켜줌
+        lat = Math.round(lat * 10000) / 10000.0;
+        lng = Math.round(lng * 10000) / 10000.0;
+        final double y = lat;
+        final double x = lng;
         return kakaoRestClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/v2/local/search/keyword.json")
                         .queryParam("query", "카페")
                         .queryParam("category_group_code", "CE7")
-                        .queryParam("x", lng)
-                        .queryParam("y", lat)
+                        .queryParam("x", x)
+                        .queryParam("y", y)
                         .queryParam("radius", 1000)  // 반경 1km
                         .queryParam("sort", "distance")
                         .build()
