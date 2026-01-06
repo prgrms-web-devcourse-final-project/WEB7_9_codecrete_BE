@@ -79,7 +79,13 @@ public class ConcertController {
         return RsData.success(concertService.getArtistConcertList(artistId,type,pageable));
     }
 
-    @Operation(summary = "좋아요 기반 추천 공연 목록", description = "좋아요 데이터 기반으로 공연을 추천합니다.")
+    @Operation(summary = "좋아요 기반 추천 공연 목록", description = """
+            <h2>현재 사용자가 좋아요 한 공연들을 기반으로 앞으로 올 공연들을 추천합니다.</h2><hr/>
+            좋아요 한 공연의 제목을 어절 단위로 잘라, 중복으로 나타나는 어절에 가중치를 부여합니다.<br/>
+            이렇게 구성된 어절을 포함하고 있는 제목들을 전부 가져옵니다.<br/>
+            자카드 유사도를 통해 유사도가 높은 공연을 가져오되, 가중치가 높은 어절을 포함하는 공연이 먼저 보이게끔 정렬합니다.<br/>
+            <strong>좋아요 한 공연이 없거나, 어절을 포함한 공연이 없을 경우 빈 배열이 반환됩니다.</strong>
+            """)
     @GetMapping("recommendByLike")
     public RsData<List<ConcertItem>> getRecommendByLike(){
         User user = rq.getUser();

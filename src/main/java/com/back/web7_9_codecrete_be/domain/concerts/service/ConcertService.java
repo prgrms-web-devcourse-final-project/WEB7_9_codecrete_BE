@@ -330,6 +330,7 @@ public class ConcertService {
     public List<ConcertItem> concertsRecommendByLike(User user){
         Pageable pageable = PageRequest.of(0, 100);
         List<ConcertItem> likeList = concertRepository.getLikedConcertsList(pageable,user.getId());
+        if(likeList.isEmpty()) return new ArrayList<>(); // 좋아요 한 공연이 없을 경우 빈 공연 반환
         Map<String, WeightedBits> weightedBitsMap = new HashMap<>();
         Set<Long> idSet = new HashSet<>();
         for(ConcertItem item : likeList){
