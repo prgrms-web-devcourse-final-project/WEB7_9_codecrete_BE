@@ -1,6 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.community.comment.controller;
 
 import com.back.web7_9_codecrete_be.domain.community.comment.dto.request.CommentCreateRequest;
+import com.back.web7_9_codecrete_be.domain.community.comment.dto.request.CommentUpdateRequest;
 import com.back.web7_9_codecrete_be.domain.community.comment.service.CommentService;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.rq.Rq;
@@ -49,5 +50,17 @@ public class CommentController {
         User user = rq.getUser();
         commentService.delete(commentId, user.getId());
         return RsData.success("댓글이 삭제되었습니다.");
+    }
+
+    @Operation(summary = "댓글 수정", description = "작성자 본인만 댓글을 수정할 수 있습니다.")
+    @PatchMapping("/{commentId}")
+    public RsData<?> updateComment(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            @Valid @RequestBody CommentUpdateRequest req
+    ) {
+        User user = rq.getUser();
+        commentService.update(commentId, req, user.getId());
+        return RsData.success("댓글이 수정되었습니다.");
     }
 }
