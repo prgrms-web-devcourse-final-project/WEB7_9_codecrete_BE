@@ -25,7 +25,10 @@ public class RedisConfig {
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
         final RedisStandaloneConfiguration configuration = new RedisStandaloneConfiguration(host,port);
-        return new LettuceConnectionFactory(configuration);
+        LettuceConnectionFactory factory = new LettuceConnectionFactory(configuration);
+        // Redis 연결 타임아웃 설정 (5초)
+        factory.setTimeout(5000);
+        return factory;
     }
 
     //문자열만 사용할 때(refreshToken)

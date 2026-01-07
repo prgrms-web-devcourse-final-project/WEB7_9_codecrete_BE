@@ -49,6 +49,8 @@ public class SpotifyDetailService {
                 throw e;
             } catch (Exception e) {
                 throw new RuntimeException("Exception during getArtist API call", e);
+            } finally {
+                spotifyRateLimiter.release();
             }
         }, "getArtistDetail getArtist spotifyId=" + spotifyArtistId);
 
@@ -80,6 +82,8 @@ public class SpotifyDetailService {
                     throw e;
                 } catch (Exception e) {
                     throw new RuntimeException("Exception during getArtistsTopTracks API call", e);
+                } finally {
+                    spotifyRateLimiter.release();
                 }
             }, "safeGetTopTracks artistId=" + artistId);
         } catch (RuntimeException e) {
@@ -103,6 +107,8 @@ public class SpotifyDetailService {
                     throw e;
                 } catch (Exception e) {
                     throw new RuntimeException("Exception during getArtistsAlbums API call", e);
+                } finally {
+                    spotifyRateLimiter.release();
                 }
             }, "safeGetAlbums artistId=" + artistId);
         } catch (RuntimeException e) {

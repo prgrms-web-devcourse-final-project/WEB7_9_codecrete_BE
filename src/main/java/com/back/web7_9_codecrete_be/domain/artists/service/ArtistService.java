@@ -100,7 +100,7 @@ public class ArtistService {
 
     @Transactional(readOnly = true)
     public ArtistDetailResponse getArtistDetail(Long artistId) {
-        Artist artist = artistRepository.findById(artistId)
+        Artist artist = artistRepository.findByIdWithArtistGenres(artistId)
                 .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
 
         if (artist.getSpotifyArtistId() == null) {

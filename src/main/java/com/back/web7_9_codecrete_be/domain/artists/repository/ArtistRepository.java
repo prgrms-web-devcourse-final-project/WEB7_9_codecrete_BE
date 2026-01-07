@@ -14,6 +14,15 @@ import java.util.List;
 @Repository
 public interface ArtistRepository extends JpaRepository<Artist, Long> {
     
+    // 아티스트 상세 조회용 - artistGenres와 genre를 fetch join하여 N+1 문제 방지
+    @Query("""
+        SELECT DISTINCT a FROM Artist a
+        LEFT JOIN FETCH a.artistGenres ag
+        LEFT JOIN FETCH ag.genre
+        WHERE a.id = :id
+    """)
+    java.util.Optional<Artist> findByIdWithArtistGenres(@Param("id") Long id);
+    
     @Query("SELECT a FROM Artist a WHERE a.nameKo IS NULL ORDER BY a.id ASC")
     List<Artist> findByNameKoIsNullOrderByIdAsc(Pageable pageable);
 
