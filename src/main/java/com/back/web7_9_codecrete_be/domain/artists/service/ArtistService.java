@@ -121,7 +121,8 @@ public class ArtistService {
                 artist.getArtistType(),
                 likeCount,
                 artist.getId(),
-                genreId
+                genreId,
+                artist.getDescription()
         );
     }
 

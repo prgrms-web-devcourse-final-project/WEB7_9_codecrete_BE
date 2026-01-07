@@ -1200,7 +1200,8 @@ public class SpotifyService {
             ArtistType artistType,
             long likeCount,
             long artistId,
-            Long genreId
+            Long genreId,
+            String description
     ) {
         try {
             // 1. Redis 캐시에서 조회 시도
@@ -1223,6 +1224,7 @@ public class SpotifyService {
             Artist dbArtist = artistRepository.findById(artistId)
                     .orElse(null);
             String nameKo = dbArtist != null ? dbArtist.getNameKo() : null;
+            String artistDescription = description != null ? description : "";
 
             // 5. Related Artists 조회 (DB 기반 로직, 캐시하지 않음)
             List<RelatedArtistResponse> relatedResponses = relatedArtistService.getRelatedArtists(
@@ -1243,7 +1245,7 @@ public class SpotifyService {
                     likeCount,
                     spotifyData.totalAlbums(),
                     spotifyData.popularity(),
-                    "",
+                    artistDescription,
                     spotifyData.albums(),
                     spotifyData.topTracks(),
                     relatedResponses
