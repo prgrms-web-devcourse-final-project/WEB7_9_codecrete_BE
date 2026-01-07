@@ -41,7 +41,7 @@ public class SpotifyCacheService {
 
             return objectMapper.convertValue(cached, SpotifyArtistDetailCache.class);
         } catch (Exception e) {
-            log.warn("Redis 캐시 조회 실패: spotifyArtistId={}", spotifyArtistId, e);
+            log.error("Redis 캐시 조회 실패: spotifyArtistId={}", spotifyArtistId, e);
             return null;
         }
     }
