@@ -1,10 +1,8 @@
 package com.back.web7_9_codecrete_be.domain.artists.service;
 
-import com.back.web7_9_codecrete_be.domain.artists.dto.response.ConcertListByArtistResponse;
 import com.back.web7_9_codecrete_be.domain.artists.dto.response.GenreResponse;
 import com.back.web7_9_codecrete_be.domain.artists.entity.Genre;
 import com.back.web7_9_codecrete_be.domain.artists.repository.GenreRepository;
-import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import com.back.web7_9_codecrete_be.global.error.code.GenreErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;

@@ -7,12 +7,14 @@ import com.back.web7_9_codecrete_be.domain.artists.entity.*;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ArtistLikeRepository;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ConcertArtistRepository;
-import com.back.web7_9_codecrete_be.domain.artists.service.spotifyService.SpotifyService;
+import com.back.web7_9_codecrete_be.domain.artists.repository.GenreRepository;
+import com.back.web7_9_codecrete_be.domain.artists.service.GenreService;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.service.ConcertService;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.ArtistErrorCode;
+import com.back.web7_9_codecrete_be.global.error.code.GenreErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.AccessLevel;
 import org.springframework.data.domain.PageRequest;
@@ -32,6 +34,7 @@ public class ArtistService {
 
     private final SpotifyService spotifyService;
     private final ArtistRepository artistRepository;
+    private final GenreRepository genreRepository;
     private final GenreService genreService;
     private final ArtistLikeRepository artistLikeRepository;
     private final ConcertArtistRepository concertArtistRepository;
@@ -46,7 +49,7 @@ public class ArtistService {
 
     @Transactional
     public int setArtist() {
-        return spotifyService.seedKoreanArtists300();
+        return spotifyService.seedKoreanArtists();
     }
 
     @Transactional
@@ -97,7 +100,7 @@ public class ArtistService {
 
     @Transactional(readOnly = true)
     public ArtistDetailResponse getArtistDetail(Long artistId) {
-        Artist artist = artistRepository.findById(artistId)
+        Artist artist = artistRepository.findByIdWithArtistGenres(artistId)
                 .orElseThrow(() -> new BusinessException(ArtistErrorCode.ARTIST_NOT_FOUND));
 
         if (artist.getSpotifyArtistId() == null) {
@@ -198,7 +201,6 @@ public class ArtistService {
     @Transactional
     public void linkArtistConcert(Long artistId, Long concertId) {
         Artist artist = findArtist(artistId);
-        // TODO: 추후 수정 예정
         Concert concert = concertRepository.findById(concertId)
                 .orElseThrow();
         concertArtistRepository.save(new ConcertArtist(artist, concert));
@@ -232,4 +234,14 @@ public class ArtistService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<GenreArtistsResponse> findArtistsByGenreId(Long genreId) {
+        if (!genreRepository.existsById(genreId)) {
+            throw new BusinessException(GenreErrorCode.GENRE_NOT_FOUND);
+        }
+        List<Artist> artists = artistRepository.findArtistsByGenreId(genreId);
+        return artists.stream()
+                .map(GenreArtistsResponse::from)
+                .toList();
+    }
 }

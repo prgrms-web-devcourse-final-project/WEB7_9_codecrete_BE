@@ -9,28 +9,53 @@ import com.back.web7_9_codecrete_be.domain.location.dto.response.kakao.KakaoRout
 import com.back.web7_9_codecrete_be.global.error.code.LocationErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class KakaoLocalService {
 
     private final RestClient kakaoRestClient;
     private final RestClient kakaoMobilityClient;
 
+
+    public double round4(double num) {        //좌표의 소수점 숫자가 다르면 매번 다른 캐싱을 해야하니, 통일시켜줌
+
+        return Math.round(num * 10000) / 10000.0;
+    }
+
     // 해당 좌표의 1km 근방에 존재하는 음식점를 거리순으로 나타냄
-    public List<KakaoLocalResponse.Document> searchNearbyRestaurants(double lat, double lng) {
+    @Cacheable(
+            cacheNames = "nearByRestaurants",
+            key = "T(String).format('lat=%s:lng=%s:r=1000', T(java.lang.Math).round(#lat*10000)/10000.0, T(java.lang.Math).round(#lng*10000)/10000.0)"
+    )
+    @Retryable(     //최초 1번, 재시도 2번 시도
+            retryFor = {HttpServerErrorException.class, ResourceAccessException.class},     //외부 서버의 문제, 네트워크, 타임아웃 문제인 경우에 재시도
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 200, multiplier = 2.0)   //0.2초, 0.4초, 0.8초 순으로 재시도
+    )
+    public List<KakaoLocalResponse.Document> searchNearbyRestaurantsCached(double lat, double lng) {
+        double nLat = round4(lat);
+        double nLng = round4(lng);
 
         return kakaoRestClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/v2/local/search/keyword.json")
                         .queryParam("query", "음식점")
                         .queryParam("category_group_code", "FD6")
-                        .queryParam("x", lng)
-                        .queryParam("y", lat)
+                        .queryParam("x", nLng)
+                        .queryParam("y", nLat)
                         .queryParam("radius", 1000)  // 반경 1km
                         .queryParam("sort", "distance")
                         .build()
@@ -41,15 +66,25 @@ public class KakaoLocalService {
     }
 
     // 해당 좌표의 1km 근방에 존재하는 카페를 거리순으로 나타냄
-    public List<KakaoLocalResponse.Document> searchNearbyCafes(double lat, double lng) {
-
+    @Cacheable(
+            cacheNames = "nearByCafes",
+            key = "T(String).format('lat=%s:lng=%s:r=1000', T(java.lang.Math).round(#lat*10000)/10000.0, T(java.lang.Math).round(#lng*10000)/10000.0)"
+    )
+    @Retryable(     //최초 1번, 재시도 2번 시도
+            retryFor = {HttpServerErrorException.class, ResourceAccessException.class},     //외부 서버의 문제, 네트워크, 타임아웃 문제인 경우에 재시도
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 200, multiplier = 2.0)   //0.2초, 0.4초, 0.8초 순으로 재시도
+    )
+     public List<KakaoLocalResponse.Document> searchNearbyCafesCached(double lat, double lng) {
+        double nLat = round4(lat);
+        double nLng = round4(lng);
         return kakaoRestClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/v2/local/search/keyword.json")
                         .queryParam("query", "카페")
                         .queryParam("category_group_code", "CE7")
-                        .queryParam("x", lng)
-                        .queryParam("y", lat)
+                        .queryParam("x", nLng)
+                        .queryParam("y",nLat)
                         .queryParam("radius", 1000)  // 반경 1km
                         .queryParam("sort", "distance")
                         .build()
@@ -160,5 +195,13 @@ public class KakaoLocalService {
                 .retrieve()
                 .body(KakaoRouteTransitResponse.class);     //KakaoRouteTransitResponse로 카카오 자동차 api에서 주는 응답값
         return response;
+    }
+
+    @Recover
+    public List<KakaoLocalResponse.Document> recover(Exception e, double lat, double lng) {
+        //  로그 남기기
+        log.warn("Kakao API 실패 (재시도 소진) lat={}, lng={}, msg={}", lat, lng, e.getMessage());
+        // 실패하면 서비스 정책대로 처리
+        throw new BusinessException(LocationErrorCode.EXTERNAL_API_FAILED);
     }
 }

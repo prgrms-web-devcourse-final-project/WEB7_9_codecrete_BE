@@ -13,6 +13,7 @@ import com.back.web7_9_codecrete_be.global.error.code.ConcertErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -302,9 +303,7 @@ public class ConcertService {
     // 유사한 제목을 가지는 공연 추천
     public List<ConcertItem> recommendSimilarTitleConcerts(long concertId) {
         Concert concert = findConcertByConcertId(concertId);
-        String name = concert.getName();
-        String match = "[^ㄱ-ㅎㅏ-ㅣ가-힣a-zA-Z0-9\\s]";
-        name = name.replaceAll(match, "");
+        String name = simplifyKeyword(concert.getName());
         log.info("name: " + name);
         String[] words = name.split(" ");
         List<AutoCompleteItem> result = new ArrayList<>();
@@ -327,6 +326,78 @@ public class ConcertService {
         return concertItemList;
     }
 
+    // 좋아요 한 제목에서 중복으로 나타나는 단어에 가중치 부여 후 자카드 유사도에 가점 부여하여 정렬 후 공연 추천
+    public List<ConcertItem> concertsRecommendByLike(User user){
+        Pageable pageable = PageRequest.of(0, 100);
+        List<ConcertItem> likeList = concertRepository.getLikedConcertsList(pageable,user.getId());
+        if(likeList.isEmpty()) return new ArrayList<>(); // 좋아요 한 공연이 없을 경우 빈 공연 반환
+        Map<String, WeightedBits> weightedBitsMap = new HashMap<>();
+        Set<Long> idSet = new HashSet<>();
+        for(ConcertItem item : likeList){
+            idSet.add(item.getId());
+            String name = item.getName();
+            String simpleName = simplifyKeyword(name);
+            String[] words = simpleName.split(" ");
+
+            for (String word : words) { // 단어별로 가중치 적용
+               WeightedBits weightedBits = weightedBitsMap.getOrDefault(word, new WeightedBits(word,0));
+               weightedBits.plusWeight();
+               weightedBitsMap.put(word, weightedBits);
+            }
+        }
+
+        List<AutoCompleteItem> result = new ArrayList<>();
+        for (String word : weightedBitsMap.keySet()) {
+            if(word.isEmpty()) continue;
+            log.info("word: " + word);
+            result.addAll(concertSearchRedisTemplate.getAutoCompleteWord(word,0,6));
+        }
+
+        Set<Long> resultIdSet = new HashSet<>();
+        for (AutoCompleteItem item : result) {
+            if(idSet.contains(item.getId())) continue; // 찜한 목록 제거
+            resultIdSet.add(item.getId()); // 중복 제거
+        }
+
+        List<Long> idList = new ArrayList<>();
+        for (Long id : resultIdSet) {
+            idList.add(id);
+        }
+
+        List<ConcertItem> concertItemList = concertRepository.getConcertItemsInIdList(idList,LocalDate.now());
+        concertItemList.sort(Comparator.comparingDouble(
+                ci -> jaccardSimilarityWithWeight(weightedBitsMap,ci.getName().split(" "))
+        ));
+        return concertItemList;
+    }
+
+    private double jaccardSimilarityWithWeight(Map<String,WeightedBits> weightedBitsMap, String[] words) {
+        int intersection =0;
+        for (String word : words) {
+            if(word.isEmpty()) continue;
+            WeightedBits weightedBits = weightedBitsMap.get(word);
+            if(weightedBits == null) continue;
+            intersection += weightedBits.weight;
+        }
+        int union = weightedBitsMap.size() + words.length;
+        return (double)union/intersection;
+    }
+
+    private class WeightedBits{
+        String bit;
+        int weight;
+
+        public WeightedBits(String bit, int weight) {
+            this.bit = bit;
+            this.weight = weight;
+        }
+
+        public WeightedBits plusWeight(){
+            this.weight++;
+            return this;
+        }
+    }
+
     private double jaccardSimilarity(String[] origin , String[] target) {
         Set<String> union = new HashSet<>();
         Set<String> intersection = new HashSet<>();
@@ -340,6 +411,13 @@ public class ConcertService {
         }
 
         return (double)  union.size() / intersection.size();
+    }
+
+    // 특수 문자를 제거합니다.
+    private static String simplifyKeyword(String name) {
+        String match = "[^ㄱ-ㅎㅏ-ㅣ가-힣a-zA-Z0-9\\s]";
+        name = name.replaceAll(match, "");
+        return name;
     }
 
     @Transactional(readOnly = true)

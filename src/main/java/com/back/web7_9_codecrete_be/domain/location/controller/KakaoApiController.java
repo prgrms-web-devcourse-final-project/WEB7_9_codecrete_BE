@@ -23,7 +23,9 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.http.ResponseEntity;
+import org.springframework.retry.annotation.Recover;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -34,6 +36,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/location/kakao")
 @RequiredArgsConstructor
+@Log4j2
 public class KakaoApiController {
 
     private final KakaoLocalService kakaoLocalService;
@@ -42,28 +45,28 @@ public class KakaoApiController {
     @Operation(
             summary = "주변 음식점 조회",
             description = "좌표(서울 시청 근처)로 카카오 로컬에서 주변 음식점을 조회합니다, 좌표는 입력하면 됩니다." +
-                    "예시 : http://localhost:8080/api/v1/location/kakao/restaurant?x=37.5665&y=126.9780"
+                    "예시 : http://localhost:8080/api/v1/location/kakao/restaurant?x=126.9780&y=37.5665"
     )
     @PostMapping("/restaurant")
     public List<KakaoLocalResponse.Document> KakaoRestaurants(
             @RequestParam double x,
             @RequestParam double y
     ) {
-        return kakaoLocalService.searchNearbyRestaurants(y, x);
+        return kakaoLocalService.searchNearbyRestaurantsCached(y, x);
     }
 
 
     @Operation(
             summary = "주변 카페 조회",
             description = "좌표(서울 시청 근처)로 카카오 로컬에서 주변 카페를 조회합니다, 좌표는 입력하면 됩니다." +
-                    "예시 : http://localhost:8080/api/v1/location/kakao/cafes?x=37.5665&y=126.9780"
+                    "예시 : http://localhost:8080/api/v1/location/kakao/cafes?x=126.9780&y=37.5665"
     )
     @PostMapping("/cafes")
     public List<KakaoLocalResponse.Document> KakaoCafes(
             @RequestParam double x,
             @RequestParam double y
     ) {
-        return kakaoLocalService.searchNearbyCafes(y, x);
+        return kakaoLocalService.searchNearbyCafesCached(y, x);
     }
 
 

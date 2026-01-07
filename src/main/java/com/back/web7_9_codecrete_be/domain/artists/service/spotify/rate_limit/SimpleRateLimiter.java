@@ -1,7 +1,6 @@
-package com.back.web7_9_codecrete_be.domain.artists.service.spotifyService;
+package com.back.web7_9_codecrete_be.domain.artists.service.spotify.rate_limit;
 
 // 모든 Spotify API 호출 전에 최소 간격을 보장하여 Rate Limit 위반 방지
-
 public class SimpleRateLimiter {
     private final long minIntervalMs;
     private long lastCallAt = 0;

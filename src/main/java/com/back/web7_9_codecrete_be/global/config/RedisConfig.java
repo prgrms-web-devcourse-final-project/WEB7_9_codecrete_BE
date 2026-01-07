@@ -3,6 +3,8 @@ package com.back.web7_9_codecrete_be.global.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -12,6 +14,10 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 @Configuration
 public class RedisConfig {
@@ -25,7 +31,10 @@ public class RedisConfig {
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
         final RedisStandaloneConfiguration configuration = new RedisStandaloneConfiguration(host,port);
-        return new LettuceConnectionFactory(configuration);
+        LettuceConnectionFactory factory = new LettuceConnectionFactory(configuration);
+        // Redis 연결 타임아웃 설정 (5초)
+        factory.setTimeout(5000);
+        return factory;
     }
 
     //문자열만 사용할 때(refreshToken)
@@ -50,5 +59,22 @@ public class RedisConfig {
 
         template.setConnectionFactory(redisConnectionFactory());
         return template;
+    }
+
+
+    @Bean
+    public RedisCacheManager cacheManager(RedisConnectionFactory cf) {
+
+        RedisCacheConfiguration redisCacheConfig = RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofMinutes(30));      // TTL 30분
+
+        Map<String, RedisCacheConfiguration> configs = new HashMap<>();     // 캐시 이름마다 다른 TTL 설정
+        configs.put("nearByCafes", RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofMinutes(30)));
+        configs.put("nearByRestaurants", RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofMinutes(30)));
+
+        return RedisCacheManager.builder(cf)
+                .cacheDefaults(redisCacheConfig)
+                .withInitialCacheConfigurations(configs)
+                .build();
     }
 }

@@ -78,7 +78,7 @@ class KakaoLocalServiceTest {
 
         //kakasLocalService에 있는 searchNearByRestaurants 함수에 위도, 경도를 넣고 WebClient가 호출해서 응답을 반환
         List<KakaoLocalResponse.Document> docs =
-                kakaoLocalService.searchNearbyRestaurants(37.5, 127.0);
+                kakaoLocalService.searchNearbyRestaurantsCached(37.5, 127.0);
 
         assertThat(docs).hasSize(1);        //응답 배열의 크기가 1인지
         assertThat(docs.get(0).getPlace_name()).isEqualTo("테스트식당"); // 제대로 필드가 들어갔는지 확인
@@ -113,7 +113,7 @@ class KakaoLocalServiceTest {
                 """));
 
         List<KakaoLocalResponse.Document> docs =
-                kakaoLocalService.searchNearbyCafes(37.5665, 126.9780);
+                kakaoLocalService.searchNearbyCafesCached(37.5665, 126.9780);
 
         assertThat(docs).hasSize(1);
         assertThat(docs.get(0).getPlace_name()).isEqualTo("테스트카페");
