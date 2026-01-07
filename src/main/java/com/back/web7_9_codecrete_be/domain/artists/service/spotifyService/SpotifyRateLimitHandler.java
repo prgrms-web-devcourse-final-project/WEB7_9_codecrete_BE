@@ -1,13 +1,19 @@
 package com.back.web7_9_codecrete_be.domain.artists.service.spotifyService;
 
+import com.back.web7_9_codecrete_be.global.spotify.SpotifyClient;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 // 429 에러 처리 및 전역 쿨다운 관리
+// 401 에러 처리 (토큰 만료 시 자동 재발급)
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class SpotifyRateLimitHandler {
+    
+    private final SpotifyClient spotifyClient;
     
     private static final long SPOTIFY_RATE_LIMIT_INTERVAL_MS = 500; // 초당 2회
     private static final long MUSICBRAINZ_RATE_LIMIT_INTERVAL_MS = 1000; // 초당 1회
@@ -65,6 +71,22 @@ public class SpotifyRateLimitHandler {
                 globalConsecutive429Count = 0;
                 return result;
             } catch (Exception e) {
+                // 401 에러 확인 (Unauthorized - 토큰 만료)
+                boolean is401 = is401Error(e);
+                
+                if (is401) {
+                    log.warn("401 Unauthorized 에러 감지 - 토큰 재발급 후 재시도: attempt={}/{}", attempt, maxRetry);
+                    // 토큰 강제 재발급
+                    spotifyClient.forceRefreshToken();
+                    
+                    if (attempt < maxRetry) {
+                        // 재시도
+                        continue;
+                    } else {
+                        log.error("401 에러 재시도 횟수 초과 ({}회)", maxRetry);
+                        throw new RuntimeException(context + ": 401 Unauthorized - 토큰 재발급 후에도 실패", e);
+                    }
+                }
                 // 원본 예외 확인 (래핑된 경우 cause 확인)
                 Throwable originalException = e;
                 Throwable current = e;
@@ -202,6 +224,27 @@ public class SpotifyRateLimitHandler {
         }
         
         throw new RuntimeException(context + ": rate limit retry exhausted");
+    }
+    
+    // 401 에러인지 확인
+    private boolean is401Error(Throwable e) {
+        Throwable current = e;
+        while (current != null) {
+            String className = current.getClass().getSimpleName();
+            String errorMsg = current.getMessage();
+            
+            // 401 에러 확인
+            if (className.contains("Unauthorized") || 
+                className.contains("401") ||
+                (errorMsg != null && (errorMsg.contains("401") || 
+                                     errorMsg.contains("Unauthorized") ||
+                                     errorMsg.contains("Invalid access token")))) {
+                return true;
+            }
+            
+            current = current.getCause();
+        }
+        return false;
     }
 }
 
