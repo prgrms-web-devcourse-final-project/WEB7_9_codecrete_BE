@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -13,6 +14,15 @@ import java.util.List;
 public interface ArtistRepository extends JpaRepository<Artist, Long> {
     boolean existsBySpotifyArtistId(String spotifyArtistId);
     java.util.Optional<Artist> findBySpotifyArtistId(String spotifyArtistId);
+    
+    // 아티스트 상세 조회용 - artistGenres와 genre를 fetch join하여 N+1 문제 방지
+    @Query("""
+        SELECT DISTINCT a FROM Artist a
+        LEFT JOIN FETCH a.artistGenres ag
+        LEFT JOIN FETCH ag.genre
+        WHERE a.id = :id
+    """)
+    java.util.Optional<Artist> findByIdWithArtistGenres(@Param("id") Long id);
     
     @Query("SELECT a FROM Artist a WHERE a.nameKo IS NULL ORDER BY a.id ASC")
     List<Artist> findByNameKoIsNullOrderByIdAsc(Pageable pageable);
