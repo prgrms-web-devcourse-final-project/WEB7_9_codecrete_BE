@@ -46,6 +46,8 @@ public class UserService {
 
     private final ImageFileValidator imageFileValidator;
 
+    private static final String DEFAULT_PROFILE_IMAGE_URL = "https://nconb-assets.s3.ap-northeast-2.amazonaws.com/users/profile/ncb.png";
+
     // 내 정보 조회
     @Transactional(readOnly = true)
     public UserResponse getMyInfo(User user) {
@@ -56,12 +58,14 @@ public class UserService {
     // 회원 가입(로컬)
     public User createLocalUser(SignupRequest req, String encodedPassword) {
 
+        String profileImage = defaultProfileImage(req.getProfileImage());
+
         User user = User.builder()
                 .email(req.getEmail())
                 .nickname(req.getNickname())
                 .password(encodedPassword)
                 .birth(LocalDate.parse(req.getBirth()))
-                .profileImage(req.getProfileImage())
+                .profileImage(profileImage)
                 .socialType(SocialType.LOCAL)
                 .socialId(null)
                 .build();
@@ -81,6 +85,8 @@ public class UserService {
             SocialType socialType,
             String socialId
     ) {
+
+        profileImage = defaultProfileImage(profileImage);
 
         User user = User.builder()
                 .email(email)
@@ -147,7 +153,7 @@ public class UserService {
 
         // 기존 이미지 즉시 삭제
         // TODO: 추후 지연 삭제 스케줄러로 리팩토링
-        if (oldImageUrl != null) {
+        if (oldImageUrl != null && !isDefaultProfileImage(oldImageUrl)) {
             try {
                 fileStorageService.delete(oldImageUrl);
             } catch (Exception e) {
@@ -267,5 +273,15 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 
         return UserPublicResponse.from(user);
+    }
+
+    private String defaultProfileImage(String profileImage) {
+        return profileImage != null
+                ? profileImage
+                : DEFAULT_PROFILE_IMAGE_URL;
+    }
+
+    private boolean isDefaultProfileImage(String imageUrl) {
+        return DEFAULT_PROFILE_IMAGE_URL.equals(imageUrl);
     }
 }
