@@ -1,5 +1,6 @@
 package com.back.web7_9_codecrete_be.domain.concerts.service;
 
+import com.back.web7_9_codecrete_be.domain.artists.entity.Artist;
 import com.back.web7_9_codecrete_be.domain.artists.entity.ConcertArtist;
 import com.back.web7_9_codecrete_be.domain.artists.repository.ConcertArtistRepository;
 import com.back.web7_9_codecrete_be.domain.concerts.dto.concert.*;
@@ -129,7 +130,8 @@ public class ConcertService {
                     .toList();
             concertDetailResponse.setConcertImageUrls(concertImageUrls);
             List<Long> concertArtists = concertArtistRepository.getConcertArtistsByConcert_ConcertId(concertId).stream()
-                    .map(ConcertArtist::getId)
+                    .map(ConcertArtist::getArtist)
+                    .map(Artist::getId)
                     .toList();
             concertDetailResponse.setConcertArtists(concertArtists);
         }
