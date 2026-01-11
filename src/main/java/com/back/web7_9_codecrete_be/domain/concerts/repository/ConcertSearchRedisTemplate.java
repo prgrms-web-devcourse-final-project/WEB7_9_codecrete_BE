@@ -25,29 +25,39 @@ public class ConcertSearchRedisTemplate {
 
     public void addAllWordsWithWeight(List<WeightedString> weightedStrings) {
         // PipeLine 사용해서 한번에 처리 -> IO 시간 감소
-        redisTemplate.executePipelined((RedisCallback<?>) connection ->{
-            for (WeightedString weightedString : weightedStrings) {
-                String id = String.valueOf(weightedString.getConcertId());
-                String word = weightedString.getWord();
-                double score = weightedString.getScore();
+        // 대량의 파이프라인 작업시 Zset 양이 너무 많으면 set 처리가 누락되는 문제 발생 -> 한번에 batch X, 여러번 나누어서 처리
+        int batchSize = 50;
+        for(int i = 0; i < weightedStrings.size(); i+=batchSize) {
+            List<WeightedString> batch = weightedStrings.subList(i, Math.min(i + batchSize, weightedStrings.size()));
+            redisTemplate.executePipelined((RedisCallback<?>) connection ->{
+                for (WeightedString weightedString : batch) {
+                    String id = String.valueOf(weightedString.getConcertId());
+                    String word = weightedString.getWord();
+                    double score = weightedString.getScore();
 
-                // 검색 결과를 ID - 제목 쌍으로 저장
-                connection.commands().set((CONCERT_ID_KEY + id).getBytes(StandardCharsets.UTF_8),word.getBytes(StandardCharsets.UTF_8));
+                    // 직렬화 도구 명시적 사용 (Template 설정과 일치)
+                    byte[] key = redisTemplate.getStringSerializer().serialize(CONCERT_ID_KEY + id);
+                    byte[] value = redisTemplate.getStringSerializer().serialize(word);
+                    byte[] idByte = redisTemplate.getStringSerializer().serialize(id);
 
-                // 역 인덱싱
-                for(int i = 0 ;i<word.length();i++){
-                    for(int j = i+1;j<= word.length();j++ ){
-                        String subWord = word.substring(i,j);
-                        // 공백은 검색어 인덱스에서 제외
-                        if(subWord.isBlank()) continue;
-                        // 서브 문자열을 인덱스 키, 값은 ID 값으로 해서 저장
-                        byte[] indexKey = (INDEX_KEY + subWord).getBytes(StandardCharsets.UTF_8);
-                        connection.zAdd(indexKey,score,id.getBytes(StandardCharsets.UTF_8));
+                    // 검색 결과를 ID - 제목 쌍으로 저장
+                    connection.commands().set(key,value);
+
+                    // 역 인덱싱
+                    for(int k = 0 ;k<word.length();k++){
+                        for(int j = k+1;j<= word.length();j++ ){
+                            String subWord = word.substring(k,j);
+                            // 공백은 검색어 인덱스에서 제외
+                            if(subWord.isBlank()) continue;
+                            // 서브 문자열을 인덱스 키, 값은 ID 값으로 해서 저장
+                            byte[] indexKey = redisTemplate.getStringSerializer().serialize(INDEX_KEY + subWord);
+                            connection.zAdd(indexKey, score, idByte);
+                        }
                     }
                 }
-            }
-            return null;
-        });
+                return null;
+            });
+        }
     }
 
     public List<AutoCompleteItem> getAutoCompleteWord(String keyword, int start, int end) {
