@@ -20,6 +20,7 @@ import com.back.web7_9_codecrete_be.global.storage.FileStorageService;
 import com.back.web7_9_codecrete_be.global.storage.ImageFileValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -267,6 +268,24 @@ public class ReviewPostService {
                 .tags(reviewPost.getTags())
                 .createdDate(reviewPost.getPost().getCreatedDate())
                 .build();
+    }
+
+    public List<ReviewPostResponse> searchByKeyword(String keyword, Pageable pageable) {
+        if (keyword == null || keyword.isBlank()) {
+            throw new BusinessException(PostErrorCode.KEYWORD_IS_NULL);
+        }
+
+        return reviewPostRepository.searchByKeyword(keyword, pageable)
+                .stream()
+                .map(reviewPost -> {
+                    List<String> imageUrls = reviewPost.getImages()
+                            .stream()
+                            .map(ReviewImage::getImageUrl)
+                            .toList();
+
+                    return ReviewPostResponse.from(reviewPost, imageUrls);
+                })
+                .toList();
     }
 }
 

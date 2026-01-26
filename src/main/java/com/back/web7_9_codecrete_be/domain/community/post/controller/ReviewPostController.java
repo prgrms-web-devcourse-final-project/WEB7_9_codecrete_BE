@@ -9,11 +9,16 @@ import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.rq.Rq;
 import com.back.web7_9_codecrete_be.global.rsData.RsData;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/reviews")
@@ -84,6 +89,26 @@ public class ReviewPostController {
         return RsData.success(
                 "콘서트 후기 목록 조회 성공",
                 reviewPostService.getReviewsByConcert(concertId)
+        );
+    }
+
+    @Operation(summary = "후기 게시글 검색", description = "제목 또는 내용에 키워드를 포함하고 있는 후기 게시글을 검색합니다.")
+    @GetMapping("/search")
+    public RsData<List<ReviewPostResponse>> search(
+            @Schema(description = """
+                <h3>검색어가 되는 Keyword입니다.</h3>
+                <hr/>
+                <b>?keyword={keyword}</b> 로 값을 넘기시면 됩니다.<br/>
+                제목 또는 내용에 해당 문자열을 포함하는
+                후기 게시글을 페이징된 만큼 반환합니다.
+                """)
+            @RequestParam String keyword,
+
+            @Schema(description = "페이징 처리 또는 무한 스크롤 구현에 사용하는 Pageable 객체입니다.")
+            @Parameter(hidden = true) Pageable pageable
+    ) {
+        return RsData.success(
+                reviewPostService.searchByKeyword(keyword, pageable)
         );
     }
 }
