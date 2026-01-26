@@ -14,8 +14,11 @@ import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.global.error.code.PostErrorCode;
 import com.back.web7_9_codecrete_be.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -116,5 +119,16 @@ public class JoinPostService {
         }
 
         joinPost.close(); // status = CLOSED
+    }
+
+    public List<JoinPostResponse> searchByKeyword(String keyword, Pageable pageable) {
+        if (keyword == null || keyword.isEmpty()) {
+            throw new BusinessException(PostErrorCode.KEYWORD_IS_NULL);
+        }
+
+        return joinPostRepository.searchByKeyword(keyword, pageable)
+                .stream()
+                .map(JoinPostResponse::from)
+                .toList();
     }
 }

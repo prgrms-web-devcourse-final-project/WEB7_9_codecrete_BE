@@ -40,6 +40,13 @@ public enum PostErrorCode implements ErrorCode {
             HttpStatus.BAD_REQUEST,
             "P-130",
             "이미 삭제된 게시글입니다."
+    ),
+
+    // 검색 관련
+    KEYWORD_IS_NULL(
+            HttpStatus.BAD_REQUEST,
+            "P-140",
+            "검색어는 필수입니다."
     );
 
     private final HttpStatus status;
