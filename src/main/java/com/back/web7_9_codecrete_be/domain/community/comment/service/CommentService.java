@@ -47,7 +47,7 @@ public class CommentService {
 
         Pageable pageable = PageRequest.of(
                 page - 1,
-                20,
+                10,
                 Sort.by(Sort.Direction.ASC, "createdDate")
         );
 
