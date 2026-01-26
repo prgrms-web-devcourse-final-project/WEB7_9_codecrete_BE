@@ -5,28 +5,55 @@ services:
     image: mysql:8.0
     container_name: concert-mysql
     restart: always
-    ports:
-      - "${MYSQL_PORT}:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       TZ: Asia/Seoul
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "127.0.0.1:3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
 
   redis:
     image: redis:7.2
     container_name: concert-redis
     restart: always
     ports:
-      - "${REDIS_PORT}:6379"
+      - "127.0.0.1:6379:6379"
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfilename appendonly.aof
+      --appendfsync everysec
     volumes:
       - redis-data:/data
+
+  spring:
+    image: heygeeji/ncb-backend:latest
+    container_name: concert-spring
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/concert
+      SPRING_DATASOURCE_USERNAME: concert_user
+      SPRING_DATASOURCE_PASSWORD: concert_pw
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
 
 volumes:
   mysql-data:
