@@ -5,6 +5,12 @@
 <h1 align="center">🎵 내 콘서트를 부탁해 (NCB) - Backend</h1>
 
 <p align="center">
+  <a href="https://www.naeconcertbutakhae.shop/home">
+    <b>🔗 서비스 바로가기</b>
+  </a>
+</p>
+
+<p align="center">
 예매부터 뒤풀이까지, 공연 관람의 하루를 관리하는 올인원 플랫폼
 </p>
 
