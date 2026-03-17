@@ -1,6 +1,7 @@
 package com.back.web7_9_codecrete_be.domain.community.comment.dto.response;
 
 import com.back.web7_9_codecrete_be.domain.community.comment.entity.Comment;
+import com.back.web7_9_codecrete_be.domain.community.post.entity.PostCategory;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,6 +19,12 @@ public class CommentResponse {
     @Schema(description = "작성자 사용자 ID", example = "12")
     private Long userId;
 
+    @Schema(description = "포스트 ID", example = "3")
+    private Long postId;
+
+    @Schema(description = "포스트 카테고리", example = "JOIN")
+    private PostCategory postCategory;
+
     @Schema(description = "댓글 내용", example = "정말 공감합니다!")
     private String content;
 
@@ -34,6 +41,8 @@ public class CommentResponse {
         return CommentResponse.builder()
                 .commentId(comment.getCommentId())
                 .userId(comment.getUserId())
+                .postId(comment.getPost().getPostId())
+                .postCategory(comment.getPost().getCategory())
                 .content(comment.getContent())
                 .createdDate(comment.getCreatedDate())
                 .modifiedDate(comment.getModifiedDate())
