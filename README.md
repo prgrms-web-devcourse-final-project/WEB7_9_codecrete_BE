@@ -167,3 +167,110 @@ src
 <img width="855" height="484" alt="screencapture-miricanvas-v2-ko-design2-139b13ea-a2b5-4b45-a015-0ad51e6e0d34-2026-03-17-17_36_17" src="https://github.com/user-attachments/assets/db33fbb4-8823-4c77-830d-cb7fc1e871cb" />
 
 ---
+## 🐳 Docker 실행 방법
+
+이 프로젝트는 **MySQL 8.0**과 **Redis 7.2**를 Docker Compose로 실행합니다.  
+로컬 개발 환경에서 데이터베이스와 캐시 서버를 쉽게 구성할 수 있습니다.
+
+---
+
+## 1️⃣ 환경 변수 설정
+
+프로젝트 루트에 `.env` 파일을 생성하고 아래 내용을 작성합니다.
+
+```env
+MYSQL_PORT=3306
+MYSQL_ROOT_PASSWORD=root
+MYSQL_DATABASE=concert
+MYSQL_USER=user
+MYSQL_PASSWORD=password
+
+REDIS_PORT=6379
+```
+
+`.env` 파일은 `docker-compose.yml`에서 사용하는 환경 변수입니다.
+
+---
+
+## 2️⃣ Docker 컨테이너 실행
+
+아래 명령어로 MySQL과 Redis 컨테이너를 실행합니다.
+
+```bash
+docker compose up -d
+```
+
+옵션 설명
+
+| 옵션 | 설명 |
+|---|---|
+| up | 컨테이너 실행 |
+| -d | 백그라운드 실행 |
+
+---
+
+## 3️⃣ 실행 상태 확인
+
+```bash
+docker ps
+```
+
+정상적으로 실행되면 다음과 같은 컨테이너가 실행됩니다.
+
+| Container | Service |
+|---|---|
+| concert-mysql | MySQL 8.0 |
+| concert-redis | Redis 7.2 |
+
+---
+
+## 4️⃣ 로그 확인
+
+문제가 발생했을 경우 로그를 확인할 수 있습니다.
+
+```bash
+docker compose logs
+```
+
+특정 서비스 로그 확인
+
+```bash
+docker compose logs mysql
+docker compose logs redis
+```
+
+---
+
+## 5️⃣ 컨테이너 종료
+
+```bash
+docker compose down
+```
+
+---
+
+## 6️⃣ 데이터 유지 (Volume)
+
+MySQL과 Redis 데이터는 Docker Volume에 저장됩니다.
+
+| Volume | 설명 |
+|---|---|
+| mysql-data | MySQL 데이터 저장 |
+| redis-data | Redis 데이터 저장 |
+
+컨테이너를 삭제해도 데이터는 유지됩니다.
+
+---
+
+## 7️⃣ 포트 정보
+
+| Service | Port |
+|---|---|
+| MySQL | `${MYSQL_PORT}:3306` |
+| Redis | `${REDIS_PORT}:6379` |
+
+---
+
+💡 **Tip**
+
+처음 실행할 때는 Docker 이미지 다운로드로 인해 시간이 조금 걸릴 수 있습니다.
