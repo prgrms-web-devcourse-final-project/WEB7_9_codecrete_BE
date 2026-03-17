@@ -20,7 +20,7 @@
 - [프로젝트 개요](#프로젝트-개요)
 - [주요 기능](#주요-기능)
 - [시스템 아키텍처](#시스템-아키텍처)
-- [ERD](#erd-entity-relationship-diagram)
+- [ERD](#erd)
 - [기술 스택](#기술-스택)
 - [프로젝트 구조](#프로젝트-구조)
 - [백엔드 팀](#백엔드-팀)
@@ -135,7 +135,7 @@ Redis 활용
 
 ---
 
-# 🗄 ERD (Entity Relationship Diagram)
+# 🗄 ERD
 
 <p align="center">
  <img width="1920" height="1080" alt="ERD" src="https://github.com/user-attachments/assets/ae116025-2fc4-44e7-9f7b-14a27589dd48" />
