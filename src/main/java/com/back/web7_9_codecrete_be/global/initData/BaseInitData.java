@@ -1,12 +1,5 @@
 package com.back.web7_9_codecrete_be.global.initData;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-
-import org.springframework.context.annotation.Profile;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Component;
-
 import com.back.web7_9_codecrete_be.domain.concerts.entity.Concert;
 import com.back.web7_9_codecrete_be.domain.concerts.entity.ConcertPlace;
 import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertPlaceRepository;
@@ -14,9 +7,14 @@ import com.back.web7_9_codecrete_be.domain.concerts.repository.ConcertRepository
 import com.back.web7_9_codecrete_be.domain.users.entity.SocialType;
 import com.back.web7_9_codecrete_be.domain.users.entity.User;
 import com.back.web7_9_codecrete_be.domain.users.repository.UserRepository;
-
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Profile("dev")
 @Component
@@ -51,6 +49,8 @@ public class BaseInitData {
 			.socialId(null)
 			.build();
 
+		testUser.initSetting();
+
 		userRepository.save(testUser);
 	}
 
@@ -68,6 +68,8 @@ public class BaseInitData {
 			.socialType(SocialType.LOCAL)
 			.socialId(null)
 			.build();
+
+		adminUser.initSetting();
 
 		// dev 전용 어드민 권한 부여
 		adminUser.promoteToAdmin();

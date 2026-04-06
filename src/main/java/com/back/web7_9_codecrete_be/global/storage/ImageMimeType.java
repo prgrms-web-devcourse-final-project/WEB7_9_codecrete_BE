@@ -22,7 +22,7 @@ public enum ImageMimeType {
 
     public static ImageMimeType from(String detectedMimeType) {
         return Arrays.stream(values())
-                .filter(it -> it.mimeType.equals(detectedMimeType))
+                .filter(it -> detectedMimeType.startsWith(it.mimeType))
                 .findFirst()
                 .orElseThrow(() ->
                         new BusinessException(FileErrorCode.INVALID_IMAGE_TYPE)
