@@ -43,7 +43,7 @@ public class ImageFileValidator {
             throw new BusinessException(FileErrorCode.EXTENSION_MISMATCH);
         }
 
-        String extension = filename.substring(filename.lastIndexOf('.') + 1);
+        String extension = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
 
         // 확장자 ↔ MIME 타입 매칭
         if (!imageMimeType.matches(extension)) {
