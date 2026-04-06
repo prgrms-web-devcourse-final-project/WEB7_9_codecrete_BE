@@ -9,6 +9,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -16,6 +17,8 @@ import java.util.UUID;
 public class S3FileStorageService implements FileStorageService {
 
     private final S3Client s3Client;
+    private final ImageFileValidator imageFileValidator;
+    private final FileDeleteQueueRepository fileDeleteQueueRepository;
 
     @Value("${cloud.aws.s3.bucket}")
     private String bucket;
@@ -27,7 +30,16 @@ public class S3FileStorageService implements FileStorageService {
     @Override
     public String upload(MultipartFile file, String basePath) {
 
-        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        imageFileValidator.validateImageFile(file);
+
+        String originalFilename = file.getOriginalFilename();
+
+        // 확장자 추출
+        String extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+
+        // 파일명 제거 (UUID만 사용)
+        String fileName = UUID.randomUUID() + extension;
+
         String key = basePath + "/" + fileName;
 
         try {
@@ -56,16 +68,11 @@ public class S3FileStorageService implements FileStorageService {
             return;
         }
 
-        String prefix = "https://" + bucket + ".s3." + region + ".amazonaws.com/";
-        if (!fileUrl.startsWith(prefix)) {
-            throw new IllegalArgumentException("잘못된 S3 파일 URL입니다.");
-        }
-
-        String key = fileUrl.substring(prefix.length());
-
-        s3Client.deleteObject(builder -> builder
-                .bucket(bucket)
-                .key(key)
+        fileDeleteQueueRepository.save(
+                FileDeleteQueue.builder()
+                        .fileUrl(fileUrl)
+                        .deleteAt(LocalDateTime.now().plusMinutes(30))
+                        .build()
         );
     }
 }
